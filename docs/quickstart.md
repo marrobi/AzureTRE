@@ -102,6 +102,9 @@ ARM_SUBSCRIPTION_ID=73a..e3
 ARM_CLIENT_ID=79a..86
 ARM_CLIENT_SECRET=L51..hk
 
+# Configure Porter to use docker or Azure CNAB driver
+PORTER_DRIVER=docker
+PORTER_OUTPUT_CONTAINER_NAME=porterout
 ```
 
 #### Optional environment variables
