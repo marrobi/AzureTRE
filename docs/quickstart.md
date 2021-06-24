@@ -68,6 +68,8 @@ cp devops/.env.sample devops/.env
 | `ACR_NAME` | A globally unique name for the Azure Container Registry (ACR) that will be created to store deployment images. |
 | `CONTRIBUTOR_SP_CLIENT_ID` * | The client (app) ID of a service principal with "Contributor" role to the subscription. Used by the deployment processor function to deploy workspaces and workspace services. |
 | `CONTRIBUTOR_SP_CLIENT_SECRET` * | The client secret (app password) of a service principal with "Contributor" role to the subscription. Used by the deployment processor function to deploy workspaces and workspace services. |
+| `ARM_SUBSCRIPTION_ID` | The Azure subscription ID for all resources. |
+
 
 To create a new service principal with the Contributor role, run the following command. Make note of the `clientId` and `clientSecret` values returned and add them to the respective variables in the `.env` file.
 
@@ -82,7 +84,6 @@ Your `.env` file should now look something similar to this:
 
 ```plaintext
 # Management infrastructure
-ARM_SUBSCRIPTION_ID=8cf4..65a0
 LOCATION=norwayeast
 MGMT_RESOURCE_GROUP_NAME=aztremgmt
 MGMT_STORAGE_ACCOUNT_NAME=aztremgmt
@@ -93,6 +94,10 @@ ACR_NAME=aztre
 # Service Principal used by the Composition Service to provision workspaces
 CONTRIBUTOR_SP_CLIENT_ID=8cf4..65ae
 CONTRIBUTOR_SP_CLIENT_SECRET=secret
+
+# Azure Resource Manager credentials used in CI/CD pipeline and local development scenarios
+ARM_SUBSCRIPTION_ID=73a..e3
+
 ```
 
 #### Optional environment variables
@@ -101,7 +106,6 @@ The below environment variables have to be set when deploying from a CD pipeline
 
 | Environment variable name | Description |
 | ------------------------- | ----------- |
-| `ARM_SUBSCRIPTION_ID` | *Optional for manual deployment.* The Azure subscription ID for all resources. |
 | `ARM_TENANT_ID` | *Optional for manual deployment.* The Azure tenant ID. |
 | `ARM_CLIENT_ID` | *Optional for manual deployment.* The client (app) ID of a service principal with "Owner" role to the subscription. Used by the GitHub Actions workflows to deploy TRE. |
 | `ARM_CLIENT_SECRET` | *Optional for manual deployment.* The client secret (app password) of a service principal with "Owner" role to the subscription. Used by the GitHub Actions workflows to deploy TRE. |
