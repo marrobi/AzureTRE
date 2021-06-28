@@ -115,7 +115,7 @@ The below environment variables have to be set when deploying from a CD pipeline
 | Environment variable name | Description |
 | ------------------------- | ----------- |
 | `PORTER_DRIVER` | *Optional for manual deployment.* Valid values are `docker` or `azure`. If deploying manually use `docker` if using Azure Container Instances and the [Azure CNAB Driver](https://github.com/deislabs/cnab-azure-driver) use `azure` |
-
+| `PORTER_OUTPUT_CONTAINER_NAME` | Container name for Poter state. Default value ie `porterout` |
 ### Bootstrap the back-end state
 
 As a principle, we want all the Azure TRE resources defined in Terraform, including the storage account used by Terraform to hold its back-end state.
