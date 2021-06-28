@@ -69,6 +69,7 @@ cp devops/.env.sample devops/.env
 | `CONTRIBUTOR_SP_CLIENT_ID` * | The client (app) ID of a service principal with "Contributor" role to the subscription. Used by the deployment processor function to deploy workspaces and workspace services. |
 | `CONTRIBUTOR_SP_CLIENT_SECRET` * | The client secret (app password) of a service principal with "Contributor" role to the subscription. Used by the deployment processor function to deploy workspaces and workspace services. |
 | `ARM_SUBSCRIPTION_ID` | The Azure subscription ID for all resources. |
+| `ARM_TENANT_ID` | The Azure tenant ID. |
 | `ARM_CLIENT_ID` | The client (app) ID of a service principal with "Owner" role to the subscription. Used to deploy TRE. |
 | `ARM_CLIENT_SECRET` | The client secret (app password) of a service principal with "Owner" role to the subscription. Used to deploy TRE. |
 
@@ -98,7 +99,7 @@ CONTRIBUTOR_SP_CLIENT_SECRET=secret
 
 # Azure Resource Manager credentials used in CI/CD pipeline and local development scenarios
 ARM_SUBSCRIPTION_ID=73a..e3
-# ARM_TENANT_ID=7ac..87
+ARM_TENANT_ID=7ac..87
 ARM_CLIENT_ID=79a..86
 ARM_CLIENT_SECRET=L51..hk
 
@@ -113,7 +114,6 @@ The below environment variables have to be set when deploying from a CD pipeline
 
 | Environment variable name | Description |
 | ------------------------- | ----------- |
-| `ARM_TENANT_ID` | *Optional for manual deployment.* The Azure tenant ID. |
 | `PORTER_DRIVER` | *Optional for manual deployment.* Valid values are `docker` or `azure`. If deploying manually use `docker` if using Azure Container Instances and the [Azure CNAB Driver](https://github.com/deislabs/cnab-azure-driver) use `azure` |
 
 ### Bootstrap the back-end state
