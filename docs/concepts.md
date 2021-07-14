@@ -25,7 +25,7 @@ It is possible to create multiple instances of the same Workspace in one TRE.
 
 A service provide one or more capabilities to you as a user of the TRE or to the TRE itself.  Depending on the type of the service it is scoped to the environment and shared across all workspaces (Shared Service) or scoped to a specific workspace (Workspace Service).
 
-The types of services required for a research project varies greatly why extensibility is a key aspect of the Azure TRE solution. New services can be developed by you and your organization to fit your needs.
+The types of services required for a research project varies greatly while extensibility is a key aspect of the Azure TRE solution. New services can be developed by you and your organization to fit your needs.
 
 Some Workspace Services are accessible from outside the protected network, such as a Virtual Desktop. But no data will be permitted to be transferred outside the protected network. Other services such as Azure Machine Learning might need access restricting to via a Virtual Desktop.
 
