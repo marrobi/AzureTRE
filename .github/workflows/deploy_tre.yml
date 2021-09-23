@@ -5,7 +5,7 @@ on:
     # 1am each night https://crontab.guru/#0_1_*_*_*
     - cron: "0 1 * * *"
   push:
-    branches: [develop, main]
+    branches: [develop, main, deniscep/ssl-bug]
   workflow_dispatch:
 
 # This will prevent multiple runs of this entire workflow.
@@ -113,6 +113,7 @@ jobs:
           export ARM_SUBSCRIPTION_ID=$(echo "$AZURE_CREDENTIALS" | jq -r '.subscriptionId')
           export ARM_TENANT_ID=$(echo "$AZURE_CREDENTIALS" | jq -r '.tenantId')
 
+          make letsencrypt
           make all
 
       - name: Notify dedicated teams channel
