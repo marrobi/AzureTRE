@@ -177,6 +177,9 @@ jobs:
           set -o pipefail
           set -o nounset
 
+          # token is needed for API calls during registration and verification
+          TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&resource=${RESOURCE}&client_id=${CLIENT_ID}&username=${USERNAME}&password=${PASSWORD}&scope=default)" https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/token | jq -r '.access_token')
+
           # test that porter is able to build the bundle
           make porter-build DIR=${{ matrix.BUNDLE_DIR }}
 
@@ -191,7 +194,6 @@ jobs:
           esac
 
           # Check that the template got registered
-          TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&resource=${RESOURCE}&client_id=${CLIENT_ID}&username=${USERNAME}&password=${PASSWORD}&scope=default)" https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/token | jq -r '.access_token')
           STATUS_CODE=$(curl -X "GET" "${TRE_URL}/${TRE_GET_PATH}/${TEMPLATE_NAME}" -H "accept: application/json" -H "Authorization: Bearer ${TOKEN}" -k -s -w "%{http_code}" -o /dev/null)
 
           if [[ ${STATUS_CODE} != 200 ]]
