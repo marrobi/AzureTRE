@@ -5,7 +5,7 @@ on:
     # 1am each night https://crontab.guru/#0_1_*_*_*
     - cron: "0 1 * * *"
   push:
-    branches: [develop, main]
+    branches: [develop, main, tessferrandez/fix-build-pipeline]
   workflow_dispatch:
 
 # This will prevent multiple runs of this entire workflow.
@@ -128,8 +128,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy_tre]
     environment: Dev
+    outputs:
+      api_token: ${{ steps.get_api_token.outputs.api_token }}
     steps:
       - name: Get API Token
+        id: get_api_token
         shell: bash
         env:
           RESOURCE: "${{ secrets.API_CLIENT_ID }}"
@@ -191,7 +194,7 @@ jobs:
           ACR_NAME: ${{ secrets.ACR_NAME }}
           TRE_URL: "https://${{secrets.TRE_ID}}.${{secrets.LOCATION}}.cloudapp.azure.com"
           BUNDLE_TYPE: ${{ matrix.BUNDLE_TYPE }}
-          TOKEN: ${{ needs.prepare_bundle_registration.api_token }}
+          TOKEN: ${{ needs.prepare_bundle_registration.outputs.api_token }}
         run: |
           set -o errexit
           set -o pipefail
