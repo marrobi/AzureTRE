@@ -123,37 +123,10 @@ jobs:
           notification-color: dc3545
           timezone: Europe/Zurich
 
-  prepare_bundle_registration:
-    name: Prepare Bundle Registration
-    runs-on: ubuntu-latest
-    needs: [deploy_tre]
-    environment: Dev
-    outputs:
-      api_token: ${{ steps.get_api_token.outputs.api_token }}
-    steps:
-      - name: Get API Token
-        id: get_api_token
-        shell: bash
-        env:
-          RESOURCE: "${{ secrets.API_CLIENT_ID }}"
-          AUTH_TENANT_ID: "${{ secrets.AAD_TENANT_ID }}"
-          CLIENT_ID: "${{ secrets.TEST_APP_ID }}"
-          USERNAME: "${{ secrets.TEST_USER_NAME }}"
-          PASSWORD: "${{ secrets.TEST_USER_PASSWORD }}"
-        run: |
-          set -o errexit
-          set -o pipefail
-          set -o nounset
-
-          TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&resource=${RESOURCE}&client_id=${CLIENT_ID}&username=${USERNAME}&password=${PASSWORD}&scope=default)" https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/token | jq -r '.access_token')
-
-          # Set output
-          echo "::set-output name=api_token::$( echo "${TOKEN}" )"
-
   publish_and_register_bundles:
     name: Register Bundle
     runs-on: ubuntu-latest
-    needs: [deploy_tre, prepare_bundle_registration]
+    needs: [deploy_tre]
     strategy:
       matrix:
         include:
@@ -191,10 +164,14 @@ jobs:
       - name: Publish and register bundles
         shell: bash
         env:
+          RESOURCE: "${{ secrets.API_CLIENT_ID }}"
+          AUTH_TENANT_ID: "${{ secrets.AAD_TENANT_ID }}"
+          CLIENT_ID: "${{ secrets.TEST_APP_ID }}"
+          USERNAME: "${{ secrets.TEST_USER_NAME }}"
+          PASSWORD: "${{ secrets.TEST_USER_PASSWORD }}"
           ACR_NAME: ${{ secrets.ACR_NAME }}
           TRE_URL: "https://${{secrets.TRE_ID}}.${{secrets.LOCATION}}.cloudapp.azure.com"
           BUNDLE_TYPE: ${{ matrix.BUNDLE_TYPE }}
-          TOKEN: ${{ needs.prepare_bundle_registration.outputs.api_token }}
         run: |
           set -o errexit
           set -o pipefail
@@ -203,6 +180,9 @@ jobs:
           # test that porter is able to build the bundle
           make porter-build DIR=${{ matrix.BUNDLE_DIR }}
 
+          # register the bundle
+          make register-bundle DIR=${{ matrix.BUNDLE_DIR }}
+
           TEMPLATE_NAME=$(yq eval '.name' ${{ matrix.BUNDLE_DIR }}/porter.yaml)
 
           case "${BUNDLE_TYPE}" in
@@ -210,25 +190,20 @@ jobs:
             ("workspace_service") TRE_GET_PATH="api/workspace-service-templates" ;;
           esac
 
-          # Check if template is already registered
+          # Check that the template got registered
+          TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&resource=${RESOURCE}&client_id=${CLIENT_ID}&username=${USERNAME}&password=${PASSWORD}&scope=default)" https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/token | jq -r '.access_token')
           STATUS_CODE=$(curl -X "GET" "${TRE_URL}/${TRE_GET_PATH}/${TEMPLATE_NAME}" -H "accept: application/json" -H "Authorization: Bearer ${TOKEN}" -k -s -w "%{http_code}" -o /dev/null)
 
-          if [[ ${STATUS_CODE} == 404 ]]
+          if [[ ${STATUS_CODE} != 200 ]]
           then
-            make register-bundle DIR=${{ matrix.BUNDLE_DIR }}
-          else
-            if [[ ${STATUS_CODE} != 200 ]]
-            then
-              echo "::warning ::API returned unexpected http status: ${STATUS_CODE}"
-              exit 1
-            fi
+            echo "::warning ::Template API check for ${BUNDLE_TYPE} ${TEMPLATE_NAME} returned http status: ${STATUS_CODE}"
+            exit 1
           fi
 
   e2e_tests:
     name: "Run E2E Tests"
     runs-on: ubuntu-latest
     environment: Dev
-    # needs: [publish_and_register_user_resources]
     needs: [publish_and_register_bundles]
     steps:
       - name: Checkout code
