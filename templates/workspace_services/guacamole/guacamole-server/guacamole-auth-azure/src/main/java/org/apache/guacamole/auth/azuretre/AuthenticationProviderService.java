@@ -47,6 +47,7 @@ public class AuthenticationProviderService {
     @Inject
     private Provider<AzureTREAuthenticatedUser> authenticatedUserProvider;
 
+    /*
     public AzureTREAuthenticatedUser authenticateUser(final Credentials credentials) throws GuacamoleException {
         LOGGER.info("authenticateUser");
         // Pull HTTP header from request if present
@@ -70,7 +71,7 @@ public class AuthenticationProviderService {
 
         // Authentication not provided via header, yet, so we request it.
         throw new GuacamoleInvalidCredentialsException("Invalid login.", CredentialsInfo.USERNAME_PASSWORD);
-    }
+    }*/
 
     private void validateToken(final Credentials credentials, final String accessToken,
                                final AzureTREAuthenticatedUser authenticatedUser,

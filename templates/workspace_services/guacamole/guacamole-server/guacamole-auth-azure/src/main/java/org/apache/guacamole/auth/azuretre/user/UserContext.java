@@ -66,6 +66,7 @@ public class UserContext extends AbstractUserContext {
 
     public void init(final AzureTREAuthenticatedUser user) throws GuacamoleException {
         final Map<String, User> users = new HashMap<>(1);
+        LOGGER.debug("User identifier:" + user.getIdentifier() + " access token: " + user.getAccessToken());
         users.put(user.getIdentifier(), new SimpleUser(user.getIdentifier()));
         userDirectory = new SimpleDirectory<>(
             users
