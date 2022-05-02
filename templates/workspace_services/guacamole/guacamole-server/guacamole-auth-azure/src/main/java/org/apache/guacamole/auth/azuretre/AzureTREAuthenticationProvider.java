@@ -58,6 +58,17 @@ public class AzureTREAuthenticationProvider extends AbstractAuthenticationProvid
     }
 
     @Override
+    public AuthenticatedUser updateAuthenticatedUser(AuthenticatedUser authenticatedUser, Credentials credentials) throws GuacamoleException {
+        LOGGER.info("updateAuthenticatedUser");
+
+        AuthenticatedUser updated = authenticateUser(credentials);
+
+        LOGGER.info("updateAuthenticatedUser - done");
+        return updated;
+    }
+
+
+    @Override
     public AzureTREAuthenticatedUser authenticateUser(final Credentials credentials) {
         LOGGER.info("Authenticating user");
 
