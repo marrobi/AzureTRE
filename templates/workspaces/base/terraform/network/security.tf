@@ -37,7 +37,7 @@ resource "azurerm_network_security_rule" "deny-all-inbound-override" {
   direction                   = "Inbound"
   name                        = "deny-inbound-override"
   network_security_group_name = azurerm_network_security_group.ws.name
-  priority                    = 900
+  priority                    = 4096
   protocol                    = "*"
   resource_group_name         = var.ws_resource_group_name
   source_address_prefix       = "*"

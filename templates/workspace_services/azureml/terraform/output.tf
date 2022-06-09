@@ -7,5 +7,9 @@ output "azureml_acr_id" {
 }
 
 output "azureml_storage_account_id" {
-  value = data.azurerm_storage_account.ws.id
+  value = azurerm_storage_account.aml.id
+}
+
+output "connection_uri" {
+  value = "https://ml.azure.com/?wsid=${azurerm_machine_learning_workspace.ml.id}&tid=${var.arm_tenant_id}"
 }
