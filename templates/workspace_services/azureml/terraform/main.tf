@@ -27,23 +27,34 @@ data "azurerm_key_vault" "ws" {
   resource_group_name = data.azurerm_resource_group.ws.name
 }
 
-resource "azurerm_machine_learning_workspace" "ml" {
-  name                          = local.workspace_name
-  location                      = data.azurerm_resource_group.ws.location
-  resource_group_name           = data.azurerm_resource_group.ws.name
-  application_insights_id       = azurerm_application_insights.ai.id
-  key_vault_id                  = data.azurerm_key_vault.ws.id
-  storage_account_id            = azurerm_storage_account.aml.id
-  public_network_access_enabled = false
-  high_business_impact          = true
-  friendly_name                 = var.display_name
-  description                   = var.description
+# Using AzAPI due to https://github.com/hashicorp/terraform-provider-azurerm/issues/16177
+resource "azapi_resource" "aml_workspace" {
+  name      = local.workspace_name
+  parent_id = data.azurerm_resource_group.ws.id
+  type      = "Microsoft.MachineLearningServices/workspaces@2022-01-01-preview"
 
-  identity {
-    type = "SystemAssigned"
-  }
 
-  lifecycle { ignore_changes = [tags] }
+  body = jsonencode({
+    location = data.azurerm_resource_group.ws.location
+    properties = {
+      allowRecoverSoftDeletedWorkspace = "True"
+      applicationInsights              = azurerm_application_insights.ai.id
+      containerRegistry                = azurerm_container_registry.acr.id
+      friendlyName                     = var.display_name
+      description                      = var.description
+      hbiWorkspace                     = true
+      keyVault                         = data.azurerm_key_vault.ws.id
+      publicNetworkAccess              = "Disabled"
+      softDeleteEnabled                = "True"
+      storageAccount                   = azurerm_storage_account.aml.id
+    }
+    identity = {
+      type = "SystemAssigned"
+    }
+  })
+
+  response_export_values = ["*"]
+
 }
 
 data "azurerm_private_dns_zone" "azureml" {
@@ -76,7 +87,7 @@ resource "azurerm_private_endpoint" "mlpe" {
 
   private_service_connection {
     name                           = "mlpesc-${local.service_resource_name_suffix}"
-    private_connection_resource_id = azurerm_machine_learning_workspace.ml.id
+    private_connection_resource_id = azapi_resource.aml_workspace.id
     is_manual_connection           = false
     subresource_names              = ["amlworkspace"]
   }

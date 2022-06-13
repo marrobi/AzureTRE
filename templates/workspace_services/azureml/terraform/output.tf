@@ -1,5 +1,5 @@
 output "azureml_workspace_name" {
-  value = azurerm_machine_learning_workspace.ml.name
+  value = azapi_resource.aml_workspace.name
 }
 
 output "azureml_acr_id" {
@@ -11,5 +11,5 @@ output "azureml_storage_account_id" {
 }
 
 output "connection_uri" {
-  value = "https://ml.azure.com/?wsid=${azurerm_machine_learning_workspace.ml.id}&tid=${var.arm_tenant_id}"
+  value = "https://ml.azure.com/?wsid=${azapi_resource.aml_workspace.id}&tid=${var.arm_tenant_id}"
 }
