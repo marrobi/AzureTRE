@@ -1,0 +1,20 @@
+add user specific to cluster, specify ssh key
+specify
+
+- exec:
+description: "Install Cyclecloud CLI"
+command: |
+  #!/bin/bash
+  wget {{ bundle.outputs.connection_uri }}/static/tools/cyclecloud-cli.zip --no-check-certificate
+  unzip cyclecloud-cli.zip
+  cd cyclecloud-cli-installer
+  ./install.sh
+  if [[ -d ${HOME}/bin ]]; then
+    export PATH=${HOME}/bin:$PATH
+  fi
+
+
+  cyclecloud initialize
+  cyclecloud account create
+  cyclecloud credential
+  cyclecloud config create
