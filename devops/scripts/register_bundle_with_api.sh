@@ -147,11 +147,12 @@ case "${bundle_type}" in
   ("user_resource") tre_get_path="api/workspace-service-templates/${workspace_service_name}/user-resource-templates";;
   ("shared_service") tre_get_path="api/shared-service-templates";;
 esac
+echo "${access_token}"
 
-curl_settings=(--retry 7 --retry-max-time 300 --max-time 90)
-
+curl -i "${curl_settings[@]}" -X "POST" "${tre_url}/${tre_get_path}" -H "accept: application/json" -H "Content-Type: application/json" -H "Authorization: Bearer ${access_token}" -d "${payload}" "${options}"
 register_result=$(curl -i "${curl_settings[@]}" -X "POST" "${tre_url}/${tre_get_path}" -H "accept: application/json" -H "Content-Type: application/json" -H "Authorization: Bearer ${access_token}" -d "${payload}" "${options}")
 get_http_code "${register_result}"
+
 if [[ ${http_code} == 409 ]]; then
   echo "Template with this version already exists"
 elif [[ ${http_code} != 201 ]]; then

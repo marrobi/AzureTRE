@@ -3,6 +3,10 @@ make bundle-build DIR=templates/shared_services/cyclecloud
 make bundle-publish DIR=templates/shared_services/cyclecloud
 make bundle-register DIR=templates/shared_services/cyclecloud BUNDLE_TYPE=shared_service
 
+make bundle-build DIR=templates/shared_services/sonatype-nexus-vm
+make bundle-publish DIR=templates/shared_services/sonatype-nexus-vm
+make bundle-register DIR=templates/shared_services/sonatype-nexus-vm BUNDLE_TYPE=shared_service
+
 # workspaces
 
 make bundle-build DIR=templates/workspaces/base
