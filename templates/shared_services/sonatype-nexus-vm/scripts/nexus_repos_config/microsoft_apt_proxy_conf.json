@@ -27,6 +27,10 @@
             "useTrustStore": false
         }
     },
+    "apt": {
+      "distribution": "bionic",
+      "flat": false
+    },
     "baseType": "apt",
     "repoType": "proxy"
 }

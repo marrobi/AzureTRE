@@ -1,5 +1,5 @@
 {
-    "name": "almalinux",
+    "name": "fedoraproject",
     "online": true,
     "storage": {
         "blobStoreName": "default",

@@ -149,7 +149,6 @@ case "${bundle_type}" in
 esac
 echo "${access_token}"
 
-curl -i "${curl_settings[@]}" -X "POST" "${tre_url}/${tre_get_path}" -H "accept: application/json" -H "Content-Type: application/json" -H "Authorization: Bearer ${access_token}" -d "${payload}" "${options}"
 register_result=$(curl -i "${curl_settings[@]}" -X "POST" "${tre_url}/${tre_get_path}" -H "accept: application/json" -H "Content-Type: application/json" -H "Authorization: Bearer ${access_token}" -d "${payload}" "${options}")
 get_http_code "${register_result}"
 
