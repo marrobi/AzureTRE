@@ -3,7 +3,7 @@
   "online": true,
   "storage": {
       "blobStoreName": "default",
-      "strictContentTypeValidation": true,
+      "strictContentTypeValidation": false,
       "write_policy": "ALLOW"
   },
   "proxy": {
