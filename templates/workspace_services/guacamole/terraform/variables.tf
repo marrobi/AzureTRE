@@ -8,7 +8,6 @@ variable "guac_disable_copy" {}
 variable "guac_disable_paste" {}
 variable "guac_enable_drive" {}
 variable "guac_drive_name" {}
-variable "guac_drive_path" {}
 variable "guac_disable_download" {}
 variable "is_exposed_externally" {}
 variable "tre_resource_id" {}

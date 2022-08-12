@@ -1,6 +1,6 @@
 ---
 name: tre-service-guacamole
-version: 0.4.2
+version: 0.4.5
 description: "An Azure TRE service for Guacamole"
 registry: azuretre
 
@@ -59,11 +59,6 @@ parameters:
     default: "transfer"
     env: GUAC_DRIVE_NAME
     description: "Guacamole drive name configuration"
-  - name: guac_drive_path
-    type: string
-    default: "/guac-transfer"
-    env: GUAC_DRIVE_PATH
-    description: "Guacamole drive path configuration"
   - name: guac_disable_download
     type: boolean
     default: true
@@ -96,10 +91,6 @@ parameters:
     default: false
 
 outputs:
-  - name: connection_uri
-    type: string
-    applyTo:
-      - install
   - name: authentication_callback_uri
     type: string
     applyTo:
@@ -129,7 +120,6 @@ install:
         guac_disable_paste: "{{ bundle.parameters.guac_disable_paste }}"
         guac_enable_drive: "{{ bundle.parameters.guac_enable_drive }}"
         guac_drive_name: "{{ bundle.parameters.guac_drive_name }}"
-        guac_drive_path: "{{ bundle.parameters.guac_drive_path }}"
         guac_disable_download: "{{ bundle.parameters.guac_disable_download }}"
         is_exposed_externally: "{{ bundle.parameters.is_exposed_externally }}"
         tre_resource_id: "{{ bundle.parameters.id }}"
@@ -139,7 +129,6 @@ install:
         container_name: "{{ bundle.parameters.tfstate_container_name }}"
         key: "tre-service-guacamole-{{ bundle.parameters.id }}"
       outputs:
-        - name: connection_uri
         - name: authentication_callback_uri
         - name: web_apps_addresses
 
@@ -166,7 +155,6 @@ uninstall:
         guac_disable_paste: "{{ bundle.parameters.guac_disable_paste }}"
         guac_enable_drive: "{{ bundle.parameters.guac_enable_drive }}"
         guac_drive_name: "{{ bundle.parameters.guac_drive_name }}"
-        guac_drive_path: "{{ bundle.parameters.guac_drive_path }}"
         guac_disable_download: "{{ bundle.parameters.guac_disable_download }}"
         is_exposed_externally: "{{ bundle.parameters.is_exposed_externally }}"
         tre_resource_id: "{{ bundle.parameters.id }}"

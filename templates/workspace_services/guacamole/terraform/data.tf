@@ -71,3 +71,8 @@ data "azurerm_monitor_diagnostic_categories" "guacamole" {
     azurerm_linux_web_app.guacamole,
   ]
 }
+
+data "azurerm_storage_account" "ws" {
+  name                = local.workspace_storage_name
+  resource_group_name = data.azurerm_resource_group.ws.name
+}

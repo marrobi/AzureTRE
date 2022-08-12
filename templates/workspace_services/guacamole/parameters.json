@@ -77,12 +77,6 @@
       }
     },
     {
-      "name": "guac_drive_path",
-      "source": {
-        "env": "GUAC_DRIVE_PATH"
-      }
-    },
-    {
       "name": "guac_enable_drive",
       "source": {
         "env": "GUAC_ENABLE_DRIVE"

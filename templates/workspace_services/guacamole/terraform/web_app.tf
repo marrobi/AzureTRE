@@ -50,14 +50,15 @@ resource "azurerm_linux_web_app" "guacamole" {
     APPLICATIONINSIGHTS_INSTRUMENTATION_LOGGING_LEVEL = "INFO"
 
     # Guacmole configuration
-    GUAC_DISABLE_COPY     = var.guac_disable_copy
-    GUAC_DISABLE_PASTE    = var.guac_disable_paste
-    GUAC_ENABLE_DRIVE     = var.guac_enable_drive
-    GUAC_DRIVE_NAME       = var.guac_drive_name
-    GUAC_DRIVE_PATH       = var.guac_drive_path
-    GUAC_DISABLE_DOWNLOAD = var.guac_disable_download
-    AUDIENCE              = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
-    ISSUER                = local.issuer
+    GUAC_DISABLE_COPY      = var.guac_disable_copy
+    GUAC_DISABLE_PASTE     = var.guac_disable_paste
+    GUAC_ENABLE_DRIVE      = var.guac_enable_drive
+    GUAC_DRIVE_NAME        = var.guac_drive_name
+    GUAC_DRIVE_PATH        = "/vm-shared-storage"
+    GUAC_CREATE_DRIVE_PATH = true
+    GUAC_DISABLE_DOWNLOAD  = var.guac_disable_download
+    AUDIENCE               = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
+    ISSUER                 = local.issuer
 
     OAUTH2_PROXY_CLIENT_ID       = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
     OAUTH2_PROXY_CLIENT_SECRET   = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_secret.id})"
@@ -65,6 +66,15 @@ resource "azurerm_linux_web_app" "guacamole" {
     OAUTH2_PROXY_EMAIL_DOMAIN    = "\"*\"" # oauth proxy will allow all email domains only when the value is "*"
     OAUTH2_PROXY_OIDC_ISSUER_URL = "https://login.microsoftonline.com/${local.aad_tenant_id}/v2.0"
     OAUTH2_PROXY_JWKS_ENDPOINT   = "https://login.microsoftonline.com/${local.aad_tenant_id}/discovery/v2.0/keys"
+  }
+
+  storage_account {
+    name         = data.azurerm_storage_account.ws.name
+    type         = "AzureFiles"
+    account_name = data.azurerm_storage_account.ws.name
+    share_name   = "vm-shared-storage"
+    access_key   = data.azurerm_storage_account.ws.primary_access_key
+    mount_path   = "/vm-shared-storage"
   }
 
   logs {
