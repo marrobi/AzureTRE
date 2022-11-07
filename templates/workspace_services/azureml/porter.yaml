@@ -1,6 +1,6 @@
 ---
 name: tre-service-azureml
-version: 0.5.6
+version: 0.6.2
 description: "An Azure TRE service for Azure Machine Learning"
 registry: azuretre
 dockerfile: Dockerfile.tmpl
@@ -40,6 +40,9 @@ parameters:
     default: false
     env: IS_EXPOSED_EXTERNALLY
     description: "Determines if the AML workspace will be available over public/internet"
+  - name: address_space
+    type: string
+    description: "Address space for the AML subnets"
   - name: tfstate_resource_group_name
     type: string
     description: "Resource group containing the Terraform state storage account"
@@ -106,6 +109,7 @@ install:
         tre_resource_id: "{{ bundle.parameters.id }}"
         display_name: "{{ bundle.parameters.display_name }}"
         description: "{{ bundle.parameters.description }}"
+        address_space: "{{ bundle.parameters.address_space }}"
         is_exposed_externally: "{{ bundle.parameters.is_exposed_externally }}"
         arm_tenant_id: "{{ bundle.credentials.azure_tenant_id }}"
         arm_client_id: "{{ bundle.credentials.azure_client_id }}"
@@ -137,6 +141,7 @@ upgrade:
         tre_resource_id: "{{ bundle.parameters.id }}"
         display_name: "{{ bundle.parameters.display_name }}"
         description: "{{ bundle.parameters.description }}"
+        address_space: "{{ bundle.parameters.address_space }}"
         is_exposed_externally: "{{ bundle.parameters.is_exposed_externally }}"
         arm_tenant_id: "{{ bundle.credentials.azure_tenant_id }}"
         arm_client_id: "{{ bundle.credentials.azure_client_id }}"
@@ -168,6 +173,7 @@ uninstall:
         tre_resource_id: "{{ bundle.parameters.id }}"
         display_name: "{{ bundle.parameters.display_name }}"
         description: "{{ bundle.parameters.description }}"
+        address_space: "{{ bundle.parameters.address_space }}"
         is_exposed_externally: "{{ bundle.parameters.is_exposed_externally }}"
         arm_use_msi: "{{ bundle.parameters.arm_use_msi }}"
         arm_tenant_id: "{{ bundle.credentials.azure_tenant_id }}"

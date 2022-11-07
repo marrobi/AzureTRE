@@ -118,5 +118,12 @@ variable "workspace_owner_object_id" {
   default     = ""
   description = "The Object Id of the user that you wish to be the Workspace Owner. E.g. the TEST_AUTOMATION_ACCOUNT."
 }
+variable "arm_use_msi" {
+  type = bool
+}
+variable "arm_tenant_id" {}
+variable "arm_client_id" {}
+variable "arm_client_secret" {}
+variable "do_not_upodate_secrets" {
 
-
+}
