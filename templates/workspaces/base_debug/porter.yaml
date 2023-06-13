@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-workspace-base-debug
-version: 1.4.3
+version: 1.4.4
 description: "A Debug Azure TRE workspace"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
