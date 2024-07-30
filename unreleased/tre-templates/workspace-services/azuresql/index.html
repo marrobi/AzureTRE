@@ -12,13 +12,13 @@
         <meta name="author" content="Microsoft">
       
       
-        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-templates/user-resources/guacamole-windows-vm/">
+        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-templates/workspace-services/azuresql/">
       
       
-        <link rel="prev" href="../../shared-services/airlock-notifier/">
+        <link rel="prev" href="../mysql/">
       
       
-        <link rel="next" href="../guacamole-linux-vm/">
+        <link rel="next" href="../../shared-services/gitea/">
       
       
       <link rel="icon" href="../../../assets/ms_icon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Guacamole Windows VM - Azure TRE</title>
+        <title>Azure SQL - Azure TRE</title>
       
     
     
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#guacamole-user-resource-service-bundle-windows" class="md-skip">
+        <a href="#azure-sql-workspace-service" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Guacamole Windows VM
+              Azure SQL
             
           </span>
         </div>
@@ -1361,8 +1361,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1389,11 +1391,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
         
           
           <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
@@ -1407,7 +1409,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_2">
             <span class="md-nav__icon md-icon"></span>
             Workspace Services
@@ -1421,7 +1423,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/azure-ml/" class="md-nav__link">
+      <a href="../azure-ml/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1442,7 +1444,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/gitea/" class="md-nav__link">
+      <a href="../gitea/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1463,7 +1465,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/guacamole/" class="md-nav__link">
+      <a href="../guacamole/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1484,7 +1486,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/inner-eye/" class="md-nav__link">
+      <a href="../inner-eye/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1505,7 +1507,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/mlflow/" class="md-nav__link">
+      <a href="../mlflow/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1526,7 +1528,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/health_services/" class="md-nav__link">
+      <a href="../health_services/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1547,7 +1549,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/databricks/" class="md-nav__link">
+      <a href="../databricks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1568,7 +1570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/ohdsi/" class="md-nav__link">
+      <a href="../ohdsi/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1589,7 +1591,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/mysql/" class="md-nav__link">
+      <a href="../mysql/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1607,10 +1609,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../workspace-services/azuresql/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Azure SQL
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1619,6 +1641,68 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-skus" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported SKUs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported SKUs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-skus" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding new SKUs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1773,10 +1857,8 @@
                 
   
   
-    
   
   
-  
     
     
       
@@ -1791,11 +1873,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
         
           
           <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
@@ -1809,7 +1891,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             User Resources
@@ -1820,30 +1902,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Guacamole Windows VM
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../user-resources/guacamole-windows-vm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1852,35 +1914,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      Prerequisites
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1893,7 +1926,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../guacamole-linux-vm/" class="md-nav__link">
+      <a href="../../user-resources/guacamole-linux-vm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1914,7 +1947,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../import-reviewvm/" class="md-nav__link">
+      <a href="../../user-resources/import-reviewvm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1935,7 +1968,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../export-reviewvm/" class="md-nav__link">
+      <a href="../../user-resources/export-reviewvm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3411,6 +3444,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-skus" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported SKUs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported SKUs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-skus" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding new SKUs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3426,14 +3492,82 @@
                   
 
 
-<h1 id="guacamole-user-resource-service-bundle-windows">Guacamole User Resource Service bundle (Windows)</h1>
-<p>This is a User Resource Service template. It defines a Windows 10/Server 2019 VM to be used by TRE researchers and to be connected to using a <a href="https://guacamole.apache.org/">Guacamole server</a>.
-It blocks all inbound and outbound traffic to the internet and allows only RDP connections from within the vnet.</p>
+<h1 id="azure-sql-workspace-service">Azure SQL Workspace Service</h1>
+<p>See: <a href="https://learn.microsoft.com/en-us/azure/azure-sql/database">Azure SQL Database</a></p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li><a href="../../workspaces/base/">A base workspace bundle installed</a></li>
-<li><a href="../../workspace-services/guacamole/">A guacamole workspace service bundle installed</a></li>
+<li>The base workspace deployed, or a workspace derived from the base workspace</li>
 </ul>
+<ul>
+<li>
+<p>The Azure SQL workspace service container image published to your TRE:</p>
+<p><code>make workspace_service_bundle BUNDLE=azuresql</code></p>
+</li>
+</ul>
+<ul>
+<li>Guacamole, with a VM containing SQL Server Management Studio or Azure Data Studio in order to connect - the Azure Data Science VM template contains both of these</li>
+</ul>
+<h2 id="authentication">Authentication</h2>
+<ul>
+<li>Server name:  Shown on the details page of the service in the Azure TRE portal under <strong>Azure SQL FQDN</strong></li>
+<li>Authentication method: <strong>SQL Server Authentication</strong></li>
+<li>Administrator credentials:<ul>
+<li>Username:  <strong>azuresqladmin</strong></li>
+<li>Password:  <em>(available in the workspace keyvault)</em></li>
+</ul>
+</li>
+</ul>
+<h2 id="supported-skus">Supported SKUs</h2>
+<p>The following Azure SQL SKUs have been added to the template:</p>
+<table>
+<thead>
+<tr>
+<th>Service Tier</th>
+<th>Level</th>
+<th>DTUs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard</td>
+<td>S1</td>
+<td>20 DTUs</td>
+</tr>
+<tr>
+<td>Standard</td>
+<td>S2</td>
+<td>50 DTUs</td>
+</tr>
+<tr>
+<td>Standard</td>
+<td>S3</td>
+<td>100 DTUs</td>
+</tr>
+<tr>
+<td>Standard</td>
+<td>S4</td>
+<td>200 DTUs</td>
+</tr>
+<tr>
+<td>Standard</td>
+<td>S6</td>
+<td>400 DTUs</td>
+</tr>
+</tbody>
+</table>
+<p>For costs please <a href="https://azure.microsoft.com/en-us/pricing/details/azure-sql-database/single/">Azure SQL Database pricing</a> and select <strong>DTU</strong> as the purchase model.</p>
+<h3 id="adding-new-skus">Adding new SKUs</h3>
+<p>To add new SKU options within the template, please determine the SKU names using:</p>
+<div class="highlight"><pre><span></span><code>az<span class="w"> </span>sql<span class="w"> </span>db<span class="w"> </span>list-editions<span class="w"> </span>--location<span class="w"> </span>&lt;AZURE_REGION&gt;<span class="w"> </span>--output<span class="w"> </span>table
+</code></pre></div>
+<p>Then add the SKUs in the following places:</p>
+<ol>
+<li>In the <code>templates/workspace_services/azuresql/template_schema.yaml</code> file under <code>properties.sql_sku.enum</code>.</li>
+<li>In the <code>templates/workspace_services/azuresql/terraform/locals.tf</code> file under <code>azuresql_sku</code>.</li>
+<li>Above in this document.</li>
+</ol>
+<p>Once added, increment the version number in the <code>templates/workspace_services/azuresql/porter.yaml</code> file, and republish the template with the following command:</p>
+<p><code>make workspace_service_bundle BUNDLE=azuresql</code></p>
 
 
 
