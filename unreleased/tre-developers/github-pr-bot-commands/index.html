@@ -12,28 +12,28 @@
         <meta name="author" content="Microsoft">
       
       
-        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-templates/workspace-services/inner-eye/">
+        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-developers/github-pr-bot-commands/">
       
       
-        <link rel="prev" href="../guacamole/">
+        <link rel="prev" href="../../tre-admins/setup-instructions/workflows/">
       
       
-        <link rel="next" href="../mlflow/">
+        <link rel="next" href="../../tre-workspace-authors/authoring-workspace-templates/">
       
       
-      <link rel="icon" href="../../../assets/ms_icon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.34">
+      <link rel="icon" href="../../assets/ms_icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
     
     
       
-        <title>InnerEye - Azure TRE</title>
+        <title>GitHub PR Bot Commands - Azure TRE</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.35f28582.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -52,7 +52,7 @@
       
     
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
 <script type="text/javascript">
   (function(c,l,a,r,i,t,y){
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#innereye-deeplearning-service-bundle" class="md-skip">
+        <a href="#github-pr-bot-commands" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
             <div class="md-banner__inner md-grid md-typeset">
               
   You're not viewing the latest version.
-  <a href="../../../..">
+  <a href="../../..">
     <strong>Click here to go to latest.</strong>
   </a>
 </script>
@@ -114,9 +114,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Azure TRE" class="md-header__button md-logo" aria-label="Azure TRE" data-md-component="logo">
+    <a href="../.." title="Azure TRE" class="md-header__button md-logo" aria-label="Azure TRE" data-md-component="logo">
       
-  <img src="../../../assets/ms_icon.png" alt="logo">
+  <img src="../../assets/ms_icon.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              InnerEye
+              GitHub PR Bot Commands
             
           </span>
         </div>
@@ -187,7 +187,7 @@
         <a href="https://github.com/microsoft/AzureTre/" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
   </div>
   <div class="md-source__repository">
     GitHub
@@ -220,9 +220,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Azure TRE" class="md-nav__button md-logo" aria-label="Azure TRE" data-md-component="logo">
+    <a href="../.." title="Azure TRE" class="md-nav__button md-logo" aria-label="Azure TRE" data-md-component="logo">
       
-  <img src="../../../assets/ms_icon.png" alt="logo">
+  <img src="../../assets/ms_icon.png" alt="logo">
 
     </a>
     Azure TRE
@@ -232,7 +232,7 @@
       <a href="https://github.com/microsoft/AzureTre/" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
   </div>
   <div class="md-source__repository">
     GitHub
@@ -275,7 +275,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../.." class="md-nav__link ">
+            <a href="../.." class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -308,7 +308,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/user-roles/" class="md-nav__link">
+      <a href="../../azure-tre-overview/user-roles/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -376,7 +376,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/architecture/" class="md-nav__link">
+      <a href="../../azure-tre-overview/architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -397,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/networking/" class="md-nav__link">
+      <a href="../../azure-tre-overview/networking/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -418,7 +418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/tre-resources-breakdown/" class="md-nav__link">
+      <a href="../../azure-tre-overview/tre-resources-breakdown/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -439,7 +439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/airlock/" class="md-nav__link">
+      <a href="../../azure-tre-overview/airlock/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -460,7 +460,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/cost-reporting/" class="md-nav__link">
+      <a href="../../azure-tre-overview/cost-reporting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -489,7 +489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/terms-definitions/" class="md-nav__link">
+      <a href="../../using-tre/terms-definitions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -510,7 +510,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/case-studies/" class="md-nav__link">
+      <a href="../../azure-tre-overview/case-studies/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -572,7 +572,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tre-admins/setup-instructions/" class="md-nav__link ">
+            <a href="../../tre-admins/setup-instructions/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -605,7 +605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/prerequisites/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/prerequisites/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -626,7 +626,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/deployment-repo/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/deployment-repo/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -647,7 +647,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/ad-tenant-choices/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/ad-tenant-choices/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -668,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/setup-auth-entities/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/setup-auth-entities/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -771,7 +771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/manual-pre-deployment-steps/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/manual-pre-deployment-steps/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -792,7 +792,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/manual-deployment/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/manual-deployment/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -862,7 +862,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/cicd-pre-deployment-steps/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/cicd-pre-deployment-steps/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -883,7 +883,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/cicd-deployment/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/cicd-deployment/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -920,7 +920,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/configuring-shared-services/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/configuring-shared-services/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -941,7 +941,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/ui-install-base-workspace/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/ui-install-base-workspace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -962,7 +962,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/ui-install-ws-and-ur/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/ui-install-ws-and-ur/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1014,7 +1014,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../using-tre/" class="md-nav__link ">
+            <a href="../../using-tre/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1047,7 +1047,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/templates/" class="md-nav__link">
+      <a href="../../using-tre/templates/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1092,7 +1092,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../using-tre/tre-for-research/" class="md-nav__link ">
+            <a href="../../using-tre/tre-for-research/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1125,7 +1125,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/tre-for-research/using-vms/" class="md-nav__link">
+      <a href="../../using-tre/tre-for-research/using-vms/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1146,7 +1146,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/tre-for-research/importing-exporting-data-airlock/" class="md-nav__link">
+      <a href="../../using-tre/tre-for-research/importing-exporting-data-airlock/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1167,7 +1167,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/tre-for-research/review-airlock-request/" class="md-nav__link">
+      <a href="../../using-tre/tre-for-research/review-airlock-request/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1200,10 +1200,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1218,11 +1216,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -1236,7 +1234,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Templates and Services
@@ -1293,7 +1291,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspaces/base/" class="md-nav__link">
+      <a href="../../tre-templates/workspaces/base/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1314,7 +1312,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspaces/unrestricted/" class="md-nav__link">
+      <a href="../../tre-templates/workspaces/unrestricted/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1335,7 +1333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspaces/airlock-import-review/" class="md-nav__link">
+      <a href="../../tre-templates/workspaces/airlock-import-review/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1361,14 +1359,10 @@
                 
   
   
-    
   
   
-  
     
     
-      
-        
       
         
       
@@ -1391,11 +1385,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
         
           
           <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
@@ -1409,7 +1403,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2">
             <span class="md-nav__icon md-icon"></span>
             Workspace Services
@@ -1423,7 +1417,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../azure-ml/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/azure-ml/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1444,7 +1438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gitea/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/gitea/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1465,7 +1459,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../guacamole/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/guacamole/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1483,152 +1477,10 @@
                 
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    InnerEye
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    InnerEye
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#firewall-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Firewall Rules
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#initial-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      Initial setup
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#running-the-innereye-helloworld" class="md-nav__link">
-    <span class="md-ellipsis">
-      Running the InnerEye HelloWorld
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Running the InnerEye HelloWorld">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#preparation-steps-performed-by-the-tre-admin" class="md-nav__link">
-    <span class="md-ellipsis">
-      Preparation steps performed by the TRE Admin
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#setup-the-innereye-run-from-aml-compute-instance" class="md-nav__link">
-    <span class="md-ellipsis">
-      Setup the InnerEye run from AML Compute Instance
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuring-and-testing-inference-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      Configuring and testing inference service
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="../mlflow/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    MLFlow
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../health_services/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/health_services/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1649,7 +1501,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../databricks/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/databricks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1670,7 +1522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ohdsi/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/ohdsi/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1691,7 +1543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mysql/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/mysql/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1712,11 +1564,32 @@
   
   
     <li class="md-nav__item">
-      <a href="../azuresql/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/azuresql/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
     Azure SQL
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tre-templates/workspace-services/openai/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Open AI
   </span>
   
 
@@ -1786,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/gitea/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/gitea/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1807,7 +1680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/nexus/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/nexus/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1828,7 +1701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/cyclecloud/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/cyclecloud/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1849,7 +1722,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/airlock-notifier/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/airlock-notifier/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1923,7 +1796,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/guacamole-windows-vm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/guacamole-windows-vm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1944,7 +1817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/guacamole-linux-vm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/guacamole-linux-vm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1965,7 +1838,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/import-reviewvm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/import-reviewvm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1986,7 +1859,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/export-reviewvm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/export-reviewvm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2019,8 +1892,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -2035,11 +1910,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -2053,7 +1928,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Technical Guide
@@ -2068,6 +1943,8 @@
   
     
     
+      
+        
       
         
       
@@ -2126,7 +2003,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/start-stop/" class="md-nav__link">
+      <a href="../../tre-admins/start-stop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2147,7 +2024,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/environment-variables/" class="md-nav__link">
+      <a href="../../tre-admins/environment-variables/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2168,7 +2045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/tear-down/" class="md-nav__link">
+      <a href="../../tre-admins/tear-down/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2232,7 +2109,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/auth/" class="md-nav__link">
+      <a href="../../tre-admins/auth/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2253,7 +2130,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/auth-manual/" class="md-nav__link">
+      <a href="../../tre-admins/identities/auth-manual/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2321,7 +2198,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/application_admin/" class="md-nav__link">
+      <a href="../../tre-admins/identities/application_admin/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2342,7 +2219,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/api/" class="md-nav__link">
+      <a href="../../tre-admins/identities/api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2363,7 +2240,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/client/" class="md-nav__link">
+      <a href="../../tre-admins/identities/client/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2384,7 +2261,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/test-account/" class="md-nav__link">
+      <a href="../../tre-admins/identities/test-account/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2405,7 +2282,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/workspace/" class="md-nav__link">
+      <a href="../../tre-admins/identities/workspace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2442,7 +2319,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/registering-templates/" class="md-nav__link">
+      <a href="../../tre-admins/registering-templates/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2504,7 +2381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/installing-base-workspace/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/installing-base-workspace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2525,7 +2402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/installing-workspace-service-and-user-resource/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/installing-workspace-service-and-user-resource/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2554,7 +2431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/upgrading-tre/" class="md-nav__link">
+      <a href="../../tre-admins/upgrading-tre/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2575,7 +2452,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/upgrading-resources/" class="md-nav__link">
+      <a href="../../tre-admins/upgrading-resources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2596,7 +2473,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/configure-airlock-review/" class="md-nav__link">
+      <a href="../../tre-admins/configure-airlock-review/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2617,7 +2494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/supported-clouds/" class="md-nav__link">
+      <a href="../../tre-admins/supported-clouds/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2638,7 +2515,28 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/custom-domain/" class="md-nav__link">
+      <a href="../../tre-admins/customer-managed-keys/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Customer Managed Keys
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tre-admins/custom-domain/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2664,8 +2562,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -2678,11 +2578,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" checked>
         
           
           <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
@@ -2696,7 +2596,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5_2">
             <span class="md-nav__icon md-icon"></span>
             Development
@@ -2710,7 +2610,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/local-development/local-development/" class="md-nav__link">
+      <a href="../../using-tre/local-development/local-development/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2728,6 +2628,8 @@
                 
   
   
+    
+  
   
   
     
@@ -2751,19 +2653,21 @@
       
         
       
+        
+      
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tre-developers/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2780,7 +2684,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5_2_2">
             <span class="md-nav__icon md-icon"></span>
             Contributing to AzureTRE
@@ -2796,7 +2700,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2817,7 +2721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/ui/" class="md-nav__link">
+      <a href="../ui/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2838,7 +2742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/resource-processor/" class="md-nav__link">
+      <a href="../resource-processor/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2859,7 +2763,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/end-to-end-tests/" class="md-nav__link">
+      <a href="../end-to-end-tests/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2880,7 +2784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/letsencrypt/" class="md-nav__link">
+      <a href="../letsencrypt/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2901,7 +2805,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/release/" class="md-nav__link">
+      <a href="../release/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2922,7 +2826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/workflows/" class="md-nav__link">
+      <a href="../../tre-admins/setup-instructions/workflows/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2931,6 +2835,136 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    GitHub PR Bot Commands
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    GitHub PR Bot Commands
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pr-comment-bot-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      PR Comment bot commands
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PR Comment bot commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#help" class="md-nav__link">
+    <span class="md-ellipsis">
+      /help
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-sha" class="md-nav__link">
+    <span class="md-ellipsis">
+      /test [&lt;sha&gt;]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-extended-sha-test-extended-aad-sha-test-shared-services-sha" class="md-nav__link">
+    <span class="md-ellipsis">
+      /test-extended [&lt;sha&gt;] / /test-extended-aad [&lt;sha&gt;]/ /test-shared-services [&lt;sha&gt;]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-destroy-env" class="md-nav__link">
+    <span class="md-ellipsis">
+      /test-destroy-env
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-force-approve" class="md-nav__link">
+    <span class="md-ellipsis">
+      /test-force-approve
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#granting-access-to-run-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Granting access to run commands
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2994,7 +3028,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-workspace-authors/authoring-workspace-templates/" class="md-nav__link">
+      <a href="../../tre-workspace-authors/authoring-workspace-templates/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3015,7 +3049,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-workspace-authors/firewall-rules/" class="md-nav__link">
+      <a href="../../tre-workspace-authors/firewall-rules/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3077,7 +3111,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../pipeline-templates/overview/" class="md-nav__link">
+      <a href="../../tre-templates/pipeline-templates/overview/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3098,7 +3132,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../pipeline-templates/pipeline-schema/" class="md-nav__link">
+      <a href="../../tre-templates/pipeline-templates/pipeline-schema/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3143,7 +3177,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/CLI/" class="md-nav__link">
+      <a href="../CLI/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3198,7 +3232,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../troubleshooting-faq/" class="md-nav__link ">
+            <a href="../../troubleshooting-faq/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -3231,7 +3265,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/debug-logs/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/debug-logs/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3252,7 +3286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/api-logs-deployment-center/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/api-logs-deployment-center/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3273,7 +3307,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/troubleshooting-sb/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/troubleshooting-sb/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3294,7 +3328,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/app-insights-logs/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/app-insights-logs/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3315,7 +3349,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/troubleshooting-rp/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/troubleshooting-rp/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3336,7 +3370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/airlock-troubleshooting/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/airlock-troubleshooting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3357,7 +3391,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/manually-editing-resources/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/manually-editing-resources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3378,7 +3412,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/cloud-init/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/cloud-init/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3414,7 +3448,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3454,46 +3488,55 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#firewall-rules" class="md-nav__link">
+  <a href="#pr-comment-bot-commands" class="md-nav__link">
     <span class="md-ellipsis">
-      Firewall Rules
+      PR Comment bot commands
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#initial-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      Initial setup
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#running-the-innereye-helloworld" class="md-nav__link">
-    <span class="md-ellipsis">
-      Running the InnerEye HelloWorld
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Running the InnerEye HelloWorld">
+    <nav class="md-nav" aria-label="PR Comment bot commands">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#preparation-steps-performed-by-the-tre-admin" class="md-nav__link">
+  <a href="#help" class="md-nav__link">
     <span class="md-ellipsis">
-      Preparation steps performed by the TRE Admin
+      /help
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#setup-the-innereye-run-from-aml-compute-instance" class="md-nav__link">
+  <a href="#test-sha" class="md-nav__link">
     <span class="md-ellipsis">
-      Setup the InnerEye run from AML Compute Instance
+      /test [&lt;sha&gt;]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-extended-sha-test-extended-aad-sha-test-shared-services-sha" class="md-nav__link">
+    <span class="md-ellipsis">
+      /test-extended [&lt;sha&gt;] / /test-extended-aad [&lt;sha&gt;]/ /test-shared-services [&lt;sha&gt;]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-destroy-env" class="md-nav__link">
+    <span class="md-ellipsis">
+      /test-destroy-env
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-force-approve" class="md-nav__link">
+    <span class="md-ellipsis">
+      /test-force-approve
     </span>
   </a>
   
@@ -3505,9 +3548,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuring-and-testing-inference-service" class="md-nav__link">
+  <a href="#granting-access-to-run-commands" class="md-nav__link">
     <span class="md-ellipsis">
-      Configuring and testing inference service
+      Granting access to run commands
     </span>
   </a>
   
@@ -3528,143 +3571,44 @@
                   
 
 
-<h1 id="innereye-deeplearning-service-bundle">InnerEye DeepLearning Service Bundle</h1>
-<ul>
-<li><a href="../../../templates/workspace_services/azureml">Azure ML</a></li>
-</ul>
-<p>See: <a href="https://github.com/microsoft/InnerEye-DeepLearning">https://github.com/microsoft/InnerEye-DeepLearning</a></p>
-<h2 id="firewall-rules">Firewall Rules</h2>
-<p>Please be aware that the following Firewall rules are opened for the workspace when this service is deployed. These are all dependencies needed by InnerEye to be able to develop and train models:</p>
-<p>URLs:</p>
-<ul>
-<li>*.anaconda.com</li>
-<li>*.anaconda.org</li>
-<li>binstar-cio-packages-prod.s3.amazonaws.com</li>
-<li>*pythonhosted.org</li>
-<li>github-cloud.githubusercontent.com</li>
-<li>azure.archive.ubuntu.com (git lfs package)</li>
-<li>packagecloud.io (git lfs package installation script)</li>
-</ul>
-<h2 id="initial-setup">Initial setup</h2>
-<p>Provision an InnerEye workspace by invoking a POST to <code>https://&lt;treid&gt;.&lt;region&gt;.cloudapp.azure.com/api/workspaces</code> with the following payload:</p>
-<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;templateName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tre-workspace-innereye&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">                </span><span class="nt">&quot;display_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InnerEye&quot;</span><span class="p">,</span>
-<span class="w">                </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InnerEyer workspace&quot;</span><span class="p">,</span>
-<span class="w">                </span><span class="nt">&quot;client_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;WORKSPACE_API_CLIENT_ID&gt;&quot;</span><span class="p">,</span>
-<span class="w">                </span><span class="nt">&quot;inference_sp_client_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;spn_client_id&gt;&quot;</span><span class="p">,</span>
-<span class="w">                </span><span class="nt">&quot;inference_sp_client_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;spn_client_secret&gt;&quot;</span>
-<span class="w">            </span><span class="p">}</span>
-<span class="w">    </span><span class="p">}</span>
-</code></pre></div>
-<p>This will provision Base Workspace, with AML service and InnerEye service, including InnerEye Inference web app.</p>
-<h2 id="running-the-innereye-helloworld">Running the InnerEye HelloWorld</h2>
-<h3 id="preparation-steps-performed-by-the-tre-admin">Preparation steps performed by the TRE Admin</h3>
-<ol>
-<li>Ensure that you have completed <a href="../../../tre-admins/setup-instructions/configuring-shared-services/">"Configuring Shared Services"</a></li>
-<li>Log onto a TREAdmin Jumpbox and mirror Github repos needed by InnerEye Helloworld:<div class="highlight"><pre><span></span><code>./templates/workspace_services/gitea/gitea_migrate_repo.sh -t &lt;tre_id&gt; -g https://github.com/microsoft/InnerEye-DeepLearning
-./templates/workspace_services/gitea/gitea_migrate_repo.sh -t &lt;tre_id&gt; -g https://github.com/analysiscenter/radio
-./templates/workspace_services/gitea/gitea_migrate_repo.sh -t &lt;tre_id&gt; -g https://github.com/microsoft/InnerEye-Inference
-</code></pre></div>
-</li>
-</ol>
-<h3 id="setup-the-innereye-run-from-aml-compute-instance">Setup the InnerEye run from AML Compute Instance</h3>
-<ol>
-<li>Log onto a VM in the workspace</li>
-<li>In the VM open your browser and navigate to <a href="https://ml.azure.com">ml.azure.com</a>, login, select the right Subscription and AML workspace.</li>
-<li>Select the Notebooks tab and then click Terminal. This will open a terminal on a running compute instance</li>
-<li>
-<p>Pull the InnerEye-DeepLearning git repo from Gitea mirror and configure:</p>
-<div class="highlight"><pre><span></span><code>git clone https://gitea-&lt;TRE_ID&gt;.azurewebsites.net/giteaadmin/InnerEye-DeepLearning
-cd InnerEye-DeepLearning
-curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
-sudo apt-get install git-lfs
-git lfs install
-git lfs pull
-export PIP_INDEX_URL=https://nexus-&lt;TRE_ID&gt;.azurewebsites.net/repository/apt-pypi/simple
-conda init
-conda env create --file environment.yml
-conda activate InnerEye
-</code></pre></div>
-</li>
-<li>
-<p>Login to AzureCLI and set default subscription if needed</p>
-<div class="highlight"><pre><span></span><code>az login
-az account set --subscription 
-</code></pre></div>
-</li>
-<li>
-<p>Create a "datasets" container</p>
-<p><code>az storage container create --name datasets --account-name stgws&lt;workspace_id&gt;</code>
-1. Copy <code>dataset.csv</code> file from <code>Tests/ML/test_data/dataset.csv</code> to the <code>hello_world</code> folder:</p>
-<p><code>az storage blob upload --account-name stgws&lt;workspace_id&gt; --container-name datasets --file ./Tests/ML/test_data/dataset.csv --name hello_world/dataset.csv</code>
-1. Copy the whole <code>train_and_test_data</code> folder from <code>Test/ML/test_data/train_and_test_data</code> to the <code>hello_world</code> folder:</p>
-<p><code>az storage blob directory upload -c datasets --account-name stgws&lt;workspace_id&gt; -s "./Tests/ML/test_data/train_and_test_data" -d hello_world --recursive</code></p>
-</li>
-<li>
-<p>Get storage keys for your storage:</p>
-<p><code>az storage account keys list --account-name stgws&lt;workspace_id&gt;</code></p>
-</li>
-<li>
-<p>Update the following variables in <code>InnerEye/settings.yml</code>: subscription_id, resource_group, workspace_name, cluster (see <a href="https://github.com/microsoft/InnerEye-DeepLearning/blob/main/docs/setting_up_aml.md">AML setup</a> for more details).</p>
-</li>
-<li>Navigate to <code>Data stores</code> in AML Workspace. Create a New datastore named <code>innereyedatasets</code> and link it to your storage account and datasets container. Use the key collected from the step above.</li>
-<li>
-<p>Back from the Terminal run</p>
-<div class="highlight"><pre><span></span><code>python InnerEye/ML/runner.py --model=HelloWorld --azureml=True
-</code></pre></div>
-</li>
-<li>
-<p>The runner will provide you with a link and ask you to open it to login. Copy the link and open it in browser (Edge) on the DSVM and login. The run will continue after login.</p>
-</li>
-<li>In your browser navigate to <a href="https://ml.azure.com">https://ml.azure.com</a> and open the <code>Experiments</code> tab to follow the progress of the training</li>
-</ol>
-<h2 id="configuring-and-testing-inference-service">Configuring and testing inference service</h2>
-<p>The workspace service provisions an App Service Plan and an App Service for hosting the inference webapp. The webapp will be integrated into the workspace network, allowing the webapp to connect to the AML workspace. Following the setup you will need to:</p>
-<ol>
-<li>
-<p>Log onto a VM in the workspace and run:</p>
-<div class="highlight"><pre><span></span><code>git clone https://gitea-&lt;TRE_ID&gt;.azurewebsites.net/giteaadmin/InnerEye-Inference
-cd InnerEye-Inference
-</code></pre></div>
-</li>
-<li>
-<p>Create a file named "set_environment.sh" with the following variables as content:</p>
-<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">CUSTOMCONNSTR_AZUREML_SERVICE_PRINCIPAL_SECRET</span><span class="o">=</span>&lt;inference_sp_client_secret-from-above&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">CUSTOMCONNSTR_API_AUTH_SECRET</span><span class="o">=</span>&lt;generate-a-random-guid--that-is-used-for-authentication&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">CLUSTER</span><span class="o">=</span>&lt;name-of-compute-cluster&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">WORKSPACE_NAME</span><span class="o">=</span>&lt;name-of-AML-workspace&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">EXPERIMENT_NAME</span><span class="o">=</span>&lt;name-of-AML-experiment&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">RESOURCE_GROUP</span><span class="o">=</span>&lt;name-of-resource-group&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">SUBSCRIPTION_ID</span><span class="o">=</span>&lt;subscription-id&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">APPLICATION_ID</span><span class="o">=</span>&lt;inference_sp_client_id-from-above&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">TENANT_ID</span><span class="o">=</span>&lt;tenant-id&gt;
-<span class="nb">export</span><span class="w"> </span><span class="nv">DATASTORE_NAME</span><span class="o">=</span>inferencedatastore
-<span class="nb">export</span><span class="w"> </span><span class="nv">IMAGE_DATA_FOLDER</span><span class="o">=</span>imagedata
-</code></pre></div>
-</li>
-<li>
-<p>Upload the configuration file to the web app:</p>
-<div class="highlight"><pre><span></span><code>az webapp up --name &lt;inference-app-name&gt; -g &lt;resource-group-name&gt;
-</code></pre></div>
-</li>
-<li>
-<p>Create a new container in your storage account for storing inference images called <code>inferencedatastore</code>.</p>
-</li>
-<li>Create a new folder in that container called <code>imagedata</code>.</li>
-<li>Navigate to the ml.azure.com, <code>Datastores</code> and create a new datastore named <code>inferencedatastore</code> and connect it to the newly created container.</li>
-<li>
-<p>Test the service by sending a GET or POST command using curl or Invoke-WebRequest where API_AUTH_SECRET is the random GUID generated for CUSTOMCONNSTR_API_AUTH_SECRET above:</p>
-<p>Simple ping:</p>
-<div class="highlight"><pre><span></span><code>Invoke-WebRequest https://yourservicename.azurewebsites.net/v1/ping -Headers @{&#39;Accept&#39; = &#39;application/json&#39;; &#39;API_AUTH_SECRET&#39; = &#39;your-secret-1234-1123445&#39;}
-</code></pre></div>
-<p>Test connection with AML:</p>
-<div class="highlight"><pre><span></span><code>Invoke-WebRequest https://yourservicename.azurewebsites.net/v1/model/start/HelloWorld:1 -Method POST -Headers @{&#39;Accept&#39; = &#39;application/json&#39;; &#39;API_AUTH_SECRET&#39; = &#39;your-secret-1234-1123445&#39;}
-</code></pre></div>
-</li>
-</ol>
+<h1 id="github-pr-bot-commands">GitHub PR Bot Commands</h1>
+<h2 id="pr-comment-bot-commands">PR Comment bot commands</h2>
+<p><strong>Notes</strong>
+- these commands are not immediate - you need to wait for the GitHub action that performs the task to start up.
+- builds triggered via these commands will use the workflow definitions from <code>main</code>. To test workflow changes before merging to <code>main</code>, the changes need to be pushed to a branch in the main repo and then the <code>deploy_tre_branch.yml</code> workflow can be run against that branch.</p>
+<p>These commands can only be run when commented by a user who is identified as a repo collaborator (see <a href="#granting-access-to-run-commands">granting access to run commands</a>)</p>
+<h3 id="help"><code>/help</code></h3>
+<p>This command will cause the pr-comment-bot to respond with a comment listing the available commands.</p>
+<h3 id="test-sha"><code>/test [&lt;sha&gt;]</code></h3>
+<p>This command runs the build, deploy, and smoke tests for a PR.</p>
+<p>For PRs from maintainers (i.e. users with write access to microsoft/AzureTRE), <code>/test</code> is sufficient.</p>
+<p>For other PRs, the checks below should be carried out. Once satisfied that the PR is safe to run tests against, you should use <code>/test &lt;sha&gt;</code> where <code>&lt;sha&gt;</code> is the SHA for the commit that you have verified.
+You can use the full or short form of the SHA, but it must be at least 7 characters (GitHub UI shows 7 characters).</p>
+<p><strong>IMPORTANT</strong></p>
+<p>This command works on PRs from forks, and makes the deployment secrets available.
+Before running tests on a PR, ensure that there are no changes in the PR that could have unintended consequences (e.g. leak secrets or perform undesirable operations in the testing subscription).</p>
+<p>Check for changes to anything that is run during the build/deploy/test cycle, including:
+- modifications to workflows (including adding new actions or changing versions of existing actions)
+- modifications to the Makefile
+- modifications to scripts
+- new python packages being installed</p>
+<h3 id="test-extended-sha-test-extended-aad-sha-test-shared-services-sha"><code>/test-extended [&lt;sha&gt;]</code> / <code>/test-extended-aad [&lt;sha&gt;]</code>/ <code>/test-shared-services [&lt;sha&gt;]</code></h3>
+<p>This command runs the build, deploy, and smoke &amp; extended / shared services tests for a PR.</p>
+<p>For PRs from maintainers (i.e. users with write access to microsoft/AzureTRE), <code>/test-extended</code> is sufficient.</p>
+<p>If a change has been made which would affect any of the core shared services, make sure you run <code>/test-shared-services</code>.</p>
+<p>For other PRs, the checks below should be carried out. Once satisfied that the PR is safe to run tests against, you should use <code>/test-extended &lt;sha&gt;</code> where <code>&lt;sha&gt;</code> is the SHA for the commit that you have verified.
+You can use the full or short form of the SHA, but it must be at least 7 characters (GitHub UI shows 7 characters).</p>
+<p><strong>IMPORTANT</strong></p>
+<p>As with <code>/test</code>, this command works on PRs from forks, and makes the deployment secrets available.
+Before running tests on a PR, run the same checks on the PR code as for <code>/test</code>.</p>
+<h3 id="test-destroy-env"><code>/test-destroy-env</code></h3>
+<p>When running <code>/test</code> multiple times on a PR, the same TRE ID and environment are used by default. The <code>/test-destroy-env</code> command destroys a previously created validation environment, allowing you to re-run <code>/test</code> with a clean starting point.</p>
+<p>The <code>/test-destroy-env</code> command also destroys the environment associated with the PR branch (created by running the <code>deploy_tre_branch</code> workflow).</p>
+<h3 id="test-force-approve"><code>/test-force-approve</code></h3>
+<p>This command skips running tests for a build and marks the checks as completed.
+This is intended to be used in scenarios where running the tests for a PR doesn't add value (for example, changing a workflow file that is always pulled from the default branch).</p>
+<h2 id="granting-access-to-run-commands">Granting access to run commands</h2>
+<p>Currently, the GitHub API to determine whether a user is a collaborator doesn't seem to respect permissions that a user is granted via a group. As a result, users need to be directly granted <code>write</code> permission in the repo to be able to run the comment bot commands.</p>
 
 
 
@@ -3711,10 +3655,10 @@ cd InnerEye-Inference
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.instant", "navigation.indexes"], "search": "../../../assets/javascripts/workers/search.07f07601.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.indexes"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.56dfad97.min.js"></script>
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
       
     
   </body>

@@ -12,28 +12,28 @@
         <meta name="author" content="Microsoft">
       
       
-        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-templates/workspaces/airlock-import-review/">
+        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-admins/customer-managed-keys/">
       
       
-        <link rel="prev" href="../unrestricted/">
+        <link rel="prev" href="../supported-clouds/">
       
       
-        <link rel="next" href="../../workspace-services/azure-ml/">
+        <link rel="next" href="../custom-domain/">
       
       
-      <link rel="icon" href="../../../assets/ms_icon.png">
+      <link rel="icon" href="../../assets/ms_icon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
     
     
       
-        <title>Airlock Import Review - Azure TRE</title>
+        <title>Customer Managed Keys - Azure TRE</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.6f8fc17f.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -52,7 +52,7 @@
       
     
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
 <script type="text/javascript">
   (function(c,l,a,r,i,t,y){
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#airlock-import-review-workspace" class="md-skip">
+        <a href="#enabling-customer-managed-keys-for-tre-resources" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
             <div class="md-banner__inner md-grid md-typeset">
               
   You're not viewing the latest version.
-  <a href="../../../..">
+  <a href="../../..">
     <strong>Click here to go to latest.</strong>
   </a>
 </script>
@@ -114,9 +114,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Azure TRE" class="md-header__button md-logo" aria-label="Azure TRE" data-md-component="logo">
+    <a href="../.." title="Azure TRE" class="md-header__button md-logo" aria-label="Azure TRE" data-md-component="logo">
       
-  <img src="../../../assets/ms_icon.png" alt="logo">
+  <img src="../../assets/ms_icon.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Airlock Import Review
+              Customer Managed Keys
             
           </span>
         </div>
@@ -220,9 +220,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Azure TRE" class="md-nav__button md-logo" aria-label="Azure TRE" data-md-component="logo">
+    <a href="../.." title="Azure TRE" class="md-nav__button md-logo" aria-label="Azure TRE" data-md-component="logo">
       
-  <img src="../../../assets/ms_icon.png" alt="logo">
+  <img src="../../assets/ms_icon.png" alt="logo">
 
     </a>
     Azure TRE
@@ -275,7 +275,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../.." class="md-nav__link ">
+            <a href="../.." class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -308,7 +308,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/user-roles/" class="md-nav__link">
+      <a href="../../azure-tre-overview/user-roles/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -376,7 +376,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/architecture/" class="md-nav__link">
+      <a href="../../azure-tre-overview/architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -397,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/networking/" class="md-nav__link">
+      <a href="../../azure-tre-overview/networking/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -418,7 +418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/tre-resources-breakdown/" class="md-nav__link">
+      <a href="../../azure-tre-overview/tre-resources-breakdown/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -439,7 +439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/airlock/" class="md-nav__link">
+      <a href="../../azure-tre-overview/airlock/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -460,7 +460,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/cost-reporting/" class="md-nav__link">
+      <a href="../../azure-tre-overview/cost-reporting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -489,7 +489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/terms-definitions/" class="md-nav__link">
+      <a href="../../using-tre/terms-definitions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -510,7 +510,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../azure-tre-overview/case-studies/" class="md-nav__link">
+      <a href="../../azure-tre-overview/case-studies/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -572,7 +572,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tre-admins/setup-instructions/" class="md-nav__link ">
+            <a href="../setup-instructions/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -605,7 +605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/prerequisites/" class="md-nav__link">
+      <a href="../setup-instructions/prerequisites/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -626,7 +626,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/deployment-repo/" class="md-nav__link">
+      <a href="../setup-instructions/deployment-repo/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -647,7 +647,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/ad-tenant-choices/" class="md-nav__link">
+      <a href="../setup-instructions/ad-tenant-choices/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -668,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/setup-auth-entities/" class="md-nav__link">
+      <a href="../setup-instructions/setup-auth-entities/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -771,7 +771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/manual-pre-deployment-steps/" class="md-nav__link">
+      <a href="../setup-instructions/manual-pre-deployment-steps/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -792,7 +792,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/manual-deployment/" class="md-nav__link">
+      <a href="../setup-instructions/manual-deployment/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -862,7 +862,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/cicd-pre-deployment-steps/" class="md-nav__link">
+      <a href="../setup-instructions/cicd-pre-deployment-steps/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -883,7 +883,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/cicd-deployment/" class="md-nav__link">
+      <a href="../setup-instructions/cicd-deployment/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -920,7 +920,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/configuring-shared-services/" class="md-nav__link">
+      <a href="../setup-instructions/configuring-shared-services/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -941,7 +941,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/ui-install-base-workspace/" class="md-nav__link">
+      <a href="../setup-instructions/ui-install-base-workspace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -962,7 +962,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/ui-install-ws-and-ur/" class="md-nav__link">
+      <a href="../setup-instructions/ui-install-ws-and-ur/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1014,7 +1014,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../using-tre/" class="md-nav__link ">
+            <a href="../../using-tre/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1047,7 +1047,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/templates/" class="md-nav__link">
+      <a href="../../using-tre/templates/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1092,7 +1092,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../using-tre/tre-for-research/" class="md-nav__link ">
+            <a href="../../using-tre/tre-for-research/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1125,7 +1125,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/tre-for-research/using-vms/" class="md-nav__link">
+      <a href="../../using-tre/tre-for-research/using-vms/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1146,7 +1146,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/tre-for-research/importing-exporting-data-airlock/" class="md-nav__link">
+      <a href="../../using-tre/tre-for-research/importing-exporting-data-airlock/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1167,7 +1167,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/tre-for-research/review-airlock-request/" class="md-nav__link">
+      <a href="../../using-tre/tre-for-research/review-airlock-request/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1200,10 +1200,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1218,11 +1216,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -1236,7 +1234,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Templates and Services
@@ -1247,10 +1245,8 @@
                 
   
   
-    
   
   
-  
     
     
       
@@ -1263,11 +1259,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
         
           
           <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
@@ -1281,7 +1277,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_1">
             <span class="md-nav__icon md-icon"></span>
             Workspaces
@@ -1295,7 +1291,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../base/" class="md-nav__link">
+      <a href="../../tre-templates/workspaces/base/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1316,7 +1312,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../unrestricted/" class="md-nav__link">
+      <a href="../../tre-templates/workspaces/unrestricted/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1334,19 +1330,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../tre-templates/workspaces/airlock-import-review/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1355,7 +1342,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -1431,7 +1417,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/azure-ml/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/azure-ml/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1452,7 +1438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/gitea/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/gitea/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1473,7 +1459,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/guacamole/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/guacamole/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1494,7 +1480,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/health_services/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/health_services/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1515,7 +1501,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/databricks/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/databricks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1536,7 +1522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/ohdsi/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/ohdsi/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1557,7 +1543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/mysql/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/mysql/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1578,7 +1564,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/azuresql/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/azuresql/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1599,7 +1585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../workspace-services/openai/" class="md-nav__link">
+      <a href="../../tre-templates/workspace-services/openai/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1673,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/gitea/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/gitea/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1694,7 +1680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/nexus/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/nexus/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1715,7 +1701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/cyclecloud/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/cyclecloud/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1736,7 +1722,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shared-services/airlock-notifier/" class="md-nav__link">
+      <a href="../../tre-templates/shared-services/airlock-notifier/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1810,7 +1796,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/guacamole-windows-vm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/guacamole-windows-vm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1831,7 +1817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/guacamole-linux-vm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/guacamole-linux-vm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1852,7 +1838,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/import-reviewvm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/import-reviewvm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1873,7 +1859,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-resources/export-reviewvm/" class="md-nav__link">
+      <a href="../../tre-templates/user-resources/export-reviewvm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1906,8 +1892,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1922,11 +1910,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -1940,7 +1928,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Technical Guide
@@ -1951,8 +1939,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1983,11 +1973,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" checked>
         
           
           <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
@@ -2001,7 +1991,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             Administration
@@ -2015,7 +2005,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/start-stop/" class="md-nav__link">
+      <a href="../start-stop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2036,7 +2026,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/environment-variables/" class="md-nav__link">
+      <a href="../environment-variables/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2057,7 +2047,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/tear-down/" class="md-nav__link">
+      <a href="../tear-down/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2121,7 +2111,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/auth/" class="md-nav__link">
+      <a href="../auth/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2142,7 +2132,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/auth-manual/" class="md-nav__link">
+      <a href="../identities/auth-manual/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2210,7 +2200,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/application_admin/" class="md-nav__link">
+      <a href="../identities/application_admin/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2231,7 +2221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/api/" class="md-nav__link">
+      <a href="../identities/api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2252,7 +2242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/client/" class="md-nav__link">
+      <a href="../identities/client/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2273,7 +2263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/test-account/" class="md-nav__link">
+      <a href="../identities/test-account/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2294,7 +2284,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/identities/workspace/" class="md-nav__link">
+      <a href="../identities/workspace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2331,7 +2321,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/registering-templates/" class="md-nav__link">
+      <a href="../registering-templates/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2393,7 +2383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/installing-base-workspace/" class="md-nav__link">
+      <a href="../setup-instructions/installing-base-workspace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2414,7 +2404,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/installing-workspace-service-and-user-resource/" class="md-nav__link">
+      <a href="../setup-instructions/installing-workspace-service-and-user-resource/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2443,7 +2433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/upgrading-tre/" class="md-nav__link">
+      <a href="../upgrading-tre/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2464,7 +2454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/upgrading-resources/" class="md-nav__link">
+      <a href="../upgrading-resources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2485,7 +2475,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/configure-airlock-review/" class="md-nav__link">
+      <a href="../configure-airlock-review/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2506,7 +2496,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/supported-clouds/" class="md-nav__link">
+      <a href="../supported-clouds/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2524,10 +2514,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../tre-admins/customer-managed-keys/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Customer Managed Keys
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -2536,6 +2546,35 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#key-vault-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Vault configuration
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2548,7 +2587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/custom-domain/" class="md-nav__link">
+      <a href="../custom-domain/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2620,7 +2659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../using-tre/local-development/local-development/" class="md-nav__link">
+      <a href="../../using-tre/local-development/local-development/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2675,7 +2714,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../tre-developers/" class="md-nav__link ">
+            <a href="../../tre-developers/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2708,7 +2747,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/api/" class="md-nav__link">
+      <a href="../../tre-developers/api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2729,7 +2768,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/ui/" class="md-nav__link">
+      <a href="../../tre-developers/ui/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2750,7 +2789,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/resource-processor/" class="md-nav__link">
+      <a href="../../tre-developers/resource-processor/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2771,7 +2810,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/end-to-end-tests/" class="md-nav__link">
+      <a href="../../tre-developers/end-to-end-tests/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2792,7 +2831,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/letsencrypt/" class="md-nav__link">
+      <a href="../../tre-developers/letsencrypt/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2813,7 +2852,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/release/" class="md-nav__link">
+      <a href="../../tre-developers/release/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2834,7 +2873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-admins/setup-instructions/workflows/" class="md-nav__link">
+      <a href="../setup-instructions/workflows/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2855,7 +2894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/github-pr-bot-commands/" class="md-nav__link">
+      <a href="../../tre-developers/github-pr-bot-commands/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2927,7 +2966,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-workspace-authors/authoring-workspace-templates/" class="md-nav__link">
+      <a href="../../tre-workspace-authors/authoring-workspace-templates/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2948,7 +2987,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-workspace-authors/firewall-rules/" class="md-nav__link">
+      <a href="../../tre-workspace-authors/firewall-rules/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3010,7 +3049,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../pipeline-templates/overview/" class="md-nav__link">
+      <a href="../../tre-templates/pipeline-templates/overview/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3031,7 +3070,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../pipeline-templates/pipeline-schema/" class="md-nav__link">
+      <a href="../../tre-templates/pipeline-templates/pipeline-schema/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3076,7 +3115,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../tre-developers/CLI/" class="md-nav__link">
+      <a href="../../tre-developers/CLI/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3131,7 +3170,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../troubleshooting-faq/" class="md-nav__link ">
+            <a href="../../troubleshooting-faq/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -3164,7 +3203,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/debug-logs/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/debug-logs/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3185,7 +3224,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/api-logs-deployment-center/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/api-logs-deployment-center/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3206,7 +3245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/troubleshooting-sb/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/troubleshooting-sb/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3227,7 +3266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/app-insights-logs/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/app-insights-logs/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3248,7 +3287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/troubleshooting-rp/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/troubleshooting-rp/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3269,7 +3308,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/airlock-troubleshooting/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/airlock-troubleshooting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3290,7 +3329,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/manually-editing-resources/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/manually-editing-resources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3311,7 +3350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting-faq/cloud-init/" class="md-nav__link">
+      <a href="../../troubleshooting-faq/cloud-init/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3347,7 +3386,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3380,6 +3419,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#key-vault-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Vault configuration
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -3393,10 +3449,24 @@
                   
 
 
-<h1 id="airlock-import-review-workspace">Airlock Import Review workspace</h1>
-<p>Airlock Import Review workspace is used as part of Review workflow for <a href="../../../azure-tre-overview/airlock/">Airlock</a>.
-It allows to review Airlock Data Import requests from, by providing a workspace to spin up VMs in that then can access the in-progress storage account.</p>
-<p>The workspace is built upon the base workspace template. It adds a private endpoint to connect to Imlort In-Progress storage account, and disables shared storage for VMs.</p>
+<h1 id="enabling-customer-managed-keys-for-tre-resources">Enabling Customer-managed keys for TRE resources</h1>
+<p>You can enable customer-managed keys (CMK) for supporting resources in Azure TRE.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently Azure TRE only supports CMK encryption for resources in the TRE core and Base Workspace.
+CMK encryption is not supported for the rest of the resources such as those deployed by a TRE workspace.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Currently, it is not possible to redeploy TRE with CMK enabled if it has previously been deployed without it. This is due to limitations of resources such as Azure Container Registry (ACR) that only allow enabling the CMK encryption at the time of resource creation.</p>
+</div>
+<p>When enabled, CMK encryption provides an additional layer of encryption control for supported Azure resources within the TRE by allowing you to manage and control the encryption keys used to protect your data.</p>
+<p>To enable CMK encryption, set <code>enable_cmk_encryption: true</code> in the developer settings section of your <code>config.yaml</code> file.</p>
+<p>For more information about CMKs, see <a href="https://learn.microsoft.com/azure/storage/common/customer-managed-keys-overview">Use customer-managed keys with Azure Storage encryption</a>.</p>
+<h2 id="key-vault-configuration">Key Vault configuration</h2>
+<p>The CMKs for Azure TRE can be stored in either a Key Vault deployed by TRE itself, or in an external Key Vault provided by the user.  </p>
+<p>To have TRE create and manage its own Key Vault for storing CMKs, specify the <code>ENCRYPTION_KV_NAME</code> parameter in the <code>config.yaml</code> file.  </p>
+<p>Alternatively, to use your own existing Key Vault, provide the <code>EXTERNAL_KEY_STORE_ID</code> parameter pointing to your Key Vault resource ID.</p>
 
 
 
@@ -3443,10 +3513,10 @@ It allows to review Airlock Data Import requests from, by providing a workspace 
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.instant", "navigation.indexes"], "search": "../../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.indexes"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
       
     
   </body>
