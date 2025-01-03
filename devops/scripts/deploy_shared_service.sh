@@ -69,18 +69,18 @@ if [[ -n "${deployed_shared_service}" ]]; then
   fi
 fi
 
+# Add additional properties to the payload JSON string
+additional_props=""
+for index in "${!property_names[@]}"; do
+  name=${property_names[$index]}
+  value=${property_values[$index]}
+  additional_props="$additional_props, \"$name\": \"$value\""
+done
+
+echo "Not currently deployed - deploying..."
+display_name="${template_name#tre-shared-service-}"
+
 if [[ "${is_update}" -eq 0 ]]; then
-
-  # Add additional properties to the payload JSON string
-  additional_props=""
-  for index in "${!property_names[@]}"; do
-    name=${property_names[$index]}
-    value=${property_values[$index]}
-    additional_props="$additional_props, \"$name\": \"$value\""
-  done
-
-  echo "Not currently deployed - deploying..."
-  display_name="${template_name#tre-shared-service-}"
   if ! deploy_result=$(cat << EOF | tre shared-services new --definition-file -
 {
     "templateName": "${template_name}",
@@ -102,8 +102,18 @@ else
   echo "An older or failed version is already deloyed. Trying to update..."
   deployed_id=$(echo "${deployed_shared_service}" | jq -r ".id")
   deployed_etag=$(echo "${deployed_shared_service}" | jq -r "._etag")
-  tre shared-service "${deployed_id}" update --etag "${deployed_etag}" --definition "{\"templateVersion\": \"${template_version}\"}"
-
+  definition_file=$(cat << EOF
+{
+  "templateVersion": "${template_version}",
+  "properties": {
+    "display_name": "${display_name}",
+    "description": "Automatically deployed '${template_name}'"
+    ${additional_props}
+  }
+}
+EOF
+)
+  tre shared-service "${deployed_id}" update --etag "${deployed_etag}" --definition "${definition_file}" --output json
 fi
 
 echo "Deployed shared service ""${template_name}"""

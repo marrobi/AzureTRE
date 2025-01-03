@@ -6,6 +6,17 @@
   "description": "Provides Firewall shared service",
   "required": [],
   "properties": {
+    "firewall_sku": {
+      "$id": "#properties/firewall_sku",
+      "title": "Firewall SKU",
+      "type": "string",
+      "default": "Basic",
+      "enum": [
+        "Basic",
+        "Standard"
+      ],
+      "updateable": true
+    },
     "rule_collections": {
 			"$id": "#properties/rule_collections",
 			"title": "application rule collections",
