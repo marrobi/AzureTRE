@@ -246,10 +246,27 @@ async def get_porter_outputs(msg_body: dict, config: dict):
         return True, outputs_json
 
 
+async def create_service_bus_client(config: dict, credential):
+    if config["service_bus_emulator_enabled"] == "true":
+        from azure.servicebus._pyamqp import AMQPClient
+        # Disable TLS. Workaround for https://github.com/Azure/azure-sdk-for-python/issues/34273
+        org_init = AMQPClient.__init__
+
+        def new_init(self, hostname, **kwargs):
+            kwargs["use_tls"] = False
+            org_init(self, hostname, **kwargs)
+        AMQPClient.__init__ = new_init
+
+        # Create a ServiceBusClient using the connection string
+        return ServiceBusClient.from_connection_string(conn_str=config["service_bus_emulator_connection_string"], logging_enable=True)
+
+    else:
+        return ServiceBusClient(config["service_bus_namespace"], credential)
+
 async def runner(process_number: int, config: dict):
     with tracer.start_as_current_span(process_number):
         async with default_credentials(config["vmss_msi_id"]) as credential:
-            service_bus_client = ServiceBusClient(config["service_bus_namespace"], credential)
+            service_bus_client = await create_service_bus_client(config, credential)
             await receive_message(service_bus_client, config)
 
 

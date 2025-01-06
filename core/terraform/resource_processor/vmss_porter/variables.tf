@@ -94,3 +94,16 @@ variable "kv_encryption_key_name" {
   type        = string
   description = "Name of Key Vault Encryption Key (only used if enable_cmk_encryption is true)"
 }
+
+variable "service_bus_emulator_enabled" {
+  type        = bool
+  description = "A boolean indicating if the service bus emulator is enabled"
+  default     = false
+}
+
+variable "service_bus_emulator_accept_license" {
+  type        = bool
+  description = "A boolean indicating if the service bus emulator license is accepted"
+  default     = false
+
+}

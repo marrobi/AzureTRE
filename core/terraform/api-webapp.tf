@@ -17,6 +17,11 @@ resource "azurerm_service_plan" "core" {
   lifecycle { ignore_changes = [tags] }
 }
 
+data "azurerm_virtual_machine_scale_set" "resource_processor" {
+  name                = "vmss-rp-porter-${var.tre_id}"
+  resource_group_name = azurerm_resource_group.core.name
+}
+
 resource "azurerm_linux_web_app" "api" {
   name                                           = "api-${var.tre_id}"
   resource_group_name                            = azurerm_resource_group.core.name
@@ -41,9 +46,11 @@ resource "azurerm_linux_web_app" "api" {
     "SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE"          = local.service_bus_namespace_fqdn
     "EVENT_GRID_STATUS_CHANGED_TOPIC_ENDPOINT"       = module.airlock_resources.event_grid_status_changed_topic_endpoint
     "EVENT_GRID_AIRLOCK_NOTIFICATION_TOPIC_ENDPOINT" = module.airlock_resources.event_grid_airlock_notification_topic_endpoint
-    "SERVICE_BUS_RESOURCE_REQUEST_QUEUE"             = azurerm_servicebus_queue.workspacequeue.name
-    "SERVICE_BUS_DEPLOYMENT_STATUS_UPDATE_QUEUE"     = azurerm_servicebus_queue.service_bus_deployment_status_update_queue.name
+    "SERVICE_BUS_RESOURCE_REQUEST_QUEUE"             = local.service_bus_workspace_queue_name
+    "SERVICE_BUS_DEPLOYMENT_STATUS_UPDATE_QUEUE"     = local.service_bus_deployment_status_update_queue_name
     "SERVICE_BUS_STEP_RESULT_QUEUE"                  = module.airlock_resources.service_bus_step_result_queue
+    "SERVICE_BUS_EMULATOR_ENABLED"                   = var.service_bus_emulator_enabled ? "true" : "false"
+    "SERVICE_BUS_EMULATOR_IP_ADDRESS"                = data.azurerm_virtual_machine_scale_set.resource_processor.instances[0].private_ip_address
     "MANAGED_IDENTITY_CLIENT_ID"                     = azurerm_user_assigned_identity.id.client_id
     "TRE_ID"                                         = var.tre_id
     "RESOURCE_LOCATION"                              = azurerm_resource_group.core.location

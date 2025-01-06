@@ -35,7 +35,7 @@ output "keyvault_resource_id" {
 }
 
 output "service_bus_resource_id" {
-  value = azurerm_servicebus_namespace.sb.id
+  value =  var.service_bus_emulator_enabled ? "emulator" : module.service_bus[0].namespace_id
 }
 
 output "service_bus_namespace_fqdn" {
@@ -43,11 +43,15 @@ output "service_bus_namespace_fqdn" {
 }
 
 output "service_bus_workspace_queue" {
-  value = azurerm_servicebus_queue.workspacequeue.name
+  value =  module.service_bus[0].workspace_queue_name
 }
 
 output "service_bus_deployment_status_queue" {
-  value = azurerm_servicebus_queue.service_bus_deployment_status_update_queue.name
+  value =  module.service_bus[0].deployment_status_update_queue_name
+}
+
+output "service_bus_emulator_enabled" {
+  value = var.service_bus_emulator_enabled
 }
 
 output "state_store_resource_id" {

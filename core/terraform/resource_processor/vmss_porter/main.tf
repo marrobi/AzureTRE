@@ -184,12 +184,16 @@ resource "azurerm_role_assignment" "vmss_acr_pull" {
 }
 
 resource "azurerm_role_assignment" "vmss_sb_sender" {
+  count = var.service_bus_emulator_enabled ? 0 : 1
+
   scope                = var.service_bus_namespace_id
   role_definition_name = "Azure Service Bus Data Sender"
   principal_id         = azurerm_user_assigned_identity.vmss_msi.principal_id
 }
 
 resource "azurerm_role_assignment" "vmss_sb_receiver" {
+  count = var.service_bus_emulator_enabled ? 0 : 1
+
   scope                = var.service_bus_namespace_id
   role_definition_name = "Azure Service Bus Data Receiver"
   principal_id         = azurerm_user_assigned_identity.vmss_msi.principal_id

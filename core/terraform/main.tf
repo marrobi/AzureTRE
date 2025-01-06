@@ -131,7 +131,12 @@ module "airlock_resources" {
   api_principal_id                      = azurerm_user_assigned_identity.id.principal_id
   airlock_app_service_plan_sku          = var.core_app_service_plan_sku
   airlock_processor_subnet_id           = module.network.airlock_processor_subnet_id
-  airlock_servicebus                    = azurerm_servicebus_namespace.sb
+  servicebus_namespace_id               = local.service_bus_namespace_id
+  servicebus_connection_string          = local.service_bus_connection_string
+  data_deletion_queue_name              = local.service_bus_airlock_data_deletion_queue_name
+  status_changed_queue_name             = local.service_bus_airlock_status_changed_queue_name
+  scan_result_queue_name                = local.service_bus_airlock_scan_result_queue_name
+  blob_created_topic_name               = local.service_bus_airlock_blob_created_topic_name
   applicationinsights_connection_string = module.azure_monitor.app_insights_connection_string
   enable_malware_scanning               = var.enable_airlock_malware_scanning
   arm_environment                       = var.arm_environment
@@ -149,7 +154,6 @@ module "airlock_resources" {
   encryption_identity_id        = var.enable_cmk_encryption ? azurerm_user_assigned_identity.encryption[0].id : null
 
   depends_on = [
-    azurerm_servicebus_namespace.sb,
     module.network,
     azurerm_key_vault_key.tre_encryption[0]
   ]
@@ -166,10 +170,10 @@ module "resource_processor_vmss_porter" {
   resource_processor_subnet_id                     = module.network.resource_processor_subnet_id
   docker_registry_server                           = local.docker_registry_server
   resource_processor_vmss_porter_image_repository  = var.resource_processor_vmss_porter_image_repository
-  service_bus_namespace_id                         = azurerm_servicebus_namespace.sb.id
+  service_bus_namespace_id                         = module.service_bus[0].namespace_id
   service_bus_namespace_fqdn                       = local.service_bus_namespace_fqdn
-  service_bus_resource_request_queue               = azurerm_servicebus_queue.workspacequeue.name
-  service_bus_deployment_status_update_queue       = azurerm_servicebus_queue.service_bus_deployment_status_update_queue.name
+  service_bus_resource_request_queue               = module.service_bus[0].workspace_queue_name
+  service_bus_deployment_status_update_queue       = module.service_bus[0].deployment_status_update_queue_name
   mgmt_storage_account_name                        = var.mgmt_storage_account_name
   mgmt_resource_group_name                         = var.mgmt_resource_group_name
   terraform_state_container_name                   = var.terraform_state_container_name
@@ -186,6 +190,8 @@ module "resource_processor_vmss_porter" {
   enable_cmk_encryption                            = var.enable_cmk_encryption
   key_store_id                                     = local.key_store_id
   kv_encryption_key_name                           = local.cmk_name
+  service_bus_emulator_enabled                     = var.service_bus_emulator_enabled
+  service_bus_emulator_accept_license              = var.service_bus_emulator_accept_license
 
   depends_on = [
     module.network,
@@ -194,6 +200,41 @@ module "resource_processor_vmss_porter" {
     azurerm_role_assignment.keyvault_deployer_role,
     azurerm_key_vault_key.tre_encryption[0]
   ]
+}
+
+module "service_bus" {
+  count                                               = var.service_bus_emulator_enabled ? 0 : 1
+  source                                              = "./service_bus"
+  tre_id                                              = var.tre_id
+  core_vnet_id                                        = module.network.core_vnet_id
+  log_analytics_workspace_id                          = module.azure_monitor.log_analytics_workspace_id
+  api_user_assigned_identity_id                       = azurerm_user_assigned_identity.id.id
+  location                                            = var.location
+  resource_group_name                                 = azurerm_resource_group.core.name
+  tre_core_tags                                       = local.tre_core_tags
+  myip                                                = local.myip
+  airlock_events_subnet_id                            = module.network.airlock_events_subnet_id
+  airlock_notification_subnet_id                      = module.network.airlock_notification_subnet_id
+  resource_processor_subnet_id                        = module.network.resource_processor_subnet_id
+  deployment_status_update_queue_name                 = local.service_bus_deployment_status_update_queue_name
+  workspace_queue_name                                = local.service_bus_workspace_queue_name
+  airlock_step_result_queue_name                      = local.service_bus_airlock_step_result_queue_name
+  airlock_blob_created_topic_name                     = local.service_bus_airlock_blob_created_topic_name
+  airlock_data_deletion_queue_name                    = local.service_bus_airlock_data_deletion_queue_name
+  airlock_scan_result_queue_name                      = local.service_bus_airlock_scan_result_queue_name
+  airlock_status_changed_queue_name                   = local.service_bus_airlock_status_changed_queue_name
+  airlock_blob_created_al_processor_subscription_name = local.service_bus_airlock_blob_created_al_processor_subscription_name
+  servicebus_diagnostic_categories_enabled            = local.servicebus_diagnostic_categories_enabled
+  enable_cmk_encryption                               = var.enable_cmk_encryption
+  encryption_key_versionless_id                       = var.enable_cmk_encryption ? azurerm_key_vault_key.tre_encryption[0].versionless_id : null
+  encryption_identity_id                              = var.enable_cmk_encryption ? azurerm_user_assigned_identity.encryption[0].id : null
+  arm_environment                                     = var.arm_environment
+
+  depends_on = [
+    module.network,
+    azurerm_key_vault_key.tre_encryption[0]
+  ]
+
 }
 
 module "terraform_azurerm_environment_configuration" {

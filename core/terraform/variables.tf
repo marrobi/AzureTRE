@@ -155,6 +155,19 @@ variable "enable_local_debugging" {
   type        = bool
 }
 
+variable "service_bus_emulator_enabled" {
+  type        = bool
+  default     = false
+  description = "If true, the service bus emulator will be used instead of the service bus"
+
+}
+
+variable "service_bus_emulator_accept_license" {
+  type        = bool
+  default     = false
+  description = "If true, the service bus emulator EULA has been accepted"
+}
+
 # this var is optional and used to avoid assigning a role on every run.
 variable "arm_subscription_id" {
   description = "The subscription id to create the resource processor permission/role. If not supplied will use the TF context."

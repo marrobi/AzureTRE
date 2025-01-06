@@ -15,6 +15,24 @@ from services.logging import logger
 from azure.cosmos.exceptions import CosmosAccessConditionFailedError
 
 
+async def create_service_bus_client(credential, retry_total=3) -> ServiceBusClient:
+    if config.SERVICE_BUS_EMULATOR_ENABLED == "true":
+        from azure.servicebus._pyamqp import AMQPClient
+        # Disable TLS. Workaround for https://github.com/Azure/azure-sdk-for-python/issues/34273
+        org_init = AMQPClient.__init__
+
+        def new_init(self, hostname, **kwargs):
+            kwargs["use_tls"] = False
+            org_init(self, hostname, **kwargs)
+        AMQPClient.__init__ = new_init
+
+        # Create a ServiceBusClient using the connection string
+        return ServiceBusClient.from_connection_string(conn_str=config.SERVICE_BUS_EMULATOR_CONNECTION_STRING, logging_enable=True, retry_total=retry_total)
+
+    else:
+        return ServiceBusClient(config.SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE, credential)
+
+
 async def _send_message(message: ServiceBusMessage, queue: str):
     """
     Sends the given message to the given queue in the Service Bus.
@@ -25,7 +43,7 @@ async def _send_message(message: ServiceBusMessage, queue: str):
     :type queue: str
     """
     async with credentials.get_credential_async_context() as credential:
-        service_bus_client = ServiceBusClient(config.SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE, credential)
+        service_bus_client = await create_service_bus_client(credential)
 
         async with service_bus_client:
             sender = service_bus_client.get_queue_sender(queue_name=queue)

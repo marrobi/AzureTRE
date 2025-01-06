@@ -45,6 +45,9 @@ ENV PYTHONPATH=.
 COPY ./vmss_porter/requirements.txt /tmp/
 RUN pip3 --no-cache-dir install -r /tmp/requirements.txt
 
+# Copy Serice Bus Emulator files
+COPY ./service_bus_emulator /service_bus_emulator
+
 COPY . /app
 
 WORKDIR /app/

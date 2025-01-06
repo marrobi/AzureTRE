@@ -6,6 +6,7 @@ private_env_path="./core/private.env"
 : "${TRE_ID?"You have not set your TRE_ID in ./config_yaml"}"
 : "${RESOURCE_GROUP_NAME?"Check RESOURCE_GROUP_NAME is defined in ${private_env_path}"}"
 : "${SERVICE_BUS_RESOURCE_ID?"Check SERVICE_BUS_RESOURCE_ID is defined in ${private_env_path}"}"
+: "${SERVICE_BUS_EMULATOR_ENABLED?"Check SERVICE_BUS_EMULATOR_ENABLED is defined in ${private_env_path}"}"
 : "${STATE_STORE_RESOURCE_ID?"Check STATE_STORE_RESOURCE_ID is defined in ${private_env_path}"}"
 : "${COSMOSDB_MONGO_RESOURCE_ID?"Check COSMOSDB_MONGO_RESOURCE_ID is defined in ${private_env_path}"}"
 : "${COSMOSDB_ACCOUNT_NAME?"Check COSMOSDB_ACCOUNT_NAME is defined in ${private_env_path}"}"
@@ -76,15 +77,18 @@ else
 fi
 
 # Assign Role Permissions.
-az role assignment create \
-    --role "Azure Service Bus Data Sender" \
-    --assignee "${LOGGED_IN_OBJECT_ID}" \
-    --scope "${SERVICE_BUS_RESOURCE_ID}"
+# Only assign serivce bus if emulator is not enabled
+if [[ "${SERVICE_BUS_EMULATOR_ENABLED}" == "false" ]]; then
+  az role assignment create \
+      --role "Azure Service Bus Data Sender" \
+      --assignee "${LOGGED_IN_OBJECT_ID}" \
+      --scope "${SERVICE_BUS_RESOURCE_ID}"
 
-az role assignment create \
-    --role "Azure Service Bus Data Receiver" \
-    --assignee "${LOGGED_IN_OBJECT_ID}" \
-    --scope "${SERVICE_BUS_RESOURCE_ID}"
+  az role assignment create \
+      --role "Azure Service Bus Data Receiver" \
+      --assignee "${LOGGED_IN_OBJECT_ID}" \
+      --scope "${SERVICE_BUS_RESOURCE_ID}"
+fi
 
 az role assignment create \
     --role "Contributor" \
@@ -125,16 +129,19 @@ else
   RP_TESTING_SP_PASSWORD=${ARM_CLIENT_SECRET}
 fi
 
-# Assign Service Bus permissions to the Resource Processor SP
-az role assignment create \
-    --role "Azure Service Bus Data Sender" \
-    --assignee "${RP_TESTING_SP_APP_ID}" \
-    --scope "${SERVICE_BUS_RESOURCE_ID}"
+# Assign Service Bus permissions to the Resource Processor SP emulator not in use
+# Only assign serivce bus if emulator is not enabled
+if [[ "${SERVICE_BUS_EMULATOR_ENABLED}" == "false" ]]; then
+  az role assignment create \
+      --role "Azure Service Bus Data Sender" \
+      --assignee "${RP_TESTING_SP_APP_ID}" \
+      --scope "${SERVICE_BUS_RESOURCE_ID}"
 
-az role assignment create \
-    --role "Azure Service Bus Data Receiver" \
-    --assignee "${RP_TESTING_SP_APP_ID}" \
-    --scope "${SERVICE_BUS_RESOURCE_ID}"
+  az role assignment create \
+      --role "Azure Service Bus Data Receiver" \
+      --assignee "${RP_TESTING_SP_APP_ID}" \
+      --scope "${SERVICE_BUS_RESOURCE_ID}"
+fi
 
 # Assign get permissions on the keyvault
 az role assignment create \

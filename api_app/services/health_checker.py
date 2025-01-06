@@ -12,6 +12,7 @@ from core import config
 from models.schemas.status import StatusEnum
 from resources import strings
 from services.logging import logger
+from service_bus.helpers import create_service_bus_client
 
 
 async def create_state_store_status() -> Tuple[StatusEnum, str]:
@@ -37,7 +38,7 @@ async def create_service_bus_status(credential) -> Tuple[StatusEnum, str]:
     status = StatusEnum.ok
     message = ""
     try:
-        service_bus_client = ServiceBusClient(config.SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE, credential, retry_total=0)
+        service_bus_client = await create_service_bus_client(credential, retry_total=0)
         async with service_bus_client:
             receiver = service_bus_client.get_queue_receiver(queue_name=config.SERVICE_BUS_STEP_RESULT_QUEUE)
             async with receiver:

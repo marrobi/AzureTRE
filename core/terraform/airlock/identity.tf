@@ -19,13 +19,13 @@ resource "azurerm_role_assignment" "acrpull_role" {
 }
 
 resource "azurerm_role_assignment" "servicebus_sender" {
-  scope                = var.airlock_servicebus.id
+  scope                = var.servicebus_namespace_id
   role_definition_name = "Azure Service Bus Data Sender"
   principal_id         = azurerm_user_assigned_identity.airlock_id.principal_id
 }
 
 resource "azurerm_role_assignment" "servicebus_receiver" {
-  scope                = var.airlock_servicebus.id
+  scope                = var.servicebus_namespace_id
   role_definition_name = "Azure Service Bus Data Receiver"
   principal_id         = azurerm_user_assigned_identity.airlock_id.principal_id
 }

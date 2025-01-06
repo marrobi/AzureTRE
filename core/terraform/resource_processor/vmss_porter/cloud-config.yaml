@@ -42,6 +42,7 @@ write_files:
       SERVICE_BUS_DEPLOYMENT_STATUS_UPDATE_QUEUE=${service_bus_deployment_status_update_queue}
       SERVICE_BUS_RESOURCE_REQUEST_QUEUE=${service_bus_resource_request_queue}
       SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE=${service_bus_namespace}
+      SERVICE_BUS_EMULATOR_ENABLED=${service_bus_emulator_enabled}
       VMSS_MSI_ID=${vmss_msi_id}
       # the following line makes sure the right msi will be used if multiple are available on the VM
       AZURE_CLIENT_ID=${vmss_msi_id}
@@ -89,6 +90,7 @@ runcmd:
   - az cloud set --name ${azure_environment}
   - az login --identity -u ${vmss_msi_id}
   - az acr login --name ${docker_registry_server}
+  - /service_bus_emulator/service_bus_emulator_start.sh ${service_bus_emulator_enabled:-false} ${service_bus_emulator_accept_license:-false}
   - docker run -d -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock
     --restart always --env-file .env
     --name resource_processor1

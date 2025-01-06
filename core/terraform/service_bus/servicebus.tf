@@ -1,16 +1,16 @@
 resource "azurerm_servicebus_namespace" "sb" {
   name                         = "sb-${var.tre_id}"
-  location                     = azurerm_resource_group.core.location
-  resource_group_name          = azurerm_resource_group.core.name
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
   sku                          = "Premium"
   premium_messaging_partitions = "1"
   capacity                     = "1"
-  tags                         = local.tre_core_tags
+  tags                         = var.tre_core_tags
 
   # Block public access
   # See https://docs.microsoft.com/azure/service-bus-messaging/service-bus-service-endpoints
   network_rule_set {
-    ip_rules = var.enable_local_debugging ? [local.myip] : null
+    ip_rules = var.enable_local_debugging ? [var.myip] : null
 
     # Allows the Eventgrid to access the SB
     trusted_services_allowed = true
@@ -20,11 +20,11 @@ resource "azurerm_servicebus_namespace" "sb" {
     default_action                = "Deny"
     public_network_access_enabled = true
     network_rules {
-      subnet_id                            = module.network.airlock_events_subnet_id
+      subnet_id                            = var.airlock_events_subnet_id
       ignore_missing_vnet_service_endpoint = false
     }
     network_rules {
-      subnet_id                            = module.network.airlock_notification_subnet_id
+      subnet_id                            = var.airlock_notification_subnet_id
       ignore_missing_vnet_service_endpoint = false
     }
   }
@@ -32,8 +32,8 @@ resource "azurerm_servicebus_namespace" "sb" {
   dynamic "customer_managed_key" {
     for_each = var.enable_cmk_encryption ? [1] : []
     content {
-      key_vault_key_id = azurerm_key_vault_key.tre_encryption[0].id
-      identity_id      = azurerm_user_assigned_identity.encryption[0].id
+      key_vault_key_id = var.encryption_key_versionless_id
+      identity_id      = var.encryption_identity_id
     }
   }
 
@@ -49,7 +49,7 @@ resource "azurerm_servicebus_namespace" "sb" {
 }
 
 resource "azurerm_servicebus_queue" "workspacequeue" {
-  name         = "workspacequeue"
+  name         = var.workspace_queue_name
   namespace_id = azurerm_servicebus_namespace.sb.id
 
   partitioning_enabled = false
@@ -57,7 +57,7 @@ resource "azurerm_servicebus_queue" "workspacequeue" {
 }
 
 resource "azurerm_servicebus_queue" "service_bus_deployment_status_update_queue" {
-  name         = "deploymentstatus"
+  name         = var.deployment_status_update_queue_name
   namespace_id = azurerm_servicebus_namespace.sb.id
 
   # The returned payload might be large, especially for errors.
@@ -70,27 +70,27 @@ resource "azurerm_servicebus_queue" "service_bus_deployment_status_update_queue"
 
 resource "azurerm_private_dns_zone" "servicebus" {
   name                = module.terraform_azurerm_environment_configuration.private_links["privatelink.servicebus.windows.net"]
-  resource_group_name = azurerm_resource_group.core.name
-  tags                = local.tre_core_tags
+  resource_group_name = var.resource_group_name
+  tags                = var.tre_core_tags
   lifecycle { ignore_changes = [tags] }
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "servicebuslink" {
   name                  = "servicebuslink"
-  resource_group_name   = azurerm_resource_group.core.name
+  resource_group_name   = var.resource_group_name
   private_dns_zone_name = azurerm_private_dns_zone.servicebus.name
-  virtual_network_id    = module.network.core_vnet_id
-  tags                  = local.tre_core_tags
+  virtual_network_id    = var.core_vnet_id
+  tags                  = var.tre_core_tags
 
   lifecycle { ignore_changes = [tags] }
 }
 
 resource "azurerm_private_endpoint" "sbpe" {
   name                = "pe-${azurerm_servicebus_namespace.sb.name}"
-  location            = azurerm_resource_group.core.location
-  resource_group_name = azurerm_resource_group.core.name
-  subnet_id           = module.network.resource_processor_subnet_id
-  tags                = local.tre_core_tags
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = var.resource_processor_subnet_id
+  tags                = var.tre_core_tags
 
   lifecycle { ignore_changes = [tags] }
 
@@ -105,20 +105,15 @@ resource "azurerm_private_endpoint" "sbpe" {
     is_manual_connection           = false
     subresource_names              = ["namespace"]
   }
-
-  # private endpoints in serial
-  depends_on = [
-    azurerm_private_endpoint.filepe
-  ]
 }
 
 resource "azurerm_monitor_diagnostic_setting" "sb" {
   name                       = "diagnostics-${azurerm_servicebus_namespace.sb.name}"
   target_resource_id         = azurerm_servicebus_namespace.sb.id
-  log_analytics_workspace_id = module.azure_monitor.log_analytics_workspace_id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
 
   dynamic "enabled_log" {
-    for_each = setintersection(data.azurerm_monitor_diagnostic_categories.sb.log_category_types, local.servicebus_diagnostic_categories_enabled)
+    for_each = setintersection(data.azurerm_monitor_diagnostic_categories.sb.log_category_types, var.servicebus_diagnostic_categories_enabled)
     content {
       category = enabled_log.value
     }

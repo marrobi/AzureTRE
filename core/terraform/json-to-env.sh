@@ -58,6 +58,10 @@ jq -r '
             "env_var": "SERVICE_BUS_STEP_RESULT_QUEUE"
         },
         {
+            "path": "service_bus_emulator_enabled",
+            "env_var": "SERVICE_BUS_EMULATOR_ENABLED"
+        }
+        {
             "path": "state_store_resource_id",
             "env_var": "STATE_STORE_RESOURCE_ID"
         },

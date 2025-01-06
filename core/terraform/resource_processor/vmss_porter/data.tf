@@ -34,6 +34,8 @@ data "template_file" "cloudconfig" {
     rp_bundle_values                                 = local.rp_bundle_values_formatted
     enable_cmk_encryption                            = var.enable_cmk_encryption
     key_store_id                                     = var.key_store_id
+    service_bus_emulator_enabled                     = var.service_bus_emulator_enabled
+    service_bus_emulator_accept_license              = var.service_bus_emulator_accept_license
   }
 }
 

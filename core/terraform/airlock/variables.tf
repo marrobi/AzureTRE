@@ -56,12 +56,31 @@ variable "airlock_processor_subnet_id" {
 variable "applicationinsights_connection_string" {
   type = string
 }
-variable "airlock_servicebus" {
-  type = object({
-    id                                = string
-    default_primary_connection_string = string
-  })
+
+variable "servicebus_namespace_id"{
+  type = string
 }
+
+variable "servicebus_connection_string" {
+  type = string
+}
+
+variable "blob_created_topic_name" {
+  type = string
+}
+
+variable "status_changed_queue_name" {
+  type = string
+}
+
+variable "scan_result_queue_name" {
+  type = string
+}
+
+variable "data_deletion_queue_name" {
+  type = string
+}
+
 variable "tre_core_tags" {
   type = map(string)
 }

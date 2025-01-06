@@ -25,14 +25,6 @@ locals {
   data_deletion_topic_name  = "evgt-airlock-data-deletion-${local.topic_name_suffix}"
   scan_result_topic_name    = "evgt-airlock-scan-result-${local.topic_name_suffix}"
 
-  step_result_queue_name    = "airlock-step-result"
-  status_changed_queue_name = "airlock-status-changed"
-  scan_result_queue_name    = "airlock-scan-result"
-  data_deletion_queue_name  = "airlock-data-deletion"
-  blob_created_topic_name   = "airlock-blob-created"
-
-  blob_created_al_processor_subscription_name = "airlock-blob-created-airlock-processor"
-
   step_result_eventgrid_subscription_name       = "evgs-airlock-update-status"
   status_changed_eventgrid_subscription_name    = "evgs-airlock-status-changed"
   data_deletion_eventgrid_subscription_name     = "evgs-airlock-data-deletion"

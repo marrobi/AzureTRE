@@ -15,6 +15,7 @@ from db.repositories.airlock_requests import AirlockRequestRepository
 from models.domain.airlock_operations import StepResultStatusUpdateMessage
 from core import config, credentials
 from resources import strings
+from service_bus.helpers import create_service_bus_client
 
 
 class AirlockStatusUpdater():
@@ -31,7 +32,7 @@ class AirlockStatusUpdater():
             while True:
                 try:
                     async with credentials.get_credential_async_context() as credential:
-                        service_bus_client = ServiceBusClient(config.SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE, credential)
+                        service_bus_client = await create_service_bus_client(credential)
                         receiver = service_bus_client.get_queue_receiver(queue_name=config.SERVICE_BUS_STEP_RESULT_QUEUE)
                         logger.info(f"Looking for new messages on {config.SERVICE_BUS_STEP_RESULT_QUEUE} queue...")
                         async with receiver:

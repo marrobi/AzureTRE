@@ -38,8 +38,21 @@ locals {
     "privatelink.cognitiveservices.azure.com"
   ])
 
+  service_bus_workspace_queue_name = "workspacequeue"
+  service_bus_deployment_status_update_queue_name = "deploymentstatus"
+
+  service_bus_airlock_step_result_queue_name    = "airlock-step-result"
+  service_bus_airlock_status_changed_queue_name = "airlock-status-changed"
+  service_bus_airlock_scan_result_queue_name    = "airlock-scan-result"
+  service_bus_airlock_data_deletion_queue_name  = "airlock-data-deletion"
+  service_bus_airlock_blob_created_topic_name   = "airlock-blob-created"
+
+  service_bus_airlock_blob_created_al_processor_subscription_name = "airlock-blob-created-airlock-processor"
+
   # The followig regex extracts different parts of the service bus endpoint: scheme, fqdn, port, path, query and fragment. This allows us to extract the needed fqdn part.
-  service_bus_namespace_fqdn = regex("(?:(?P<scheme>[^:/?#]+):)?(?://(?P<fqdn>[^/?#:]*))?(?::(?P<port>[0-9]+))?(?P<path>[^?#]*)(?:\\?(?P<query>[^#]*))?(?:#(?P<fragment>.*))?", azurerm_servicebus_namespace.sb.endpoint).fqdn
+  service_bus_namespace_fqdn = var.service_bus_emulator_enabled ? "http://localhost" : regex("(?:(?P<scheme>[^:/?#]+):)?(?://(?P<fqdn>[^/?#:]*))?(?::(?P<port>[0-9]+))?(?P<path>[^?#]*)(?:\\?(?P<query>[^#]*))?(?:#(?P<fragment>.*))?",  module.service_bus[0].endpoint).fqdn
+  service_bus_namespace_id = var.service_bus_emulator_enabled ? "emulator" : module.service_bus[0].id
+  service_bus_connection_string = var.service_bus_emulator_enabled ? "" : module.service_bus[0].primary_connection_string
 
   # The key store for encryption keys could either be external or created by terraform
   key_store_id = var.enable_cmk_encryption ? (var.external_key_store_id != null ? var.external_key_store_id : data.azurerm_key_vault.encryption_kv[0].id) : ""

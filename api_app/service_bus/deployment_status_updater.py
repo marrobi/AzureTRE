@@ -20,6 +20,7 @@ from db.repositories.resources import ResourceRepository
 from models.domain.operation import DeploymentStatusUpdateMessage, Operation, OperationStep, Status
 from resources import strings
 from services.logging import logger, tracer
+from service_bus.helpers import create_service_bus_client
 
 
 class DeploymentStatusUpdater():
@@ -40,7 +41,7 @@ class DeploymentStatusUpdater():
             while True:
                 try:
                     async with credentials.get_credential_async_context() as credential:
-                        service_bus_client = ServiceBusClient(config.SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE, credential)
+                        service_bus_client = await create_service_bus_client(credential, retry_total=0)
 
                         logger.info(f"Looking for new messages on {config.SERVICE_BUS_DEPLOYMENT_STATUS_UPDATE_QUEUE} queue...")
                         # max_wait_time=1 -> don't hold the session open after processing of the message has finished

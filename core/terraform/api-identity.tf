@@ -27,18 +27,6 @@ resource "azurerm_role_assignment" "acrpull_role" {
   principal_id         = azurerm_user_assigned_identity.id.principal_id
 }
 
-resource "azurerm_role_assignment" "servicebus_sender" {
-  scope                = azurerm_servicebus_namespace.sb.id
-  role_definition_name = "Azure Service Bus Data Sender"
-  principal_id         = azurerm_user_assigned_identity.id.principal_id
-}
-
-resource "azurerm_role_assignment" "servicebus_receiver" {
-  scope                = azurerm_servicebus_namespace.sb.id
-  role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = azurerm_user_assigned_identity.id.principal_id
-}
-
 resource "azurerm_role_assignment" "cosmos_contributor" {
   scope                = azurerm_cosmosdb_account.tre_db_account.id
   role_definition_name = "Contributor"

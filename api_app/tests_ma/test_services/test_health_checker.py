@@ -40,7 +40,7 @@ async def test_get_state_store_status_other_exception(container_proxy_mock) -> N
 
 
 @patch("core.credentials.get_credential_async_context")
-@patch("services.health_checker.ServiceBusClient")
+@patch("service_bus.helpers.ServiceBusClient")
 async def test_get_service_bus_status_responding(service_bus_client_mock, get_credential_async_context) -> None:
     get_credential_async_context.return_value = AsyncMock()
     service_bus_client_mock().get_queue_receiver.__aenter__.return_value = AsyncMock()
@@ -51,7 +51,7 @@ async def test_get_service_bus_status_responding(service_bus_client_mock, get_cr
 
 
 @patch("core.credentials.get_credential_async_context")
-@patch("services.health_checker.ServiceBusClient")
+@patch("service_bus.helpers.ServiceBusClient")
 async def test_get_service_bus_status_not_responding(service_bus_client_mock, get_credential_async_context) -> None:
     get_credential_async_context.return_value = AsyncMock()
     service_bus_client_mock.return_value = None
@@ -63,7 +63,7 @@ async def test_get_service_bus_status_not_responding(service_bus_client_mock, ge
 
 
 @patch("core.credentials.get_credential_async_context")
-@patch("services.health_checker.ServiceBusClient")
+@patch("service_bus.helpers.create_service_bus_client")
 async def test_get_service_bus_status_other_exception(service_bus_client_mock, get_credential_async_context) -> None:
     get_credential_async_context.return_value = AsyncMock()
     service_bus_client_mock.return_value = None

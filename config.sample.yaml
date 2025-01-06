@@ -84,6 +84,11 @@ developer_settings:
 # the base workspace.
 #  enable_local_debugging: true
 
+# Enable service bus emulator for reduced development costs
+#  service_bus_emulator_enabled: true
+#  service_bus_emulator_accept_license: true
+
+
 # This setting enables customer-managed key encryption for all supported resources
 #  enable_cmk_encryption: true
 

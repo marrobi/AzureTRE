@@ -27,6 +27,8 @@ def get_config() -> dict:
         config["firewall_sku"] = os.environ.get("FIREWALL_SKU", "")
         config["enable_cmk_encryption"] = os.environ.get("ENABLE_CMK_ENCRYPTION", "false")
         config["key_store_id"] = os.environ.get("KEY_STORE_ID", None)
+        config["service_bus_emulator_enabled"] = os.environ.get("SERVICE_BUS_EMULATOR_ENABLED", "false")
+        config["service_bus_emulator_connection_string"] = "Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
 
         try:
             config["number_processes_int"] = int(config["number_processes"])
