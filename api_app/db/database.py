@@ -1,6 +1,7 @@
+import asyncio
 from azure.cosmos.aio import CosmosClient, DatabaseProxy, ContainerProxy
 
-from core.config import STATE_STORE_ENDPOINT, STATE_STORE_KEY, STATE_STORE_SSL_VERIFY, STATE_STORE_DATABASE
+from core.config import STATE_STORE_ENDPOINT, STATE_STORE_KEY, STATE_STORE_SSL_VERIFY, STATE_STORE_DATABASE, STATE_STORE_RESOURCES_CONTAINER, STATE_STORE_RESOURCE_TEMPLATES_CONTAINER, STATE_STORE_RESOURCES_HISTORY_CONTAINER, STATE_STORE_OPERATIONS_CONTAINER, STATE_STORE_AIRLOCK_REQUESTS_CONTAINER
 from core.credentials import get_credential_async
 from services.logging import logger
 
@@ -54,6 +55,14 @@ class Database(metaclass=Singleton):
         return cosmos_client
 
     @classmethod
+    async def get_database_proxy(cls) -> DatabaseProxy:
+        if cls._cosmos_client is None:
+            cls._cosmos_client = await cls._connect_to_db()
+            await cls._cosmos_client.create_database_if_not_exists(id=STATE_STORE_DATABASE)
+
+        return cls._cosmos_client.get_database_client(STATE_STORE_DATABASE)
+
+    @classmethod
     async def get_container_proxy(cls, container_name) -> ContainerProxy:
         if cls._cosmos_client is None:
             cls._cosmos_client = await cls._connect_to_db()
@@ -62,3 +71,35 @@ class Database(metaclass=Singleton):
             cls._database_proxy = cls._cosmos_client.get_database_client(STATE_STORE_DATABASE)
 
         return cls._database_proxy.get_container_client(container_name)
+
+    @classmethod
+    async def bootstrap_database(cls) -> bool:
+        try:
+
+            database_proxy: DatabaseProxy = await Database().get_database_proxy()
+
+            await asyncio.gather(
+                cls._create_container_if_not_exists(database_proxy, STATE_STORE_RESOURCES_CONTAINER, "/id"),
+                cls._create_container_if_not_exists(database_proxy, STATE_STORE_RESOURCE_TEMPLATES_CONTAINER, "/id"),
+                cls._create_container_if_not_exists(database_proxy, STATE_STORE_RESOURCES_HISTORY_CONTAINER, "/resourceId"),
+                cls._create_container_if_not_exists(database_proxy, STATE_STORE_OPERATIONS_CONTAINER, "/id"),
+                cls._create_container_if_not_exists(database_proxy, STATE_STORE_AIRLOCK_REQUESTS_CONTAINER, "/id")
+            )
+
+            return True
+
+        except Exception as e:
+            logger.exception("Could not bootstrap database")
+            logger.debug(e)
+            return False
+
+    @classmethod
+    async def _create_container_if_not_exists(cls, database_proxy, container, partition_key_path):
+
+        container = await database_proxy.create_container_if_not_exists(
+            id=container,
+            partition_key={
+                'paths': [partition_key_path],
+                'kind': 'Hash'
+            }
+        )

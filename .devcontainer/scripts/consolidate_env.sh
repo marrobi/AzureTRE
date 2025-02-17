@@ -24,3 +24,18 @@ yq e "$GET_LEAF_KEYS|$UPCASE_KEYS| $FORMAT_TO_ENV_FILE" config.yaml > $FILE
 
 # shellcheck disable=SC2086
 cat $WORKDIR/core/private.env >> $FILE
+
+# shellcheck source=/dev/null
+source "$FILE"
+
+# if using Cosmos DB emulator set the state store endpoint, account name and key
+if [ -n "${COSMOSDB_EMULATOR:-}" ]; then
+  echo -e "STATE_STORE_ENDPOINT=http://localhost:8081\n\
+STATE_STORE_ACCOUNT_NAME=localhost\n\
+STATE_STORE_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==\n\
+STATE_STORE_SSL_VERIFY=false" >> "$FILE"
+
+  # Run Cosmos DB emulator
+  docker compose -f "$WORKDIR/devops/emulators/docker-compose.yaml" up -d
+fi
+

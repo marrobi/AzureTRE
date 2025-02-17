@@ -15,7 +15,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def resource_template_repo():
-    with patch('api.dependencies.database.Database.get_container_proxy', return_value=None):
+    with patch('db.database.Database.get_container_proxy', return_value=None):
         resource_template_repo = await ResourceTemplateRepository().create()
         yield resource_template_repo
 

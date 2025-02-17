@@ -19,7 +19,7 @@ async def test_get_state_store_status_responding(_) -> None:
     assert message == ""
 
 
-@patch("api.dependencies.database.Database.get_container_proxy")
+@patch("db.database.Database.get_container_proxy")
 async def test_get_state_store_status_not_responding(container_proxy_mock) -> None:
     container_proxy_mock.return_value = None
     container_proxy_mock.side_effect = ServiceRequestError(message="some message")
@@ -29,7 +29,7 @@ async def test_get_state_store_status_not_responding(container_proxy_mock) -> No
     assert message == strings.STATE_STORE_ENDPOINT_NOT_RESPONDING
 
 
-@patch("api.dependencies.database.Database.get_container_proxy")
+@patch("db.database.Database.get_container_proxy")
 async def test_get_state_store_status_other_exception(container_proxy_mock) -> None:
     container_proxy_mock.return_value = None
     container_proxy_mock.side_effect = Exception()

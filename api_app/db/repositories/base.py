@@ -3,7 +3,7 @@ from azure.cosmos.aio import ContainerProxy
 from azure.core import MatchConditions
 from pydantic import BaseModel
 
-from api.dependencies.database import Database
+from db.database import Database
 from db.errors import UnableToAccessDatabase
 
 

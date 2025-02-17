@@ -16,7 +16,7 @@ from api.errors.http_error import http_error_handler
 from api.errors.validation_error import http422_error_handler
 from api.errors.generic_error import generic_error_handler
 from core import config
-from db.events import bootstrap_database
+from db.database import Database
 from services.logging import initialize_logging, logger
 from service_bus.deployment_status_updater import DeploymentStatusUpdater
 from service_bus.airlock_request_status_update import AirlockStatusUpdater
@@ -24,7 +24,7 @@ from service_bus.airlock_request_status_update import AirlockStatusUpdater
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    while not await bootstrap_database():
+    while not await Database().bootstrap_database():
         await asyncio.sleep(5)
         logger.warning("Database connection could not be established")
 

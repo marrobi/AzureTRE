@@ -3,7 +3,7 @@ import pytest_asyncio
 from mock import AsyncMock, patch
 from azure.cosmos.aio import CosmosClient, DatabaseProxy
 
-from api.dependencies.database import Database
+from api_app.db.database import Database
 from models.domain.request_action import RequestAction
 from models.domain.resource import Resource
 from models.domain.user_resource import UserResource
@@ -577,7 +577,7 @@ def simple_pipeline_step() -> PipelineStep:
 
 @pytest_asyncio.fixture(autouse=True)
 async def no_database():
-    with patch('api.dependencies.database.get_credential_async', return_value=AsyncMock()), \
-            patch('api.dependencies.database.CosmosClient', return_value=AsyncMock(spec=CosmosClient)) as cosmos_client_mock:
+    with patch('db.database.get_credential_async', return_value=AsyncMock()), \
+            patch('db.database.CosmosClient', return_value=AsyncMock(spec=CosmosClient)) as cosmos_client_mock:
         cosmos_client_mock.return_value.get_database_client.return_value = AsyncMock(spec=DatabaseProxy)
         yield Database()

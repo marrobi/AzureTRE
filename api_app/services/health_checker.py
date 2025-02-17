@@ -5,7 +5,7 @@ from azure.mgmt.compute.aio import ComputeManagementClient
 from azure.cosmos.exceptions import CosmosHttpResponseError
 from azure.cosmos.aio import ContainerProxy
 from azure.servicebus.exceptions import ServiceBusConnectionError, ServiceBusAuthenticationError
-from api.dependencies.database import Database
+from db.database import Database
 from core.config import STATE_STORE_RESOURCES_CONTAINER
 
 from core import config

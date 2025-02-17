@@ -11,7 +11,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def workspace_migrator():
-    with patch('api.dependencies.database.Database.get_container_proxy', return_value=AsyncMock()):
+    with patch('db.database.Database.get_container_proxy', return_value=AsyncMock()):
         workspace_migrator = await WorkspaceMigration.create()
         yield workspace_migrator
 

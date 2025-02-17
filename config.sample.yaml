@@ -95,3 +95,7 @@ developer_settings:
 # If you want to use TRE_URL to point to your local TRE API instance or be configured to another cloud provider
 # uncomment and set this variable
 #  tre_url: __CHANGE_ME__
+
+# To use the cosmosdb emulator, uncomment the following line
+#  cosmosdb_emulator: true
+
