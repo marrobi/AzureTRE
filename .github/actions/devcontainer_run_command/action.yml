@@ -58,7 +58,7 @@ inputs:
   ENABLE_SWAGGER:
     description: "Determines whether the Swagger interface for the API will be available."
     required: false
-  SWAGGER_UI_CLIENT_ID:
+  UI_CLIENT_ID:
     description: "The Swagger UI Client ID."
     required: false
   API_CLIENT_SECRET:
@@ -222,8 +222,8 @@ runs:
           -e TF_VAR_arm_subscription_id="${{ fromJSON(inputs.AZURE_CREDENTIALS).subscriptionId }}" \
           -e TF_VAR_enable_swagger="${{ (inputs.ENABLE_SWAGGER != ''
             && inputs.ENABLE_SWAGGER) || 'false' }}" \
-          -e SWAGGER_UI_CLIENT_ID="${{ inputs.SWAGGER_UI_CLIENT_ID }}" \
-          -e TF_VAR_swagger_ui_client_id="${{ inputs.SWAGGER_UI_CLIENT_ID }}" \
+          -e UI_CLIENT_ID="${{ inputs.UI_CLIENT_ID }}" \
+          -e TF_VAR_UI_CLIENT_ID="${{ inputs.UI_CLIENT_ID }}" \
           -e TF_VAR_core_address_space="${{ (inputs.CORE_ADDRESS_SPACE != ''
             && inputs.CORE_ADDRESS_SPACE) || '10.0.0.0/22' }}" \
           -e TF_VAR_tre_address_space="${{ (inputs.TRE_ADDRESS_SPACE != ''

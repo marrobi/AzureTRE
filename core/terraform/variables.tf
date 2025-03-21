@@ -76,7 +76,7 @@ variable "enable_swagger" {
   sensitive   = false
 }
 
-variable "swagger_ui_client_id" {
+variable "ui_client_id" {
   type        = string
   description = "The client id (app id) of the registration in Azure AD for the Swagger UI"
   sensitive   = true

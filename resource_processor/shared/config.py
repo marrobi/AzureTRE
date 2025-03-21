@@ -38,6 +38,7 @@ def get_config() -> dict:
         config["arm_use_msi"] = os.environ.get("ARM_USE_MSI", "false")
         config["arm_subscription_id"] = os.environ["AZURE_SUBSCRIPTION_ID"]
         config["arm_client_id"] = os.environ["ARM_CLIENT_ID"]
+        config["ui_client_id"] = os.environ["UI_CLIENT_ID"]
         config["arm_tenant_id"] = os.environ["AZURE_TENANT_ID"]
 
         if config["arm_use_msi"] == "false":

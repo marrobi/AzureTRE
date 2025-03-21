@@ -34,7 +34,7 @@ The contents of your authentication section in `config.yaml` file should contain
   | `TEST_ACCOUNT_CLIENT_SECRET` | This will be created by default, but can be disabled by editing `/devops/scripts/create_aad_assets.sh`. This is the user that will run the tests for you |
   | `API_CLIENT_ID` | API application (client) ID. |
   | `API_CLIENT_SECRET` | API application client secret. |
-  | `SWAGGER_UI_CLIENT_ID` | Swagger (OpenAPI) UI application (client) ID. |
+  | `UI_CLIENT_ID` | Swagger (OpenAPI) UI application (client) ID. |
   | `WORKSPACE_API_CLIENT_ID` | Each workspace is secured behind it's own AD Application|
   | `WORKSPACE_API_CLIENT_SECRET` | Each workspace is secured behind it's own AD Application. This is the secret for that application.|
 

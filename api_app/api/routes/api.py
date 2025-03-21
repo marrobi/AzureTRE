@@ -86,7 +86,7 @@ async def get_swagger(request: Request):
         oauth2_redirect_url="/api/docs/oauth2-redirect",
         init_oauth={
             "usePkceWithAuthorizationCodeGrant": True,
-            "clientId": config.SWAGGER_UI_CLIENT_ID,
+            "clientId": config.UI_CLIENT_ID,
             "scopes": ["openid", "offline_access", config.API_ROOT_SCOPE]
         }
     )
@@ -157,7 +157,7 @@ async def get_workspace_swagger(workspace_id, request: Request, workspace_repo=D
         oauth2_redirect_url="/api/docs/oauth2-redirect",
         init_oauth={
             "usePkceWithAuthorizationCodeGrant": True,
-            "clientId": config.SWAGGER_UI_CLIENT_ID,
+            "clientId": config.UI_CLIENT_ID,
             "scopes": ["openid", "offline_access", scope]
         }
     )

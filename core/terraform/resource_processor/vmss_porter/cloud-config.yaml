@@ -45,6 +45,7 @@ write_files:
       VMSS_MSI_ID=${vmss_msi_id}
       # the following line makes sure the right msi will be used if multiple are available on the VM
       AZURE_CLIENT_ID=${vmss_msi_id}
+      UI_CLIENT_ID=${ui_client_id}
       AZURE_SUBSCRIPTION_ID=${arm_subscription_id}
       ARM_CLIENT_ID=${vmss_msi_id}
       AZURE_TENANT_ID=${arm_tenant_id}
@@ -76,7 +77,7 @@ write_files:
         echo "Free space too low, pruning..."
         docker system prune -f
       fi
-    permissions: '0755'
+    permissions: "0755"
 
 runcmd:
   # Those are useful live debug commands. Check the docs for details:

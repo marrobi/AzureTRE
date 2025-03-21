@@ -179,6 +179,7 @@ module "resource_processor_vmss_porter" {
   key_vault_url                                    = azurerm_key_vault.kv.vault_uri
   key_vault_id                                     = azurerm_key_vault.kv.id
   subscription_id                                  = var.arm_subscription_id
+  ui_client_id                                     = var.ui_client_id
   resource_processor_number_processes_per_instance = var.resource_processor_number_processes_per_instance
   resource_processor_vmss_sku                      = var.resource_processor_vmss_sku
   arm_environment                                  = var.arm_environment

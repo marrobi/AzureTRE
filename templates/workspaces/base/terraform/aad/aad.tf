@@ -101,6 +101,34 @@ resource "azuread_service_principal" "workspace" {
   }
 }
 
+data "azuread_application" "ui" {
+  application_id = var.ui_client_id
+}
+
+resource "null_resource" "grant_admin_consent" {
+
+  triggers = {
+    app_id    = azuread_application.workspace.object_id
+    ui_app_id = data.azuread_application.ui.object_id
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      az login --service-principal -u ${data.azuread_client_config.current.object_id} -p ${var.auth_client_secret} --tenant ${var.auth_tenant_id}
+      az ad app permission grant \
+        --id ${azuread_application.workspace.object_id} \
+        --api 00000003-0000-0000-c000-000000000000 \
+        --scope "email openid profile" \
+      az ad app permission grant \
+        --id ${data.azuread_application.ui.object_id} \
+        --api ${azuread_application.workspace.application_id} \
+        --scope "email openid profile api://${var.workspace_resource_name_suffix}/user_impersonation"
+    EOT
+  }
+
+  depends_on = [azuread_application.workspace]
+}
+
 resource "azuread_service_principal_password" "workspace" {
   service_principal_id = azuread_service_principal.workspace.object_id
 }

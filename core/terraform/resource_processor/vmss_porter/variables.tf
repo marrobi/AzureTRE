@@ -69,6 +69,9 @@ variable "subscription_id" {
   type        = string
   default     = ""
 }
+variable "ui_client_id" {
+  type = string
+}
 variable "logging_level" {
   type = string
 }

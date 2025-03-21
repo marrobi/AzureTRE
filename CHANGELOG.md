@@ -1,6 +1,7 @@
 <!-- markdownlint-disable MD041 -->
 ## 0.22.0 (Unreleased)
 **BREAKING CHANGES & MIGRATIONS**:
+* swagger_ui_client_id is now changed to ui_client_id
 
 ENHANCEMENTS:
 * Deny public access to TRE management storage account, and add private endpoint for TRE core [#4353](https://github.com/microsoft/AzureTRE/issues/4353)

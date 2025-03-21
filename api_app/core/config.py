@@ -63,7 +63,7 @@ APPLICATIONINSIGHTS_CONNECTION_STRING: str = config("APPLICATIONINSIGHTS_CONNECT
 # Authentication
 API_CLIENT_ID: str = config("API_CLIENT_ID", default="")
 API_CLIENT_SECRET: str = config("API_CLIENT_SECRET", default="")
-SWAGGER_UI_CLIENT_ID: str = config("SWAGGER_UI_CLIENT_ID", default="")
+UI_CLIENT_ID: str = config("UI_CLIENT_ID", default="")
 AAD_TENANT_ID: str = config("AAD_TENANT_ID", default="")
 
 API_AUDIENCE: str = config("API_AUDIENCE", default=API_CLIENT_ID)

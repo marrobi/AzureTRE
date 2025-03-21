@@ -12,6 +12,7 @@ Access to workspaces is also controlled using app registrations - one per worksp
 | Airlock Manager | Provides airlock managers access to the Workspace and ability to review airlock requests. | Users/Groups,Applications | `AirlockManager` |
 
 ## Microsoft Graph Permissions
+
 | Name | Type* | Admin consent required |  TRE usage |
 | --- | -- | -----| --------- |
 |email|Delegated|No|Used to read the user's email address when creating TRE resources|
@@ -37,7 +38,7 @@ Example on how to run the script:
   ./devops/scripts/aad/create_workspace_application.sh \
     --name "${TRE_ID} - workspace 11" \
     --admin-consent \
-    --ux-clientid "${SWAGGER_UI_CLIENT_ID}" \
+    --ux-clientid "${UI_CLIENT_ID}" \
     --automation-clientid "${TEST_ACCOUNT_CLIENT_ID}" \
     --application-admin-clientid "${APPLICATION_ADMIN_CLIENT_ID}"
 ```
@@ -58,6 +59,7 @@ Example on how to run the script:
 If you do not wish to grant the Automation App permission to your workspace, just remove the `--automation-clientid` from the command.
 
 ## Environment Variables
+
 | Variable | Description | Location |
 | -------- | ----------- | -------- |
 |WORKSPACE_API_CLIENT_ID|The Client Id|`./config.yaml`|

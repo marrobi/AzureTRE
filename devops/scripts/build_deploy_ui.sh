@@ -13,7 +13,7 @@ ui_version=$(jq -r '.version' package.json)
 activeDirectoryUri="$(az cloud show --query endpoints.activeDirectory --output tsv)"
 
 # replace the values in the config file
-jq --arg rootClientId "${SWAGGER_UI_CLIENT_ID}" \
+jq --arg rootClientId "${UI_CLIENT_ID}" \
   --arg rootTenantId "${AAD_TENANT_ID}" \
   --arg treApplicationId "api://${API_CLIENT_ID}" \
   --arg treUrl "/api" \

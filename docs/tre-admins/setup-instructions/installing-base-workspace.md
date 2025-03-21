@@ -23,7 +23,7 @@ As explained in the [auth guide](../auth.md), every workspace has a correspondin
   ./devops/scripts/aad/create_workspace_application.sh \
     --name "${TRE_ID} - workspace 1" \
     --admin-consent \
-    --ux-clientid "${SWAGGER_UI_CLIENT_ID}" \
+    --ux-clientid "${UI_CLIENT_ID}" \
     --automation-clientid "${TEST_ACCOUNT_CLIENT_ID}" \
     --application-admin-clientid "${APPLICATION_ADMIN_CLIENT_ID}"
 ```

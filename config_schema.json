@@ -126,7 +126,7 @@
           "type": "string",
           "minLength": 11
         },
-        "swagger_ui_client_id": {
+        "ui_client_id": {
           "description": "Swagger/UI application (client) ID.",
           "type": "string",
           "pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$"
