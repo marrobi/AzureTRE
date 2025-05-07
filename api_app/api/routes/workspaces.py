@@ -31,6 +31,7 @@ from services.authentication import get_current_admin_user, \
     get_current_workspace_owner_or_researcher_user_or_airlock_manager_or_tre_admin
 from services.authentication import extract_auth_information
 from services.azure_resource_status import get_azure_resource_status
+from services.azure_resource_metrics import get_azure_resource_metrics
 from azure.cosmos.exceptions import CosmosAccessConditionFailedError
 from .resource_helpers import cascaded_update_resource, delete_validation, enrich_resource_with_available_upgrades, get_identity_role_assignments, save_and_deploy_resource, construct_location_header, send_uninstall_message, \
     send_custom_action_message, send_resource_request_message, update_user_resource
@@ -387,6 +388,7 @@ async def retrieve_user_resource_by_id(
 
     if 'azure_resource_id' in user_resource.properties:
         user_resource.azureStatus = get_azure_resource_status(user_resource.properties['azure_resource_id'])
+        user_resource.azureMetrics = get_azure_resource_metrics(user_resource.properties['azure_resource_id'])
 
     await enrich_resource_with_available_upgrades(user_resource, resource_template_repo)
     return UserResourceInResponse(userResource=user_resource)

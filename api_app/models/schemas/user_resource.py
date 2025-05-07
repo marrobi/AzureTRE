@@ -21,6 +21,10 @@ def get_sample_user_resource(user_resource_id: str) -> dict:
         "azureStatus": {
             "powerState": "Running",
         },
+        "azureMetrics": {
+            "Percentage CPU": 12.5,
+            "Available Memory Bytes": 123456789
+        },
         "resourceType": ResourceType.UserResource
     }
 
