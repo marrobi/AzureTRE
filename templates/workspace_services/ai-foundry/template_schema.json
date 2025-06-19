@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/microsoft/AzureTRE/templates/workspace_services/ai-foundry/template_schema.json",
+  "type": "object",
+  "title": "Azure AI Foundry",
+  "description": "Azure AI Foundry (Hub and Project)",
+  "required": [],
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "title": "Name for the workspace service",
+      "description": "The name of the workspace service to be displayed to users",
+      "default": "Azure AI Foundry",
+      "updateable": true
+    },
+    "description": {
+      "type": "string",
+      "title": "Description of the workspace service",
+      "description": "Description of the workspace service",
+      "default": "Build, evaluate, and deploy generative AI apps and custom copilots with Azure AI Foundry",
+      "updateable": true
+    },
+    "overview": {
+      "type": "string",
+      "title": "Workspace Service Overview",
+      "description": "Long form description of the workspace service, in markdown syntax",
+      "default": "Azure AI Foundry is a unified platform that gives users seamless access to a wide range of advanced AI models from providers like OpenAI, Meta, and Mistral—all through a single interface. It enables teams to integrate AI into their workflows for tasks like summarization, translation, and content generation, without needing to manage infrastructure or write custom code.",
+      "updateable": true
+    },
+    "is_exposed_externally": {
+      "$id": "#/properties/is_exposed_externally",
+      "type": "boolean",
+      "title": "Expose externally",
+      "description": "Is the Azure AI Foundry workspace accessible from outside of the workspace network. Also opens firewall rules to allow compute instances with public IP addresses.",
+      "default": false
+    },
+    "log_analytics_workspace_name": {
+      "$id": "#/properties/log_analytics_workspace_name",
+      "type": "string",
+      "title": "Log Analytics Workspace Name"
+    },
+    "workspace_owners_group_id": {
+      "type": "string",
+      "title": "Workspace Owners Group ID",
+      "description": "The Microsoft Entra ID group ID of workspace owners who will be granted Contributor roles"
+    },
+    "workspace_researchers_group_id": {
+      "type": "string",
+      "title": "Workspace Researchers Group ID",
+      "description": "The Microsoft Entra ID group ID of workspace researchers who will be granted User type roles"
+    }
+  },
+  "uiSchema": {
+    "log_analytics_workspace_name": {
+      "classNames": "tre-hidden"
+    },
+    "workspace_owners_group_id": {
+      "classNames": "tre-hidden"
+    },
+    "workspace_researchers_group_id": {
+      "classNames": "tre-hidden"
+    }
+  },
+  "pipeline": {
+    "install": [
+      {
+        "stepId": "main",
+        "properties": [
+          {
+            "name": "log_analytics_workspace_name",
+            "type": "string",
+            "value": "{{ resource.parent.properties.log_analytics_workspace_name }}"
+          },
+          {
+            "name": "workspace_owners_group_id",
+            "type": "string",
+            "value": "{{ resource.parent.properties.workspace_owners_group_id }}"
+          },
+          {
+            "name": "workspace_researchers_group_id",
+            "type": "string",
+            "value": "{{ resource.parent.properties.workspace_researchers_group_id }}"
+          }
+        ]
+      },
+      {
+        "stepId": "260421b3-7308-491f-b531-e007cdc0ff46",
+        "stepTitle": "Add network firewall rules for AI Foundry",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_aifoundry",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AI_Foundry_Client",
+                  "description": "AI Foundry Client",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_aifoundry_client",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AI_Foundry_client",
+                  "description": "AI Foundry rules",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "target_fqdns": [
+                    "aadcdn.msauth.net",
+                    "aadcdn.msftauthimages.net",
+                    "{{ resource.properties.ai_foundry_fqdn }}"
+                  ],
+                  "protocols": [
+                    {
+                      "port": "443",
+                      "type": "Https"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "upgrade": [
+      {
+        "stepId": "main"
+      },
+      {
+        "stepId": "260421b3-7308-491f-b531-e007cdc0ff47",
+        "stepTitle": "Add network firewall rules for AI Foundry",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_aifoundry",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AI_Foundry_Client",
+                  "description": "AI Foundry Client",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_aifoundry_client",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AI_Foundry_client",
+                  "description": "AI Foundry rules",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "target_fqdns": [
+                    "aadcdn.msauth.net",
+                    "aadcdn.msftauthimages.net",
+                    "{{ resource.properties.ai_foundry_fqdn }}"
+                  ],
+                  "protocols": [
+                    {
+                      "port": "443",
+                      "type": "Https"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "uninstall": [
+      {
+        "stepId": "main"
+      }
+    ]
+  }
+}

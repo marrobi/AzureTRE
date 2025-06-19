@@ -75,8 +75,11 @@ async def update_resource_for_step(operation_step: OperationStep, resource_repo:
         return step_resource
 
     pipeline_primary_action = parent_template_pipeline_dict[primary_action]
-    is_first_main_step = pipeline_primary_action and len(pipeline_primary_action) == 1 and pipeline_primary_action[0]['stepId'] == 'main'
-    if not pipeline_primary_action or is_first_main_step:
+    is_main_step = pipeline_primary_action and len(pipeline_primary_action) == 1 and pipeline_primary_action[0]['stepId'] == 'main'
+    has_properties = is_main_step and bool(pipeline_primary_action[0].get('properties'))
+
+    # Only return if there are no steps or if the only step is 'main' and it has no properties
+    if not pipeline_primary_action or (is_main_step and not has_properties):
         return step_resource
 
     # get the template step
