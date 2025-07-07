@@ -7,6 +7,7 @@ locals {
   core_resource_group_name       = "rg-${var.tre_id}"
   aad_tenant_id                  = data.azurerm_key_vault_secret.aad_tenant_id.value
   issuer                         = "${var.aad_authority_url}/${local.aad_tenant_id}/v2.0"
+  authorization_endpoint         = "${var.aad_authority_url}/${local.aad_tenant_id}/oauth2/v2.0/authorize"
   jwks_endpoint                  = "${var.aad_authority_url}/${local.aad_tenant_id}/discovery/v2.0/keys"
   webapp_suffix                  = module.terraform_azurerm_environment_configuration.web_app_suffix
   api_url                        = "https://api-${var.tre_id}.${local.webapp_suffix}"

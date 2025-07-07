@@ -1,8 +1,15 @@
 FROM maven:3-jdk-11-slim AS client_build
 
 COPY ./guacamole-auth-azure/pom.xml /pom.xml
-# cache dependencies in a separate layer
-RUN mvn package -Dmaven.test.skip
+COPY ./guacamole-auth-azure/download_and_install_guacamole_auth_sso.sh /download_and_install_guacamole_auth_sso.sh
+
+# Install wget
+RUN apt-get update && apt-get install -y wget unzip
+
+RUN bash /download_and_install_guacamole_auth_sso.sh
+
+# Download dependencies without source files first (for Docker layer caching)
+RUN mvn dependency:resolve
 
 COPY ./guacamole-auth-azure/src /src
 COPY ./docker/maven_package_and_exit_succesfully.sh /tmp/
@@ -11,7 +18,7 @@ RUN bash /tmp/maven_package_and_exit_succesfully.sh
 FROM scratch AS test-results
 COPY --from=client_build /target/surefire-reports/* /
 
-FROM guacamole/guacd:1.5.5
+FROM guacamole/guacd:1.6.0
 
 ARG GUACAMOLE_AZURE_VERSION=0.4.1
 
@@ -53,14 +60,9 @@ COPY ./docker/services /etc/services.d/
 COPY --from=client_build /target/lib/* "${GUACAMOLE_LIB}"
 COPY --from=client_build "/target/guacamole-auth-tre-${GUACAMOLE_AZURE_VERSION}.jar" "${GUACAMOLE_HOME}/extensions/"
 
-RUN wget -O "${GUACAMOLE_HOME}/guacamole.war" "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/1.5.5/binary/guacamole-1.5.5.war" --progress=dot:giga
+# Standard SSO OpenID extension removed - using custom AzureTRE provider only
 
-ENV OAUTH2_PROXY_HOME=/etc/oauth2-proxy
-RUN OAUTH2_PROXY_ARCHIVE=oauth2-proxy.tar.gz && \
-    wget -O "$OAUTH2_PROXY_ARCHIVE" "https://github.com/oauth2-proxy/oauth2-proxy/releases/download/v7.7.1/oauth2-proxy-v7.7.1.linux-amd64.tar.gz" --progress=dot:giga && \
-    mkdir -p "$OAUTH2_PROXY_HOME" && \
-    tar zxpf "$OAUTH2_PROXY_ARCHIVE" -C "$OAUTH2_PROXY_HOME" --strip-components=1 && \
-    rm -f "$OAUTH2_PROXY_ARCHIVE"
+RUN wget -O "${GUACAMOLE_HOME}/guacamole.war" "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/1.6.0/binary/guacamole-1.6.0.war" --progress=dot:giga
 
 COPY ./docker/index.jsp "$CATALINA_BASE"/webapps/ROOT/index.jsp
 
@@ -69,4 +71,4 @@ ENV CATALINA_OPTS="$CATALINA_OPTS -javaagent:/tmp/applicationinsights-agent.jar"
 
 ENTRYPOINT [ "/init" ]
 
-EXPOSE 80 2222
+EXPOSE 8080 2222

@@ -10,6 +10,10 @@ variable "tre_id" {
   type        = string
   description = "The TRE ID"
 }
+variable "api_client_id" {
+  type        = string
+  description = "The API client ID"
+}
 variable "mgmt_resource_group_name" {
   type        = string
   description = "The management resource group name"
@@ -57,6 +61,11 @@ variable "guac_disable_upload" {
 variable "guac_server_layout" {
   type        = string
   description = "Server keyboard layout"
+}
+variable "guacd_log_level" {
+  type        = string
+  description = "Guacamole daemon log level (trace, debug, info, warning, error)"
+  default     = "info"
 }
 variable "is_exposed_externally" {
   type        = bool

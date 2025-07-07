@@ -46,7 +46,9 @@ import java.util.Calendar;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -433,6 +435,89 @@ public class AuthenticationProviderServiceTest {
                     e.getTargetException().getMessage(),
                     CoreMatchers.containsString("The Token has expired on"));
             }
+        }
+    }
+
+    @Test
+    public void getWorkspaceLoginURIUsesWorkspaceClientIdNotEnvironment() throws Exception {
+        // Given: Different client IDs in parameter vs environment
+        final String workspaceClientId = "workspace-client-123";
+        final String envClientId = "env-client-456";
+        final String workspaceId = "workspace-789";
+
+        // Set environment variables
+        environmentVariables.set("OPENID_AUTHORIZATION_ENDPOINT", "https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize");
+        environmentVariables.set("OPENID_REDIRECT_URI", "http://localhost:8080/guacamole/");
+        environmentVariables.set("OPENID_CLIENT_ID", envClientId); // This should NOT be used
+
+        final AuthenticationProviderService service = new AuthenticationProviderService();
+
+        // When: Generate workspace login URI
+        final java.net.URI loginUri = service.getWorkspaceLoginURI(workspaceClientId, workspaceId);
+
+        // Then: Should use workspace client ID from parameter, not environment
+        final String uriString = loginUri.toString();
+        assertTrue("Should contain workspace client ID from parameter",
+            uriString.contains("client_id=" + workspaceClientId));
+        assertFalse("Should NOT contain environment client ID",
+            uriString.contains("client_id=" + envClientId));
+        assertTrue("Should contain workspace ID as state",
+            uriString.contains("state=" + workspaceId));
+    }
+
+    @Test
+    public void getWorkspaceLoginURIFailsWithoutWorkspaceClientId() throws Exception {
+        // Given: Environment variables set but no workspace client ID
+        environmentVariables.set("OPENID_AUTHORIZATION_ENDPOINT", "https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize");
+        environmentVariables.set("OPENID_REDIRECT_URI", "http://localhost:8080/guacamole/");
+
+        final AuthenticationProviderService service = new AuthenticationProviderService();
+
+        // When/Then: Should fail with null workspace client ID
+        try {
+            service.getWorkspaceLoginURI(null, "workspace-123");
+            fail("Expected GuacamoleException");
+        } catch (org.apache.guacamole.GuacamoleException e) {
+            assertTrue("Should indicate workspace client ID is required",
+                e.getMessage().contains("Workspace client ID is required"));
+        }
+
+        // When/Then: Should fail with empty workspace client ID
+        try {
+            service.getWorkspaceLoginURI("", "workspace-123");
+            fail("Expected GuacamoleException");
+        } catch (org.apache.guacamole.GuacamoleException e) {
+            assertTrue("Should indicate workspace client ID is required",
+                e.getMessage().contains("Workspace client ID is required"));
+        }
+    }
+
+    @Test
+    public void getWorkspaceLoginURIRequiresEnvironmentConfiguration() throws Exception {
+        // Reset configuration cache to ensure clean test state
+        TreConfiguration.resetCache();
+
+        final AuthenticationProviderService service = new AuthenticationProviderService();
+
+        // When/Then: Should fail without OPENID_AUTHORIZATION_ENDPOINT
+        try {
+            service.getWorkspaceLoginURI("client-123", "workspace-456");
+            fail("Expected GuacamoleException");
+        } catch (org.apache.guacamole.GuacamoleException e) {
+            assertTrue("Should indicate missing authorization endpoint",
+                e.getMessage().contains("OPENID_AUTHORIZATION_ENDPOINT is not configured"));
+        }
+
+        environmentVariables.set("OPENID_AUTHORIZATION_ENDPOINT", "https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize");
+
+        // When/Then: Should fail without any redirect URI configuration (no TRE_URL, API_URL, or OPENID_REDIRECT_URI)
+        try {
+            service.getWorkspaceLoginURI("client-123", "workspace-456");
+            fail("Expected GuacamoleException");
+        } catch (org.apache.guacamole.GuacamoleException e) {
+            assertTrue("Should indicate missing TRE configuration",
+                e.getMessage().contains("TRE base URL not configured") ||
+                e.getMessage().contains("OPENID_REDIRECT_URI is not configured"));
         }
     }
 }

@@ -36,36 +36,50 @@ resource "azurerm_linux_web_app" "guacamole" {
   }
 
   app_settings = {
-    WEBSITES_PORT              = "8085"
-    TENANT_ID                  = data.azurerm_client_config.current.tenant_id
-    KEYVAULT_URL               = data.azurerm_key_vault.ws.vault_uri
-    API_URL                    = local.api_url
-    SERVICE_ID                 = var.tre_resource_id
-    WORKSPACE_ID               = var.workspace_id
+    TENANT_ID     = data.azurerm_client_config.current.tenant_id
+    KEYVAULT_URL  = data.azurerm_key_vault.ws.vault_uri
+    API_URL       = local.api_url
+    SERVICE_ID    = var.tre_resource_id
+    WORKSPACE_ID  = var.workspace_id
+    WEBSITES_PORT = "8080"
+    API_CLIENT_ID = var.api_client_id
+
     MANAGED_IDENTITY_CLIENT_ID = azurerm_user_assigned_identity.guacamole_id.client_id
+    WORKSPACE_CLIENT_ID        = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
+    TRE_API_CLIENT_ID          = var.api_client_id # Use the same client ID for TRE API access
 
     APPLICATIONINSIGHTS_CONNECTION_STRING             = data.azurerm_application_insights.ws.connection_string
     APPLICATIONINSIGHTS_INSTRUMENTATION_LOGGING_LEVEL = "INFO"
 
+    # Guacamole daemon configuration
+    GUACD_LOG_LEVEL = var.guacd_log_level
+
     # Guacmole configuration
-    GUAC_DISABLE_COPY     = var.guac_disable_copy
-    GUAC_DISABLE_PASTE    = var.guac_disable_paste
-    GUAC_ENABLE_DRIVE     = var.guac_enable_drive
-    GUAC_DRIVE_NAME       = var.guac_drive_name
-    GUAC_DRIVE_PATH       = var.guac_drive_path
-    GUAC_DISABLE_DOWNLOAD = var.guac_disable_download
-    GUAC_DISABLE_UPLOAD   = var.guac_disable_upload
-    GUAC_SERVER_LAYOUT    = var.guac_server_layout
+    GUAC_DISABLE_COPY             = var.guac_disable_copy
+    GUAC_DISABLE_PASTE            = var.guac_disable_paste
+    GUAC_ENABLE_DRIVE             = var.guac_enable_drive
+    GUAC_DRIVE_NAME               = var.guac_drive_name
+    GUAC_DRIVE_PATH               = var.guac_drive_path
+    GUAC_DISABLE_DOWNLOAD         = var.guac_disable_download
+    GUAC_DISABLE_UPLOAD           = var.guac_disable_upload
+    GUAC_SERVER_LAYOUT            = var.guac_server_layout
+    GUAC_DISABLE_COPY             = var.guac_disable_copy
+    GUAC_DISABLE_PASTE            = var.guac_disable_paste
+    GUAC_ENABLE_DRIVE             = var.guac_enable_drive
+    GUAC_DRIVE_NAME               = var.guac_drive_name
+    GUAC_DRIVE_PATH               = var.guac_drive_path
+    GUAC_DISABLE_DOWNLOAD         = var.guac_disable_download
+    GUAC_DISABLE_UPLOAD           = var.guac_disable_upload
+    OPENID_AUTHORIZATION_ENDPOINT = local.authorization_endpoint
+    OPENID_JWKS_ENDPOINT          = local.jwks_endpoint
+    OPENID_ISSUER                 = local.issuer
+    OPENID_CLIENT_ID              = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
+    OPENID_REDIRECT_URI           = "https://${local.webapp_name}.${local.webapp_suffix}/guacamole/"
+    OPENID_USERNAME_CLAIM_TYPE    = "preferred_username"
+    OPENID_GROUPS_CLAIM_TYPE      = "roles"
 
     AUDIENCE = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
     ISSUER   = local.issuer
-
-    OAUTH2_PROXY_CLIENT_ID       = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
-    OAUTH2_PROXY_CLIENT_SECRET   = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_secret.id})"
-    OAUTH2_PROXY_REDIRECT_URI    = "https://${local.webapp_name}.${local.webapp_suffix}/oauth2/callback"
-    OAUTH2_PROXY_EMAIL_DOMAIN    = "\"*\"" # oauth proxy will allow all email domains only when the value is "*"
-    OAUTH2_PROXY_OIDC_ISSUER_URL = local.issuer
-    OAUTH2_PROXY_JWKS_ENDPOINT   = local.jwks_endpoint
   }
 
   logs {

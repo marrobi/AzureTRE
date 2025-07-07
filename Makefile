@@ -385,7 +385,7 @@ workspace_bundle:
 # Note: the BUNDLE variable is used to specify the name of the bundle. This should be equivalent to the name of the directory of the template in the templates/workspace_services directory.
 workspace_service_bundle:
 	$(MAKE) bundle-build bundle-publish bundle-register \
-	DIR="${MAKEFILE_DIR}/templates/workspace_services/${BUNDLE}" BUNDLE_TYPE=workspace_service
+	DIR="${MAKEFILE_DIR}/templates/workspace_services/${BUNDLE}" BUNDLE_TYPE=workspace-service
 
 # Description: Build, publish and register a shared service bundle.
 # Arguments: BUNDLE - the name of the bundle
@@ -393,7 +393,7 @@ workspace_service_bundle:
 # Note: the BUNDLE variable is used to specify the name of the bundle. This should be equivalent to the name of the directory of the template in the templates/shared_services directory.
 shared_service_bundle:
 	$(MAKE) bundle-build bundle-publish bundle-register \
-	DIR="${MAKEFILE_DIR}/templates/shared_services/${BUNDLE}" BUNDLE_TYPE=shared_service
+	DIR="${MAKEFILE_DIR}/templates/shared_services/${BUNDLE}" BUNDLE_TYPE=shared-service
 
 # Description: Build, publish and register a user resource bundle.
 # Arguments: 1. WORKSPACE_SERVICE - the name of the workspace service 2. BUNDLE - the name of the bundle
@@ -402,7 +402,7 @@ shared_service_bundle:
 # And the BUNDLE variable is used to specify the name of the bundle. This should be equivalent to the name of the directory of the template in the templates/workspace_services/${WORKSPACE_SERVICE}/user_resources directory.
 user_resource_bundle:
 	$(MAKE) bundle-build bundle-publish bundle-register \
-	DIR="${MAKEFILE_DIR}/templates/workspace_services/${WORKSPACE_SERVICE}/user_resources/${BUNDLE}" BUNDLE_TYPE=user_resource WORKSPACE_SERVICE_NAME=tre-service-${WORKSPACE_SERVICE}
+	DIR="${MAKEFILE_DIR}/templates/workspace_services/${WORKSPACE_SERVICE}/userresources/${BUNDLE}" BUNDLE_TYPE=user-resource WORKSPACE_SERVICE_NAME=tre-service-${WORKSPACE_SERVICE}
 
 # Description: Publish and register all bundles.
 # Example: make bundle-publish-register-all
