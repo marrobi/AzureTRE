@@ -56,3 +56,4 @@ def insecure_request(url):
 if __name__ == "__main__":
     print("This file contains intentional security vulnerabilities for testing.")
     print("Do not use this code as a reference for production code!")
+# Added comment
