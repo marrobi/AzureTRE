@@ -1,10 +1,11 @@
 ---
 repos:
-  - repo: https://github.com/pycqa/flake8
-    rev: '6.0.0'
+  - repo: local
     hooks:
-      - id: flake8
-  - repo: https://github.com/hcodes/yaspeller
-    rev: v8.0.1
-    hooks:
-      - id: yaspeller
+      - id: bandit
+        name: Bandit Security Check
+        entry: .githooks/pre-commit-bandit
+        language: script
+        types: [python]
+        files: '^(api_app|airlock_processor|resource_processor|cli|e2e_tests)/.*\.py$'
+        exclude: '^(api_app|airlock_processor|resource_processor|cli|e2e_tests)/tests?/.*\.py$'
