@@ -237,7 +237,6 @@
             "type": "string",
             "title": "Owner ID",
             "description": "Enter the Object ID of the user you want to assign this VM to.",
-            "default": false,
             "updateable": false
           }
         },

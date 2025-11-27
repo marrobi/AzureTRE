@@ -81,7 +81,7 @@ resource "azurerm_virtual_machine_extension" "avd_dsc" {
       "configurationFunction": "Configuration.ps1\\AddSessionHost",
       "properties": {
         "hostPoolName": "${data.azurerm_virtual_desktop_host_pool.avd.name}",
-        "aadJoin": false
+        "aadJoin": true
       }
     }
   SETTINGS
