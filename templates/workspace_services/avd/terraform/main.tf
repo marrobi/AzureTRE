@@ -9,6 +9,7 @@ resource "azurerm_virtual_desktop_host_pool" "avd" {
   load_balancer_type               = "Persistent"
   personal_desktop_assignment_type = "Automatic"
   start_vm_on_connect              = true
+  custom_rdp_properties            = local.clipboard_rdp_property
   tags                             = local.workspace_service_tags
 
   lifecycle { ignore_changes = [tags] }

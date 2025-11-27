@@ -51,6 +51,18 @@
       "source": {
         "env": "WORKSPACE_SUBSCRIPTION_ID"
       }
+    },
+    {
+      "name": "enable_clipboard",
+      "source": {
+        "env": "ENABLE_CLIPBOARD"
+      }
+    },
+    {
+      "name": "clipboard_transfer_direction",
+      "source": {
+        "env": "CLIPBOARD_TRANSFER_DIRECTION"
+      }
     }
   ]
 }

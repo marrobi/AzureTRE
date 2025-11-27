@@ -26,6 +26,28 @@
       "description": "Long form description of the workspace service, in markdown syntax",
       "default": "Azure Virtual Desktop is a desktop and app virtualization service that runs on Azure. It enables secure remote desktop access from any device.\n\n**Key Features:**\n- Personal host pools with one VM per user\n- External identity support\n- Private endpoint connectivity for data exfiltration prevention\n- Seamless integration with Microsoft Entra ID\n\n**Documentation:** [Azure Virtual Desktop](https://learn.microsoft.com/en-us/azure/virtual-desktop/)",
       "updateable": true
+    },
+    "enable_clipboard": {
+      "$id": "#/properties/enable_clipboard",
+      "type": "boolean",
+      "title": "Enable Clipboard Redirection",
+      "description": "Enable clipboard redirection between session and client",
+      "default": false,
+      "updateable": true
+    },
+    "clipboard_transfer_direction": {
+      "$id": "#/properties/clipboard_transfer_direction",
+      "type": "string",
+      "title": "Clipboard Transfer Direction",
+      "description": "Direction of allowed clipboard transfers (only applies when clipboard is enabled)",
+      "default": "disabled",
+      "enum": [
+        "disabled",
+        "client_to_session",
+        "session_to_client",
+        "both"
+      ],
+      "updateable": true
     }
   },
   "pipeline": {

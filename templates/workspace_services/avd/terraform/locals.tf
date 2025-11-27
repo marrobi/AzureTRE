@@ -14,6 +14,10 @@ locals {
   workspace_friendly_name   = "Azure Virtual Desktop"
   app_group_friendly_name   = "Desktop Application Group"
 
+  # Clipboard RDP properties
+  # redirectclipboard:i:0 = disabled, redirectclipboard:i:1 = enabled
+  clipboard_rdp_property = var.enable_clipboard ? "redirectclipboard:i:1;" : "redirectclipboard:i:0;"
+
   workspace_service_tags = {
     tre_id                   = var.tre_id
     tre_workspace_id         = var.workspace_id

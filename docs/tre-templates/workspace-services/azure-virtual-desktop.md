@@ -10,6 +10,7 @@ This service deploys Azure Virtual Desktop (AVD) infrastructure into a workspace
 - **Private Endpoints**: All AVD traffic uses private endpoints to prevent data exfiltration
 - **External Identity Support**: Works with external identities via Microsoft Entra ID
 - **Start VM on Connect**: VMs automatically start when users connect to save costs
+- **Configurable Clipboard**: Control clipboard redirection between sessions and clients
 - **Diagnostics**: Full logging to Log Analytics workspace
 
 ## Architecture
@@ -20,6 +21,15 @@ The service deploys the following resources:
 - **AVD Workspace**: For organizing and publishing desktops
 - **Desktop Application Group**: Provides access to the full desktop
 - **Private Endpoints**: For host pool connections and workspace feed
+
+## Configuration Options
+
+| Property | Options | Description |
+| -------- | ------- | ----------- |
+| `enable_clipboard` | `true`/`false` (Default: `false`) | Enable clipboard redirection between session and client |
+| `clipboard_transfer_direction` | `disabled`/`client_to_session`/`session_to_client`/`both` (Default: `disabled`) | Direction of allowed clipboard transfers |
+
+For more information on clipboard configuration, see the [Azure Virtual Desktop documentation on clipboard transfer](https://learn.microsoft.com/en-us/azure/virtual-desktop/clipboard-transfer-direction-data-types).
 
 ## Firewall Rules
 
