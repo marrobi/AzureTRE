@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/microsoft/AzureTRE/templates/workspace_services/avd/template_schema.json",
+  "type": "object",
+  "title": "Azure Virtual Desktop",
+  "description": "Azure Virtual Desktop enables secure access to Windows virtual machines through personal host pools.",
+  "required": [],
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "title": "Name for the workspace service",
+      "description": "The name of the workspace service to be displayed to users",
+      "default": "Azure Virtual Desktop",
+      "updateable": true
+    },
+    "description": {
+      "type": "string",
+      "title": "Description of the workspace service",
+      "description": "Description of the workspace service",
+      "default": "Access Windows virtual machines via Azure Virtual Desktop with personal host pools.",
+      "updateable": true
+    },
+    "overview": {
+      "type": "string",
+      "title": "Workspace Service Overview",
+      "description": "Long form description of the workspace service, in markdown syntax",
+      "default": "Azure Virtual Desktop is a desktop and app virtualization service that runs on Azure. It enables secure remote desktop access from any device.\n\n**Key Features:**\n- Personal host pools with one VM per user\n- External identity support\n- Private endpoint connectivity for data exfiltration prevention\n- Seamless integration with Microsoft Entra ID\n\n**Documentation:** [Azure Virtual Desktop](https://learn.microsoft.com/en-us/azure/virtual-desktop/)",
+      "updateable": true
+    }
+  },
+  "pipeline": {
+    "install": [
+      {
+        "stepId": "main"
+      },
+      {
+        "stepId": "260421b3-7308-491f-b531-e007cdc0ff50",
+        "stepTitle": "Add network firewall rules for Azure Virtual Desktop",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_avd",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AzureVirtualDesktop",
+                  "description": "Azure Virtual Desktop service traffic",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "WindowsVirtualDesktop"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                },
+                {
+                  "name": "AzureActiveDirectory",
+                  "description": "AAD access for authentication",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                },
+                {
+                  "name": "AzureMonitor",
+                  "description": "Azure Monitor for diagnostics",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureMonitor"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "upgrade": [
+      {
+        "stepId": "main"
+      },
+      {
+        "stepId": "260421b3-7308-491f-b531-e007cdc0ff51",
+        "stepTitle": "Update network firewall rules for Azure Virtual Desktop",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_avd",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AzureVirtualDesktop",
+                  "description": "Azure Virtual Desktop service traffic",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "WindowsVirtualDesktop"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                },
+                {
+                  "name": "AzureActiveDirectory",
+                  "description": "AAD access for authentication",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                },
+                {
+                  "name": "AzureMonitor",
+                  "description": "Azure Monitor for diagnostics",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureMonitor"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "uninstall": [
+      {
+        "stepId": "260421b3-7308-491f-b531-e007cdc0ff52",
+        "stepTitle": "Remove network firewall rules for Azure Virtual Desktop",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_avd"
+            }
+          }
+        ]
+      },
+      {
+        "stepId": "main"
+      }
+    ]
+  },
+  "uiSchema": {}
+}
