@@ -18,6 +18,10 @@
  */
 package org.apache.guacamole.auth.azuretre;
 
+import com.azure.core.credential.TokenRequestContext;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.netty.NettyAsyncHttpClientBuilder;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import org.apache.guacamole.GuacamoleException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -25,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -36,6 +39,9 @@ import java.util.concurrent.TimeUnit;
  * Service that fetches workspace authentication configuration from the TRE Core API.
  * This is used by the shared Guacamole service to dynamically determine the correct
  * OAuth2 configuration for each workspace.
+ *
+ * Uses managed identity to authenticate with the Core API, then validates user tokens
+ * against the workspace-specific OAuth2 configuration.
  */
 public final class WorkspaceAuthConfigService {
 
@@ -159,17 +165,15 @@ public final class WorkspaceAuthConfigService {
 
     /**
      * Fetches the workspace authentication configuration from the TRE Core API.
-     * Uses the existing GET /workspaces/{workspace_id} endpoint and derives
+     * Uses managed identity to authenticate with the Core API, then derives
      * auth config from the workspace properties.
      *
      * @param workspaceId   the workspace ID.
-     * @param accessToken   the access token to use for the API call.
      * @return the workspace auth configuration.
      * @throws GuacamoleException if the configuration cannot be retrieved.
      */
     public static WorkspaceAuthConfig getWorkspaceAuthConfig(
-        final String workspaceId,
-        final String accessToken) throws GuacamoleException {
+        final String workspaceId) throws GuacamoleException {
 
         // Check cache first
         final CachedAuthConfig cached = AUTH_CONFIG_CACHE.get(workspaceId);
@@ -192,16 +196,26 @@ public final class WorkspaceAuthConfigService {
                 "AAD_AUTHORITY_URL environment variable not set");
         }
 
+        // Get Core API scope for managed identity token
+        final String apiScope = System.getenv("API_SCOPE");
+        if (apiScope == null || apiScope.isEmpty()) {
+            throw new GuacamoleException(
+                "API_SCOPE environment variable not set");
+        }
+
+        // Get managed identity token for Core API
+        final String apiToken = getManagedIdentityToken(apiScope);
+
         // Use the existing workspace endpoint
         final String url = String.format(
             "%s/api/workspaces/%s",
             apiUrl,
             workspaceId);
 
-        final HttpClient client = HttpClient.newHttpClient();
+        final java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
         final HttpRequest request = HttpRequest.newBuilder(URI.create(url))
             .header("Accept", "application/json")
-            .header("Authorization", "Bearer " + accessToken)
+            .header("Authorization", "Bearer " + apiToken)
             .timeout(Duration.ofSeconds(API_TIMEOUT_SECONDS))
             .build();
 
@@ -294,5 +308,49 @@ public final class WorkspaceAuthConfigService {
      */
     public static void clearAllCache() {
         AUTH_CONFIG_CACHE.clear();
+    }
+
+    /**
+     * Gets an access token for the Core API using managed identity.
+     *
+     * @param scope the API scope to request.
+     * @return the access token.
+     * @throws GuacamoleException if the token cannot be obtained.
+     */
+    private static String getManagedIdentityToken(
+        final String scope) throws GuacamoleException {
+
+        final String managedIdentityClientId = System.getenv(
+            "MANAGED_IDENTITY_CLIENT_ID");
+
+        try {
+            LOGGER.debug("Getting managed identity token for scope: {}", scope);
+
+            // Build an HTTP client explicitly for the credential builder
+            final HttpClient httpClient = new NettyAsyncHttpClientBuilder()
+                .build();
+
+            final var credential = new DefaultAzureCredentialBuilder()
+                .managedIdentityClientId(managedIdentityClientId)
+                .httpClient(httpClient)
+                .build();
+
+            final var tokenContext = new TokenRequestContext()
+                .addScopes(scope);
+
+            final var token = credential.getToken(tokenContext).block();
+            if (token == null) {
+                throw new GuacamoleException(
+                    "Failed to get managed identity token: null token returned");
+            }
+
+            return token.getToken();
+        } catch (final GuacamoleException ex) {
+            throw ex;
+        } catch (final Exception ex) {
+            LOGGER.error("Failed to get managed identity token", ex);
+            throw new GuacamoleException(
+                "Failed to get managed identity token: " + ex.getMessage());
+        }
     }
 }

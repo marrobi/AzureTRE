@@ -194,13 +194,11 @@ public final class AzureTREAuthenticationProvider
         final String accessToken,
         final String workspaceId) throws GuacamoleException {
 
-        // Get workspace auth config from the API
+        // Get workspace auth config from the API using managed identity
         final WorkspaceAuthConfigService.WorkspaceAuthConfig authConfig =
-            WorkspaceAuthConfigService.getWorkspaceAuthConfig(
-                workspaceId,
-                accessToken);
+            WorkspaceAuthConfigService.getWorkspaceAuthConfig(workspaceId);
 
-        // Validate the token using workspace-specific configuration
+        // Validate the user's token using workspace-specific configuration
         try {
             final UrlJwkProvider jwkProvider = new UrlJwkProvider(
                 new URL(authConfig.getJwksEndpoint()));

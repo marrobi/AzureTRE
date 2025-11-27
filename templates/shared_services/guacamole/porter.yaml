@@ -105,6 +105,9 @@ parameters:
     type: string
     default: "https://login.microsoftonline.com"
     description: "The Azure AD authority URL"
+  - name: api_scope
+    type: string
+    description: "The scope for the Core API (e.g., api://{api_client_id}/.default)"
 
 outputs:
   - name: connection_uri
@@ -142,6 +145,7 @@ install:
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
+        api_scope: ${ bundle.parameters.api_scope }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"
@@ -173,6 +177,7 @@ upgrade:
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
+        api_scope: ${ bundle.parameters.api_scope }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"
@@ -204,6 +209,7 @@ uninstall:
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
+        api_scope: ${ bundle.parameters.api_scope }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"
