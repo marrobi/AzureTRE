@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/microsoft/AzureTRE/templates/shared_services/guacamole/template_schema.json",
+  "type": "object",
+  "title": "Shared Guacamole Service",
+  "description": "A shared Apache Guacamole service that supports multiple workspaces through dynamic authentication. This service routes traffic through the Application Gateway and dynamically authenticates users against their respective workspace app registrations.",
+  "required": [],
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "title": "Name for the shared service",
+      "description": "The name of the shared service to be displayed to users",
+      "default": "Shared Remote Desktop Gateway",
+      "updateable": true
+    },
+    "description": {
+      "type": "string",
+      "title": "Description of the shared service",
+      "description": "Description of the shared service",
+      "default": "Provides secure remote desktop access to virtual machines across all workspaces.",
+      "updateable": true
+    },
+    "overview": {
+      "type": "string",
+      "title": "Shared Service Overview",
+      "description": "Long form description of the shared service, in markdown syntax",
+      "default": "The shared Guacamole service provides a single Apache Guacamole instance that serves all workspaces. Users are authenticated against their respective workspace app registrations, and can access VMs in their assigned workspaces.",
+      "updateable": true
+    },
+    "guac_disable_copy": {
+      "$id": "#/properties/guac_disable_copy",
+      "type": "boolean",
+      "title": "Disable copy from VM",
+      "description": "Prevent users from copying content from the remote desktop",
+      "default": true,
+      "updateable": true
+    },
+    "guac_disable_paste": {
+      "$id": "#/properties/guac_disable_paste",
+      "type": "boolean",
+      "title": "Disable paste to VM",
+      "description": "Prevent users from pasting content to the remote desktop",
+      "default": false,
+      "updateable": true
+    },
+    "guac_enable_drive": {
+      "$id": "#/properties/guac_enable_drive",
+      "type": "boolean",
+      "title": "Enable drive redirection",
+      "description": "Enable file transfer via drive redirection",
+      "default": false,
+      "updateable": true
+    },
+    "guac_drive_name": {
+      "$id": "#/properties/guac_drive_name",
+      "type": "string",
+      "title": "Drive name",
+      "description": "Name of the redirected drive",
+      "default": "transfer",
+      "updateable": true
+    },
+    "guac_drive_path": {
+      "$id": "#/properties/guac_drive_path",
+      "type": "string",
+      "title": "Drive path",
+      "description": "Path for the redirected drive",
+      "default": "/guac-transfer",
+      "updateable": true
+    },
+    "guac_disable_download": {
+      "$id": "#/properties/guac_disable_download",
+      "type": "boolean",
+      "title": "Disable file download",
+      "description": "Prevent users from downloading files from the remote desktop",
+      "default": true,
+      "updateable": true
+    },
+    "guac_disable_upload": {
+      "$id": "#/properties/guac_disable_upload",
+      "type": "boolean",
+      "title": "Disable file upload",
+      "description": "Prevent users from uploading files to the remote desktop",
+      "default": true,
+      "updateable": true
+    },
+    "guac_server_layout": {
+      "$id": "#/properties/guac_server_layout",
+      "type": "string",
+      "title": "Keyboard layout",
+      "description": "Server keyboard layout (e.g., en-us-qwerty, de-de-qwertz)",
+      "default": "",
+      "updateable": true
+    }
+  },
+  "uiSchema": {
+    "guac_drive_name": {
+      "classNames": "tre-hidden"
+    },
+    "guac_drive_path": {
+      "classNames": "tre-hidden"
+    }
+  },
+  "pipeline": {
+    "install": [
+      {
+        "stepId": "main"
+      }
+    ],
+    "upgrade": [
+      {
+        "stepId": "main"
+      }
+    ],
+    "uninstall": [
+      {
+        "stepId": "main"
+      }
+    ]
+  }
+}
