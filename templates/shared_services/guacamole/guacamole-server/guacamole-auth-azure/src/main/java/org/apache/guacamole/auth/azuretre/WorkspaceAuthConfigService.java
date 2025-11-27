@@ -1,0 +1,257 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.guacamole.auth.azuretre;
+
+import org.apache.guacamole.GuacamoleException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Service that fetches workspace authentication configuration from the TRE Core API.
+ * This is used by the shared Guacamole service to dynamically determine the correct
+ * OAuth2 configuration for each workspace.
+ */
+public final class WorkspaceAuthConfigService {
+
+    /** Maximum HTTP status code that indicates success. */
+    private static final int HTTP_SUCCESS_MAX = 299;
+
+    /** API call timeout in seconds. */
+    private static final int API_TIMEOUT_SECONDS = 10;
+
+    /** Cache expiry time in milliseconds (5 minutes). */
+    private static final long CACHE_EXPIRY_MS = 300000;
+
+    /** Logger instance. */
+    private static final Logger LOGGER = LoggerFactory.getLogger(
+        WorkspaceAuthConfigService.class);
+
+    /** Cache for workspace auth configurations. */
+    private static final ConcurrentHashMap<String, CachedAuthConfig> AUTH_CONFIG_CACHE =
+        new ConcurrentHashMap<>();
+
+    /**
+     * Represents a cached workspace auth configuration with expiry time.
+     */
+    private static final class CachedAuthConfig {
+        private final WorkspaceAuthConfig config;
+        private final long expiryTime;
+
+        CachedAuthConfig(final WorkspaceAuthConfig cfg) {
+            this.config = cfg;
+            this.expiryTime = System.currentTimeMillis() + CACHE_EXPIRY_MS;
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() > expiryTime;
+        }
+
+        WorkspaceAuthConfig getConfig() {
+            return config;
+        }
+    }
+
+    /**
+     * Represents the authentication configuration for a workspace.
+     */
+    public static final class WorkspaceAuthConfig {
+        private final String clientId;
+        private final String scopeId;
+        private final String issuer;
+        private final String jwksEndpoint;
+
+        /**
+         * Creates a new WorkspaceAuthConfig.
+         *
+         * @param cId     OAuth2 client ID.
+         * @param sId     Workspace scope ID.
+         * @param iss     OAuth2 issuer URL.
+         * @param jwks    JWKS endpoint URL.
+         */
+        public WorkspaceAuthConfig(
+            final String cId,
+            final String sId,
+            final String iss,
+            final String jwks) {
+            this.clientId = cId;
+            this.scopeId = sId;
+            this.issuer = iss;
+            this.jwksEndpoint = jwks;
+        }
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public String getScopeId() {
+            return scopeId;
+        }
+
+        public String getIssuer() {
+            return issuer;
+        }
+
+        public String getJwksEndpoint() {
+            return jwksEndpoint;
+        }
+    }
+
+    private WorkspaceAuthConfigService() {
+        // Utility class
+    }
+
+    /**
+     * Extracts the workspace ID from a Guacamole request URI.
+     * Expected URI format: /guacamole/{workspace_id}/...
+     *
+     * @param requestUri the request URI.
+     * @return the workspace ID, or null if not found.
+     */
+    public static String extractWorkspaceIdFromUri(final String requestUri) {
+        if (requestUri == null || requestUri.isEmpty()) {
+            return null;
+        }
+
+        // Expected format: /guacamole/{workspace_id}/... or /{workspace_id}/...
+        final String[] parts = requestUri.split("/");
+        for (int i = 0; i < parts.length; i++) {
+            // Look for a UUID-like workspace ID
+            if (parts[i].matches(
+                "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+                    + "[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
+                return parts[i];
+            }
+        }
+
+        // Also check for workspace ID passed in query parameter or header
+        return null;
+    }
+
+    /**
+     * Fetches the workspace authentication configuration from the TRE Core API.
+     *
+     * @param workspaceId   the workspace ID.
+     * @param accessToken   the access token to use for the API call.
+     * @return the workspace auth configuration.
+     * @throws GuacamoleException if the configuration cannot be retrieved.
+     */
+    public static WorkspaceAuthConfig getWorkspaceAuthConfig(
+        final String workspaceId,
+        final String accessToken) throws GuacamoleException {
+
+        // Check cache first
+        final CachedAuthConfig cached = AUTH_CONFIG_CACHE.get(workspaceId);
+        if (cached != null && !cached.isExpired()) {
+            LOGGER.debug("Using cached auth config for workspace {}",
+                workspaceId);
+            return cached.getConfig();
+        }
+
+        LOGGER.info("Fetching auth config for workspace {}", workspaceId);
+
+        final String apiUrl = System.getenv("API_URL");
+        if (apiUrl == null || apiUrl.isEmpty()) {
+            throw new GuacamoleException("API_URL environment variable not set");
+        }
+
+        final String url = String.format(
+            "%s/api/workspaces/%s/authconfig",
+            apiUrl,
+            workspaceId);
+
+        final HttpClient client = HttpClient.newHttpClient();
+        final HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+            .header("Accept", "application/json")
+            .header("Authorization", "Bearer " + accessToken)
+            .timeout(Duration.ofSeconds(API_TIMEOUT_SECONDS))
+            .build();
+
+        final HttpResponse<String> response;
+        try {
+            response = client.send(
+                request,
+                HttpResponse.BodyHandlers.ofString());
+        } catch (final IOException | InterruptedException ex) {
+            LOGGER.error("Failed to fetch workspace auth config", ex);
+            throw new GuacamoleException(
+                "Failed to fetch workspace auth config: " + ex.getMessage());
+        }
+
+        final int statusCode = response.statusCode();
+        if (statusCode > HTTP_SUCCESS_MAX) {
+            LOGGER.error(
+                "Failed to fetch workspace auth config. Status: {}",
+                statusCode);
+            throw new GuacamoleException(
+                "Failed to fetch workspace auth config. Status: " + statusCode);
+        }
+
+        final String resBody = response.body();
+        if (resBody == null || resBody.isBlank()) {
+            throw new GuacamoleException(
+                "Empty response from workspace auth config API");
+        }
+
+        try {
+            final JSONObject result = new JSONObject(resBody);
+            final JSONObject authConfig = result.getJSONObject(
+                "workspaceAuthConfig");
+
+            final WorkspaceAuthConfig config = new WorkspaceAuthConfig(
+                authConfig.optString("clientId", ""),
+                authConfig.optString("scopeId", ""),
+                authConfig.optString("issuer", ""),
+                authConfig.optString("jwksEndpoint", ""));
+
+            // Cache the configuration
+            AUTH_CONFIG_CACHE.put(workspaceId, new CachedAuthConfig(config));
+
+            return config;
+        } catch (final Exception ex) {
+            LOGGER.error("Failed to parse workspace auth config response", ex);
+            throw new GuacamoleException(
+                "Failed to parse workspace auth config response");
+        }
+    }
+
+    /**
+     * Clears the auth config cache for a specific workspace.
+     *
+     * @param workspaceId the workspace ID to clear from cache.
+     */
+    public static void clearCache(final String workspaceId) {
+        AUTH_CONFIG_CACHE.remove(workspaceId);
+    }
+
+    /**
+     * Clears the entire auth config cache.
+     */
+    public static void clearAllCache() {
+        AUTH_CONFIG_CACHE.clear();
+    }
+}
