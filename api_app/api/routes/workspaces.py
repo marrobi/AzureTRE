@@ -15,10 +15,10 @@ from db.repositories.user_resources import UserResourceRepository
 from db.repositories.workspaces import WorkspaceRepository
 from db.repositories.workspace_services import WorkspaceServiceRepository
 from models.domain.resource import ResourceType
-from models.domain.workspace import WorkspaceAuth, WorkspaceAuthConfig, WorkspaceRole
+from models.domain.workspace import WorkspaceAuth, WorkspaceRole
 from models.schemas.operation import OperationInList, OperationInResponse
 from models.schemas.user_resource import UserResourceInResponse, UserResourceInCreate, UserResourcesInList
-from models.schemas.workspace import WorkspaceAuthInResponse, WorkspaceAuthConfigInResponse, WorkspaceInCreate, WorkspacesInList, WorkspaceInResponse
+from models.schemas.workspace import WorkspaceAuthInResponse, WorkspaceInCreate, WorkspacesInList, WorkspaceInResponse
 from models.schemas.workspace_service import WorkspaceServiceInCreate, WorkspaceServicesInList, WorkspaceServiceInResponse
 from models.schemas.resource import ResourceHistoryInList, ResourcePatch
 from models.schemas.resource_template import ResourceTemplateInformationInList
@@ -94,36 +94,6 @@ async def retrieve_workspace_scope_id_by_workspace_id(workspace=Depends(get_work
     if "scope_id" in workspace.properties:
         wsAuth.scopeId = workspace.properties["scope_id"]
     return WorkspaceAuthInResponse(workspaceAuth=wsAuth)
-
-
-@workspaces_core_router.get("/workspaces/{workspace_id}/authconfig", response_model=WorkspaceAuthConfigInResponse, name=strings.API_GET_WORKSPACE_AUTH_CONFIG)
-async def retrieve_workspace_auth_config(workspace=Depends(get_workspace_by_id_from_path)) -> WorkspaceAuthConfigInResponse:
-    """
-    Returns workspace authentication configuration for use by shared services (e.g., shared Guacamole).
-    This endpoint returns the client_id, scope_id, issuer, and JWKS endpoint needed to validate
-    workspace-scoped tokens.
-    """
-    from core import config as core_config
-
-    wsAuthConfig = WorkspaceAuthConfig()
-
-    # Get client_id from workspace properties
-    if "client_id" in workspace.properties:
-        wsAuthConfig.clientId = workspace.properties["client_id"]
-
-    # Get scope_id from workspace properties
-    if "scope_id" in workspace.properties:
-        wsAuthConfig.scopeId = workspace.properties["scope_id"]
-
-    # Get auth_tenant_id - if set in workspace properties, otherwise use the default tenant
-    auth_tenant_id = workspace.properties.get("auth_tenant_id", core_config.AAD_TENANT_ID)
-
-    # Build issuer and JWKS endpoint URLs
-    aad_authority_url = core_config.AAD_AUTHORITY_URL
-    wsAuthConfig.issuer = f"{aad_authority_url}/{auth_tenant_id}/v2.0"
-    wsAuthConfig.jwksEndpoint = f"{aad_authority_url}/{auth_tenant_id}/discovery/v2.0/keys"
-
-    return WorkspaceAuthConfigInResponse(workspaceAuthConfig=wsAuthConfig)
 
 
 @workspaces_core_router.post("/workspaces", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_CREATE_WORKSPACE, dependencies=[Depends(get_current_admin_user)])

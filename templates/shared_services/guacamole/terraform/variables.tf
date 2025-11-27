@@ -22,6 +22,12 @@ variable "arm_environment" {
   type = string
 }
 
+variable "aad_authority_url" {
+  type        = string
+  description = "The Azure AD authority URL"
+  default     = "https://login.microsoftonline.com"
+}
+
 variable "image_name" {
   type        = string
   description = "The Guacamole image name"

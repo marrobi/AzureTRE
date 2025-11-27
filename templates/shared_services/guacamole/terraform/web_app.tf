@@ -41,6 +41,10 @@ resource "azurerm_linux_web_app" "guacamole" {
     SERVICE_ID                 = var.tre_resource_id
     MANAGED_IDENTITY_CLIENT_ID = azurerm_user_assigned_identity.guacamole_id.client_id
 
+    # AAD configuration for deriving issuer and JWKS endpoints
+    AAD_AUTHORITY_URL = var.aad_authority_url
+    AAD_TENANT_ID     = data.azurerm_client_config.current.tenant_id
+
     # Enable shared service mode - dynamic workspace auth
     GUACAMOLE_SHARED_SERVICE_MODE = "true"
 

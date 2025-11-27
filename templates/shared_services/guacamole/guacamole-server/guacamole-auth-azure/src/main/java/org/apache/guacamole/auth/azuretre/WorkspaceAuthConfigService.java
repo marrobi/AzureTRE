@@ -159,6 +159,8 @@ public final class WorkspaceAuthConfigService {
 
     /**
      * Fetches the workspace authentication configuration from the TRE Core API.
+     * Uses the existing GET /workspaces/{workspace_id} endpoint and derives
+     * auth config from the workspace properties.
      *
      * @param workspaceId   the workspace ID.
      * @param accessToken   the access token to use for the API call.
@@ -184,8 +186,15 @@ public final class WorkspaceAuthConfigService {
             throw new GuacamoleException("API_URL environment variable not set");
         }
 
+        final String aadAuthorityUrl = System.getenv("AAD_AUTHORITY_URL");
+        if (aadAuthorityUrl == null || aadAuthorityUrl.isEmpty()) {
+            throw new GuacamoleException(
+                "AAD_AUTHORITY_URL environment variable not set");
+        }
+
+        // Use the existing workspace endpoint
         final String url = String.format(
-            "%s/api/workspaces/%s/authconfig",
+            "%s/api/workspaces/%s",
             apiUrl,
             workspaceId);
 
@@ -202,45 +211,72 @@ public final class WorkspaceAuthConfigService {
                 request,
                 HttpResponse.BodyHandlers.ofString());
         } catch (final IOException | InterruptedException ex) {
-            LOGGER.error("Failed to fetch workspace auth config", ex);
+            LOGGER.error("Failed to fetch workspace", ex);
             throw new GuacamoleException(
-                "Failed to fetch workspace auth config: " + ex.getMessage());
+                "Failed to fetch workspace: " + ex.getMessage());
         }
 
         final int statusCode = response.statusCode();
         if (statusCode > HTTP_SUCCESS_MAX) {
             LOGGER.error(
-                "Failed to fetch workspace auth config. Status: {}",
+                "Failed to fetch workspace. Status: {}",
                 statusCode);
             throw new GuacamoleException(
-                "Failed to fetch workspace auth config. Status: " + statusCode);
+                "Failed to fetch workspace. Status: " + statusCode);
         }
 
         final String resBody = response.body();
         if (resBody == null || resBody.isBlank()) {
             throw new GuacamoleException(
-                "Empty response from workspace auth config API");
+                "Empty response from workspace API");
         }
 
         try {
             final JSONObject result = new JSONObject(resBody);
-            final JSONObject authConfig = result.getJSONObject(
-                "workspaceAuthConfig");
+            final JSONObject workspace = result.getJSONObject("workspace");
+            final JSONObject properties = workspace.getJSONObject("properties");
+
+            // Extract auth properties from workspace
+            final String clientId = properties.optString("client_id", "");
+            final String scopeId = properties.optString("scope_id", "");
+
+            // Get tenant ID - use workspace-specific if available, otherwise
+            // fall back to AAD_TENANT_ID env var
+            String tenantId = properties.optString("auth_tenant_id", "");
+            if (tenantId.isEmpty()) {
+                tenantId = System.getenv("AAD_TENANT_ID");
+                if (tenantId == null || tenantId.isEmpty()) {
+                    throw new GuacamoleException(
+                        "No auth_tenant_id in workspace and AAD_TENANT_ID not set");
+                }
+            }
+
+            // Derive issuer and JWKS endpoint from tenant ID
+            final String issuer = String.format(
+                "%s/%s/v2.0",
+                aadAuthorityUrl,
+                tenantId);
+            final String jwksEndpoint = String.format(
+                "%s/%s/discovery/v2.0/keys",
+                aadAuthorityUrl,
+                tenantId);
 
             final WorkspaceAuthConfig config = new WorkspaceAuthConfig(
-                authConfig.optString("clientId", ""),
-                authConfig.optString("scopeId", ""),
-                authConfig.optString("issuer", ""),
-                authConfig.optString("jwksEndpoint", ""));
+                clientId,
+                scopeId,
+                issuer,
+                jwksEndpoint);
 
             // Cache the configuration
             AUTH_CONFIG_CACHE.put(workspaceId, new CachedAuthConfig(config));
 
             return config;
+        } catch (final GuacamoleException ex) {
+            throw ex;
         } catch (final Exception ex) {
-            LOGGER.error("Failed to parse workspace auth config response", ex);
+            LOGGER.error("Failed to parse workspace response", ex);
             throw new GuacamoleException(
-                "Failed to parse workspace auth config response");
+                "Failed to parse workspace response");
         }
     }
 

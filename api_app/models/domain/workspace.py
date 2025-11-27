@@ -21,11 +21,3 @@ class Workspace(Resource):
 
 class WorkspaceAuth(AzureTREModel):
     scopeId: str = Field("", title="Scope ID", description="The Workspace App Scope Id to use for auth")
-
-
-class WorkspaceAuthConfig(AzureTREModel):
-    """Authentication configuration for a workspace, used by shared services."""
-    clientId: str = Field("", title="Client ID", description="The OAuth2 client ID for the workspace application registration")
-    scopeId: str = Field("", title="Scope ID", description="The Workspace App Scope Id to use for auth")
-    issuer: str = Field("", title="Issuer", description="The OAuth2 issuer URL")
-    jwksEndpoint: str = Field("", title="JWKS Endpoint", description="The JSON Web Key Set endpoint URL")

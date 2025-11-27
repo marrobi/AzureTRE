@@ -101,6 +101,10 @@ parameters:
     default: false
   - name: arm_environment
     type: string
+  - name: aad_authority_url
+    type: string
+    default: "https://login.microsoftonline.com"
+    description: "The Azure AD authority URL"
 
 outputs:
   - name: connection_uri
@@ -137,6 +141,7 @@ install:
         guac_server_layout: ${ bundle.parameters.guac_server_layout }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
+        aad_authority_url: ${ bundle.parameters.aad_authority_url }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"
@@ -167,6 +172,7 @@ upgrade:
         guac_server_layout: ${ bundle.parameters.guac_server_layout }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
+        aad_authority_url: ${ bundle.parameters.aad_authority_url }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"
@@ -197,6 +203,7 @@ uninstall:
         guac_server_layout: ${ bundle.parameters.guac_server_layout }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
+        aad_authority_url: ${ bundle.parameters.aad_authority_url }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"

@@ -4,7 +4,7 @@ from typing import List
 from pydantic import BaseModel, Field
 
 from models.domain.resource import ResourceType
-from models.domain.workspace import Workspace, WorkspaceAuth, WorkspaceAuthConfig
+from models.domain.workspace import Workspace, WorkspaceAuth
 
 
 def get_sample_workspace(workspace_id: str, spec_workspace_id: str = "0001") -> dict:
@@ -53,22 +53,6 @@ class WorkspaceAuthInResponse(BaseModel):
         schema_extra = {
             "example": {
                 "scopeId": "api://mytre-ws-1233456"
-            }
-        }
-
-
-class WorkspaceAuthConfigInResponse(BaseModel):
-    workspaceAuthConfig: WorkspaceAuthConfig
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "workspaceAuthConfig": {
-                    "clientId": "12345678-1234-1234-1234-123456789012",
-                    "scopeId": "api://mytre-ws-1233456",
-                    "issuer": "https://login.microsoftonline.com/tenant-id/v2.0",
-                    "jwksEndpoint": "https://login.microsoftonline.com/tenant-id/discovery/v2.0/keys"
-                }
             }
         }
 
