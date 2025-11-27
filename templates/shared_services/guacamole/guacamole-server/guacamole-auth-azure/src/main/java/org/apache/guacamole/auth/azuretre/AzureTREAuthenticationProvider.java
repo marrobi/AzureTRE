@@ -51,6 +51,15 @@ public final class AzureTREAuthenticationProvider
     /** Header name for workspace ID in shared service mode. */
     private static final String WORKSPACE_ID_HEADER = "X-Workspace-Id";
 
+    /** Environment variable name for shared service mode. */
+    private static final String SHARED_SERVICE_MODE_ENV = "GUACAMOLE_SHARED_SERVICE_MODE";
+
+    /** Environment variable name for audience. */
+    private static final String AUDIENCE_ENV = "AUDIENCE";
+
+    /** Environment variable name for issuer. */
+    private static final String ISSUER_ENV = "ISSUER";
+
     /** Logger for provider actions. */
     private static final Logger LOGGER = LoggerFactory.getLogger(
         AzureTREAuthenticationProvider.class);
@@ -216,13 +225,13 @@ public final class AzureTREAuthenticationProvider
      * @return true if running in shared service mode.
      */
     private boolean isSharedServiceMode() {
-        final String sharedModeEnv = System.getenv("GUACAMOLE_SHARED_SERVICE_MODE");
+        final String sharedModeEnv = System.getenv(SHARED_SERVICE_MODE_ENV);
         if (!Strings.isNullOrEmpty(sharedModeEnv)) {
             return Boolean.parseBoolean(sharedModeEnv);
         }
         // If AUDIENCE/ISSUER are not set, assume shared service mode
-        final String audience = System.getenv("AUDIENCE");
-        final String issuer = System.getenv("ISSUER");
+        final String audience = System.getenv(AUDIENCE_ENV);
+        final String issuer = System.getenv(ISSUER_ENV);
         return Strings.isNullOrEmpty(audience) || Strings.isNullOrEmpty(issuer);
     }
 

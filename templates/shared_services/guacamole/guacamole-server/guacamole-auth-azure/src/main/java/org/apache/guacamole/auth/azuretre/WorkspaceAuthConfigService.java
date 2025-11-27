@@ -30,6 +30,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service that fetches workspace authentication configuration from the TRE Core API.
@@ -44,8 +45,12 @@ public final class WorkspaceAuthConfigService {
     /** API call timeout in seconds. */
     private static final int API_TIMEOUT_SECONDS = 10;
 
-    /** Cache expiry time in milliseconds (5 minutes). */
-    private static final long CACHE_EXPIRY_MS = 300000;
+    /** Cache expiry time in minutes. */
+    private static final int CACHE_EXPIRY_MINUTES = 5;
+
+    /** Cache expiry time in milliseconds, derived from CACHE_EXPIRY_MINUTES. */
+    private static final long CACHE_EXPIRY_MS =
+        TimeUnit.MINUTES.toMillis(CACHE_EXPIRY_MINUTES);
 
     /** Logger instance. */
     private static final Logger LOGGER = LoggerFactory.getLogger(
