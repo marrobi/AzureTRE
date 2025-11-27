@@ -28,11 +28,6 @@ variable "aad_authority_url" {
   default     = "https://login.microsoftonline.com"
 }
 
-variable "api_scope" {
-  type        = string
-  description = "The scope for the Core API, used by managed identity to get workspace details"
-}
-
 variable "image_name" {
   type        = string
   description = "The Guacamole image name"

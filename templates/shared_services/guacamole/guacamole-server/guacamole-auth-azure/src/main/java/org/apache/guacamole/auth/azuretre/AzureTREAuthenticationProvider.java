@@ -40,7 +40,9 @@ import java.util.Map;
  * Authentication provider that integrates Guacamole with Azure TRE.
  * This provider supports both:
  * - Static mode: Uses AUDIENCE, ISSUER, and OAUTH2_PROXY_JWKS_ENDPOINT from env vars
- * - Dynamic mode: Extracts workspace ID from request and fetches auth config from API
+ * - Dynamic mode (shared service): Uses dual user authentication:
+ *   1. User's Core API token to fetch workspace auth config
+ *   2. User's workspace token validated against workspace-specific OAuth2 config
  */
 public final class AzureTREAuthenticationProvider
     extends AbstractAuthenticationProvider {
@@ -50,6 +52,9 @@ public final class AzureTREAuthenticationProvider
 
     /** Header name for workspace ID in shared service mode. */
     private static final String WORKSPACE_ID_HEADER = "X-Workspace-Id";
+
+    /** Header name for Core API access token (used to fetch workspace details). */
+    private static final String CORE_API_TOKEN_HEADER = "X-Core-Api-Token";
 
     /** Environment variable name for shared service mode. */
     private static final String SHARED_SERVICE_MODE_ENV = "GUACAMOLE_SHARED_SERVICE_MODE";
@@ -131,9 +136,13 @@ public final class AzureTREAuthenticationProvider
             }
         }
 
+        // Get Core API token for shared service mode (dual authentication)
+        final String coreApiToken = requestDetails.getHeader(CORE_API_TOKEN_HEADER);
+
         return new AzureTREAuthenticatedUser(
             credentials,
             accessToken,
+            coreApiToken,
             prefUsername,
             workspaceId,
             this);
@@ -150,6 +159,7 @@ public final class AzureTREAuthenticationProvider
         final AzureTREAuthenticatedUser user =
             (AzureTREAuthenticatedUser) authenticatedUser;
         final String accessToken = user.getAccessToken();
+        final String coreApiToken = user.getCoreApiToken();
         final String workspaceId = user.getWorkspaceId();
 
         try {
@@ -159,7 +169,15 @@ public final class AzureTREAuthenticationProvider
             if (!Strings.isNullOrEmpty(workspaceId) && isSharedServiceMode()) {
                 LOGGER.info("Using dynamic workspace auth for workspace {}",
                     workspaceId);
-                validateTokenWithDynamicConfig(accessToken, workspaceId);
+
+                // In shared service mode, we need the Core API token
+                if (Strings.isNullOrEmpty(coreApiToken)) {
+                    LOGGER.error("Core API token not provided for shared service mode");
+                    throw new GuacamoleException(
+                        "Core API token required for shared service mode");
+                }
+
+                validateTokenWithDynamicConfig(accessToken, coreApiToken, workspaceId);
             } else {
                 // Static mode - use environment variables
                 final UrlJwkProvider jwkProvider = new UrlJwkProvider(
@@ -184,27 +202,31 @@ public final class AzureTREAuthenticationProvider
     }
 
     /**
-     * Validates the token using dynamic workspace auth configuration.
+     * Validates the workspace token using dynamic workspace auth configuration.
+     * Uses the Core API token to fetch workspace details, then validates
+     * the workspace token against the workspace-specific OAuth2 config.
      *
-     * @param accessToken   the access token to validate.
-     * @param workspaceId   the workspace ID for auth config lookup.
+     * @param workspaceToken the user's workspace-scoped access token to validate.
+     * @param coreApiToken   the user's Core API-scoped token for fetching workspace details.
+     * @param workspaceId    the workspace ID for auth config lookup.
      * @throws GuacamoleException if validation fails.
      */
     private void validateTokenWithDynamicConfig(
-        final String accessToken,
+        final String workspaceToken,
+        final String coreApiToken,
         final String workspaceId) throws GuacamoleException {
 
-        // Get workspace auth config from the API using managed identity
+        // Get workspace auth config from the API using user's Core API token
         final WorkspaceAuthConfigService.WorkspaceAuthConfig authConfig =
-            WorkspaceAuthConfigService.getWorkspaceAuthConfig(workspaceId);
+            WorkspaceAuthConfigService.getWorkspaceAuthConfig(workspaceId, coreApiToken);
 
-        // Validate the user's token using workspace-specific configuration
+        // Validate the user's workspace token using workspace-specific configuration
         try {
             final UrlJwkProvider jwkProvider = new UrlJwkProvider(
                 new URL(authConfig.getJwksEndpoint()));
 
             authenticationProviderService.validateTokenWithConfig(
-                accessToken,
+                workspaceToken,
                 jwkProvider,
                 authConfig.getClientId(),
                 authConfig.getIssuer());

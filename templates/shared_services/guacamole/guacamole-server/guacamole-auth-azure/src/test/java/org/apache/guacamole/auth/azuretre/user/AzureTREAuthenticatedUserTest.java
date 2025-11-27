@@ -57,14 +57,17 @@ public class AzureTREAuthenticatedUserTest {
           + "ohJWKcU3dP61wzWuHP50wgxbvDIVqk7ltTTNFG36TAwlzd9-C_sztIoaIKRss_WIhSAu01SY6bWAw75M33KqRZt0KmvQRpwd14yeuG"
           + "K1ulUa8_-t3lynqWfw";
 
+    String dummyCoreApiToken = "core_api_token_123";
+
     @Test
     public void authenticatedUserReturnsClaims() {
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, "dummy_username", "dummy_workspaceId", null);
+            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, dummyCoreApiToken, "dummy_username", "dummy_workspaceId", null);
 
         assertEquals("dummy_workspaceId", authenticatedUser.getWorkspaceId());
         assertEquals("dummy_username", authenticatedUser.getIdentifier());
         assertEquals(dummyAccessToken, authenticatedUser.getAccessToken());
+        assertEquals(dummyCoreApiToken, authenticatedUser.getCoreApiToken());
         assertEquals(credentialsMock, authenticatedUser.getCredentials());
         assertNull(authenticatedUser.getAuthenticationProvider());
     }
@@ -72,7 +75,7 @@ public class AzureTREAuthenticatedUserTest {
     @Test
     public void authenticatedUserWithAuthProvider() {
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, "test_user", "test_workspaceId", authProviderMock);
+            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, dummyCoreApiToken, "test_user", "test_workspaceId", authProviderMock);
 
         assertEquals("test_workspaceId", authenticatedUser.getWorkspaceId());
         assertEquals("test_user", authenticatedUser.getIdentifier());
@@ -82,7 +85,7 @@ public class AzureTREAuthenticatedUserTest {
     @Test
     public void authenticatedUserConvertsUsernameToLowercase() {
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, "TEST_USER", "test_oid", null);
+            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, null, "TEST_USER", "test_oid", null);
 
         assertEquals("test_user", authenticatedUser.getIdentifier());
     }
@@ -90,7 +93,7 @@ public class AzureTREAuthenticatedUserTest {
     @Test
     public void authenticatedUserWithNullWorkspaceId() {
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, "test_user", null, null);
+            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, null, "test_user", null, null);
 
         assertNull(authenticatedUser.getWorkspaceId());
         assertEquals("test_user", authenticatedUser.getIdentifier());
@@ -99,7 +102,7 @@ public class AzureTREAuthenticatedUserTest {
     @Test
     public void authenticatedUserWithEmptyAccessToken() {
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, "", "test_user", "test_workspaceId", null);
+            new AzureTREAuthenticatedUser(credentialsMock, "", null, "test_user", "test_workspaceId", null);
 
         assertEquals("", authenticatedUser.getAccessToken());
         assertNotNull(authenticatedUser.getCredentials());
@@ -109,7 +112,7 @@ public class AzureTREAuthenticatedUserTest {
     public void authenticatedUserWithLongAccessToken() {
         final String longToken = dummyAccessToken + dummyAccessToken;
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, longToken, "test_user", "test_workspaceId", null);
+            new AzureTREAuthenticatedUser(credentialsMock, longToken, null, "test_user", "test_workspaceId", null);
 
         assertEquals(longToken, authenticatedUser.getAccessToken());
     }
@@ -117,7 +120,7 @@ public class AzureTREAuthenticatedUserTest {
     @Test
     public void authenticatedUserWithSpecialCharactersInUsername() {
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, "Test.User@Domain.Com", "test_workspaceId", null);
+            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, null, "Test.User@Domain.Com", "test_workspaceId", null);
 
         assertEquals("test.user@domain.com", authenticatedUser.getIdentifier());
     }
@@ -125,8 +128,17 @@ public class AzureTREAuthenticatedUserTest {
     @Test
     public void authenticatedUserPreservesCredentials() {
         final AzureTREAuthenticatedUser authenticatedUser =
-            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, "test_user", "test_workspaceId", authProviderMock);
+            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, dummyCoreApiToken, "test_user", "test_workspaceId", authProviderMock);
 
         assertSame(credentialsMock, authenticatedUser.getCredentials());
+    }
+
+    @Test
+    public void authenticatedUserWithNullCoreApiToken() {
+        final AzureTREAuthenticatedUser authenticatedUser =
+            new AzureTREAuthenticatedUser(credentialsMock, dummyAccessToken, null, "test_user", "test_workspaceId", null);
+
+        assertNull(authenticatedUser.getCoreApiToken());
+        assertEquals(dummyAccessToken, authenticatedUser.getAccessToken());
     }
 }

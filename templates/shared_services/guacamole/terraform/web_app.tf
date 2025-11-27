@@ -45,10 +45,7 @@ resource "azurerm_linux_web_app" "guacamole" {
     AAD_AUTHORITY_URL = var.aad_authority_url
     AAD_TENANT_ID     = data.azurerm_client_config.current.tenant_id
 
-    # Core API scope for managed identity authentication
-    API_SCOPE = var.api_scope
-
-    # Enable shared service mode - dynamic workspace auth
+    # Enable shared service mode - dynamic workspace auth with dual user tokens
     GUACAMOLE_SHARED_SERVICE_MODE = "true"
 
     APPLICATIONINSIGHTS_CONNECTION_STRING             = data.azurerm_application_insights.core.connection_string

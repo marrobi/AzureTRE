@@ -25,6 +25,8 @@ import org.apache.guacamole.net.auth.Credentials;
 
 /**
  * Authenticated user implementation that retains TRE-specific context.
+ * In shared service mode, this holds both the Core API token (for fetching
+ * workspace details) and the workspace token (for VM access).
  */
 public final class AzureTREAuthenticatedUser extends AbstractAuthenticatedUser {
 
@@ -37,14 +39,18 @@ public final class AzureTREAuthenticatedUser extends AbstractAuthenticatedUser {
     /** Workspace ID for shared service mode. */
     private final String workspaceId;
 
-    /** Access token issued for downstream API calls. */
+    /** Workspace-scoped access token for VM access. */
     private final String accessToken;
+
+    /** Core API-scoped access token for fetching workspace details. */
+    private final String coreApiToken;
 
     /**
      * Creates a new authenticated user.
      *
      * @param originalCredentials original credentials from the client.
-     * @param bearerToken         access token extracted from the headers.
+     * @param bearerToken         workspace-scoped access token.
+     * @param coreToken           Core API-scoped access token (can be null for static mode).
      * @param username            preferred username for the user.
      * @param wsId                workspace ID for shared service mode (can be null).
      * @param provider            provider that authenticated the user.
@@ -52,11 +58,13 @@ public final class AzureTREAuthenticatedUser extends AbstractAuthenticatedUser {
     public AzureTREAuthenticatedUser(
         final Credentials originalCredentials,
         final String bearerToken,
+        final String coreToken,
         final String username,
         final String wsId,
         final AuthenticationProvider provider) {
         this.credentials = originalCredentials;
         this.accessToken = bearerToken;
+        this.coreApiToken = coreToken;
         this.workspaceId = wsId;
         this.authProvider = provider;
         setIdentifier(username.toLowerCase());
@@ -73,12 +81,22 @@ public final class AzureTREAuthenticatedUser extends AbstractAuthenticatedUser {
     }
 
     /**
-     * Returns the bearer token associated with the user.
+     * Returns the workspace-scoped bearer token for VM access.
      *
-     * @return the access token string.
+     * @return the workspace access token string.
      */
     public String getAccessToken() {
         return accessToken;
+    }
+
+    /**
+     * Returns the Core API-scoped access token.
+     * Used to fetch workspace details in shared service mode.
+     *
+     * @return the Core API token, or {@code null} if not in shared service mode.
+     */
+    public String getCoreApiToken() {
+        return coreApiToken;
     }
 
     /**
