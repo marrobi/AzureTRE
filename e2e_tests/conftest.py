@@ -8,6 +8,7 @@ import logging
 from resources.resource import post_resource, disable_and_delete_resource
 from resources.workspace import get_workspace_auth_details
 from resources import strings as resource_strings
+from airlock.roles import assign_airlock_manager_role
 from helpers import get_admin_token
 
 
@@ -109,6 +110,11 @@ async def setup_test_workspace(verify) -> Tuple[str, str, str]:
     # Set up - uses a pre created app reg as has appropriate roles assigned
     workspace_path, workspace_id = await create_or_get_test_workspace(
         auth_type="Manual", verify=verify, pre_created_workspace_id=pre_created_workspace_id, client_id=config.TEST_WORKSPACE_APP_ID, client_secret=config.TEST_WORKSPACE_APP_SECRET)
+
+    # Assign AirlockManager role to the test user for airlock tests
+    admin_token = await get_admin_token(verify=verify)
+    await assign_airlock_manager_role(workspace_id, admin_token, verify)
+    LOGGER.info(f"AirlockManager role assigned for workspace {workspace_id}")
 
     yield workspace_path, workspace_id
 
