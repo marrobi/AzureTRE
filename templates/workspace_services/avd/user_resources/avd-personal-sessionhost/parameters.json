@@ -1,0 +1,116 @@
+{
+  "schemaType": "ParameterSet",
+  "schemaVersion": "1.0.1",
+  "namespace": "",
+  "name": "tre-service-avd-sessionhost",
+  "parameters": [
+    {
+      "name": "id",
+      "source": {
+        "env": "ID"
+      }
+    },
+    {
+      "name": "workspace_id",
+      "source": {
+        "env": "WORKSPACE_ID"
+      }
+    },
+    {
+      "name": "tre_id",
+      "source": {
+        "env": "TRE_ID"
+      }
+    },
+    {
+      "name": "parent_service_id",
+      "source": {
+        "env": "PARENT_SERVICE_ID"
+      }
+    },
+    {
+      "name": "tfstate_container_name",
+      "source": {
+        "env": "TERRAFORM_STATE_CONTAINER_NAME"
+      }
+    },
+    {
+      "name": "tfstate_resource_group_name",
+      "source": {
+        "env": "MGMT_RESOURCE_GROUP_NAME"
+      }
+    },
+    {
+      "name": "tfstate_storage_account_name",
+      "source": {
+        "env": "MGMT_STORAGE_ACCOUNT_NAME"
+      }
+    },
+    {
+      "name": "os_image",
+      "source": {
+        "env": "OS_IMAGE"
+      }
+    },
+    {
+      "name": "admin_username",
+      "source": {
+        "env": "ADMIN_USERNAME"
+      }
+    },
+    {
+      "name": "vm_size",
+      "source": {
+        "env": "VM_SIZE"
+      }
+    },
+    {
+      "name": "shared_storage_access",
+      "source": {
+        "env": "SHARED_STORAGE_ACCESS"
+      }
+    },
+    {
+      "name": "shared_storage_name",
+      "source": {
+        "env": "SHARED_STORAGE_NAME"
+      }
+    },
+    {
+      "name": "owner_id",
+      "source": {
+        "env": "OWNER_ID"
+      }
+    },
+    {
+      "name": "arm_environment",
+      "source": {
+        "env": "ARM_ENVIRONMENT"
+      }
+    },
+    {
+      "name": "enable_shutdown_schedule",
+      "source": {
+        "env": "ENABLE_SHUTDOWN_SCHEDULE"
+      }
+    },
+    {
+      "name": "shutdown_time",
+      "source": {
+        "env": "SHUTDOWN_TIME"
+      }
+    },
+    {
+      "name": "shutdown_timezone",
+      "source": {
+        "env": "SHUTDOWN_TIMEZONE"
+      }
+    },
+    {
+      "name": "workspace_subscription_id",
+      "source": {
+        "env": "WORKSPACE_SUBSCRIPTION_ID"
+      }
+    }
+  ]
+}
