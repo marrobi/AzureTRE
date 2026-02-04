@@ -1135,10 +1135,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#create-a-service-principal-for-provisioning-resources" class="md-nav__link">
+  <a href="#create-a-service-principal-and-configure-oidc-authentication" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create a service principal for provisioning resources
+        Create a service principal and configure OIDC authentication
       
     </span>
   </a>
@@ -2616,6 +2616,8 @@
       
         
       
+        
+      
     
     
     
@@ -3407,6 +3409,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dns-security-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Security Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3527,6 +3557,8 @@
       
         
       
+        
+      
     
     
     
@@ -3582,6 +3614,59 @@
   
   
   
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../../tre-developers/api/" class="md-nav__link">
         
@@ -3590,7 +3675,7 @@
   <span class="md-ellipsis">
     
   
-    API
+    API Overview
   
 
     
@@ -3611,6 +3696,42 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../tre-developers/api-permissions-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Permissions Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../tre-developers/ui/" class="md-nav__link">
         
   
@@ -3619,6 +3740,34 @@
     
   
     UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tre-developers/ui-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Testing
   
 
     
@@ -4485,10 +4634,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#create-a-service-principal-for-provisioning-resources" class="md-nav__link">
+  <a href="#create-a-service-principal-and-configure-oidc-authentication" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create a service principal for provisioning resources
+        Create a service principal and configure OIDC authentication
       
     </span>
   </a>
@@ -4607,7 +4756,7 @@
 <li>Configure repository secrets</li>
 <li>Deploy the TRE using the workflow</li>
 </ol>
-<h3 id="create-a-service-principal-for-provisioning-resources">Create a service principal for provisioning resources</h3>
+<h3 id="create-a-service-principal-and-configure-oidc-authentication">Create a service principal and configure OIDC authentication</h3>
 <ol>
 <li>
 <p>Login to Azure</p>
@@ -4622,22 +4771,31 @@ az account set --subscription &lt;subscription ID&gt;
 <p>Create a service principal</p>
 <p>A service principal needs to be created to authorize CI/CD workflows to provision resources for the TRE workspaces and workspace services.</p>
 <p>Create a main service principal with "<strong>Owner</strong>" role:</p>
-<div class="highlight"><pre><span></span><code>az ad sp create-for-rbac --name &quot;sp-aztre-cicd&quot; --role Owner --scopes /subscriptions/&lt;subscription_id&gt; --sdk-auth
+<div class="highlight"><pre><span></span><code>az ad sp create-for-rbac --name &quot;sp-aztre-cicd&quot; --role Owner --scopes /subscriptions/&lt;subscription_id&gt;
 </code></pre></div>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
-<p>Save the JSON output locally - as you will need it later for setting secrets in the build</p>
+<p>Save the output (especially the <code>appId</code> and <code>tenant</code>) - you will need it for the next steps</p>
 </div>
 </li>
 <li>
-<p>Create a secret in your github environment named <code>AZURE_CREDENTIALS</code> and use the JSON output from the previous step as its value. Note it should look similar to this:
+<p>Configure federated identity credentials for GitHub Actions OIDC</p>
+<p>Configure the service principal to trust GitHub Actions OIDC tokens from your repository:</p>
+<div class="highlight"><pre><span></span><code>az ad app federated-credential create --id &lt;APPLICATION_OBJECT_ID&gt; --parameters credential.json
+</code></pre></div>
+<p>Where <code>credential.json</code> contains (replace <code>OWNER</code>, <code>REPO</code>, and <code>ENVIRONMENT</code> with your values):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;clientId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;clientSecret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;subscriptionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;tenantId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GitHubActions&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;issuer&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://token.actions.githubusercontent.com&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;subject&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;repo:OWNER/REPO:environment:ENVIRONMENT&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GitHub Actions OIDC for Azure TRE&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;audiences&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;api://AzureADTokenExchange&quot;</span>
+<span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
-</code></pre></div></p>
+</code></pre></div>
+<p>For the main/develop branches, you may also want to add federated credentials with subject <code>repo:OWNER/REPO:ref:refs/heads/main</code> and <code>repo:OWNER/REPO:ref:refs/heads/develop</code>.</p>
+<p>See <a href="https://learn.microsoft.com/entra/workload-id/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azcli">Configure a federated identity credential on an app</a> for more details.</p>
 </li>
 </ol>
 <h3 id="configure-core-secrets">Configure Core Secrets</h3>
@@ -4674,6 +4832,18 @@ az account set --subscription &lt;subscription ID&gt;
 <td><code>ENCRYPTION_KV_NAME</code></td>
 <td>Optional. The name of the Key Vault for encryption keys. Should not be set if <code>EXTERNAL_KEY_STORE_ID</code> is set and only required if <code>ENABLE_CMK_ENCRYPTION</code> is true.</td>
 </tr>
+<tr>
+<td><code>AZURE_CLIENT_ID</code></td>
+<td>The application (client) ID of the service principal created above</td>
+</tr>
+<tr>
+<td><code>AZURE_TENANT_ID</code></td>
+<td>The tenant ID where the service principal was created</td>
+</tr>
+<tr>
+<td><code>AZURE_SUBSCRIPTION_ID</code></td>
+<td>The Azure subscription ID where resources will be deployed</td>
+</tr>
 </tbody>
 </table>
 <h3 id="configure-core-variables">Configure Core Variables</h3>
@@ -4686,6 +4856,10 @@ az account set --subscription &lt;subscription ID&gt;
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>AZURE_ENVIRONMENT</code></td>
+<td>Optional. The Azure cloud environment. Default is <code>AzureCloud</code>. Use <code>AzureUSGovernment</code> for US Government cloud</td>
+</tr>
 <tr>
 <td><code>LOCATION</code></td>
 <td>The Azure location (region) for all resources. E.g. <code>westeurope</code></td>
@@ -4701,10 +4875,6 @@ az account set --subscription &lt;subscription ID&gt;
 <tr>
 <td><code>TRE_ADDRESS_SPACE</code></td>
 <td>Optional. The address space for the whole TRE environment virtual network where workspaces networks will be created (can include the core network as well). Default value is <code>10.0.0.0/16</code></td>
-</tr>
-<tr>
-<td><code>AZURE_ENVIRONMENT</code></td>
-<td>Optional. The name of the Azure environment. Supported values are <code>AzureCloud</code> and <code>AzureUSGovernment</code>. Default value is <code>AzureCloud</code>.</td>
 </tr>
 <tr>
 <td><code>CORE_APP_SERVICE_PLAN_SKU</code></td>

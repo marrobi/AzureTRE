@@ -2440,6 +2440,8 @@
       
         
       
+        
+      
     
     
     
@@ -2601,17 +2603,6 @@
     <span class="md-ellipsis">
       
         For authentication in /config.yaml
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#for-cicd-pipelines-in-github-environment-secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For CI/CD pipelines in github environment secrets
       
     </span>
   </a>
@@ -3322,6 +3313,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dns-security-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Security Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3442,6 +3461,8 @@
       
         
       
+        
+      
     
     
     
@@ -3497,6 +3518,59 @@
   
   
   
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../tre-developers/api/" class="md-nav__link">
         
@@ -3505,7 +3579,7 @@
   <span class="md-ellipsis">
     
   
-    API
+    API Overview
   
 
     
@@ -3526,6 +3600,42 @@
   
   
     <li class="md-nav__item">
+      <a href="../../tre-developers/api-permissions-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Permissions Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../tre-developers/ui/" class="md-nav__link">
         
   
@@ -3534,6 +3644,34 @@
     
   
     UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tre-developers/ui-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Testing
   
 
     
@@ -4398,17 +4536,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#for-cicd-pipelines-in-github-environment-secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For CI/CD pipelines in github environment secrets
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -4474,15 +4601,15 @@
 </tr>
 <tr>
 <td><code>ARM_CLIENT_ID</code></td>
-<td><em>Optional for manual deployment without logged-in credentials.</em> The client whose azure identity will be used to deploy the solution.</td>
+<td><em>Optional for manual deployment without logged-in credentials.</em> The client whose azure identity will be used to deploy the solution. For CI/CD, this is set via repository variables.</td>
 </tr>
 <tr>
 <td><code>ARM_CLIENT_SECRET</code></td>
-<td><em>Optional for manual deployment without logged-in credentials.</em> The password of the client defined in <code>ARM_CLIENT_ID</code>.</td>
+<td><em>Optional for manual deployment without logged-in credentials.</em> The password of the client defined in <code>ARM_CLIENT_ID</code>. <strong>Note:</strong> For CI/CD using GitHub Actions, this is no longer required as OIDC authentication is used instead.</td>
 </tr>
 <tr>
 <td><code>ARM_TENANT_ID</code></td>
-<td><em>Optional for manual deployment. If not specified the <code>az cli</code> selected subscription will be used.</em> The Microsoft Entra ID tenant of the client defined in <code>ARM_CLIENT_ID</code>.</td>
+<td><em>Optional for manual deployment. If not specified the <code>az cli</code> selected subscription will be used.</em> The Microsoft Entra ID tenant of the client defined in <code>ARM_CLIENT_ID</code>. For CI/CD, this is set via repository variables.</td>
 </tr>
 </tbody>
 </table>
@@ -4665,21 +4792,6 @@
 <tr>
 <td><code>WORKSPACE_API_CLIENT_SECRET</code></td>
 <td>Each workspace is secured behind it's own AD Application. This is the secret for that application.</td>
-</tr>
-</tbody>
-</table>
-<h2 id="for-cicd-pipelines-in-github-environment-secrets">For CI/CD pipelines in github environment secrets</h2>
-<table>
-<thead>
-<tr>
-<th>Variable</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AZURE_CREDENTIALS</code></td>
-<td>Credentials used to authorize CI/CD workflows to provision resources for the TRE workspaces and workspace services. This is basically your ARM client credentials in json format. Read more about how to create it and its format <a href="../setup-instructions/workflows/##create-a-service principal-for-provisioning-resources">here</a></td>
 </tr>
 </tbody>
 </table>

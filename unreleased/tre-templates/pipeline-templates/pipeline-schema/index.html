@@ -2438,6 +2438,8 @@
       
         
       
+        
+      
     
     
     
@@ -3229,6 +3231,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tre-admins/dns-security-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Security Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3351,6 +3381,8 @@
       
         
       
+        
+      
     
     
     
@@ -3406,6 +3438,59 @@
   
   
   
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../../tre-developers/api/" class="md-nav__link">
         
@@ -3414,7 +3499,7 @@
   <span class="md-ellipsis">
     
   
-    API
+    API Overview
   
 
     
@@ -3435,6 +3520,42 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../tre-developers/api-permissions-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Permissions Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../tre-developers/ui/" class="md-nav__link">
         
   
@@ -3443,6 +3564,34 @@
     
   
     UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tre-developers/ui-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Testing
   
 
     
@@ -3913,6 +4062,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Substituting Resource Property Values">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#accessing-parent-resource-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing Parent Resource Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4389,6 +4555,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Substituting Resource Property Values">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#accessing-parent-resource-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing Parent Resource Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4458,6 +4641,44 @@
 <h2 id="substituting-resource-property-values">Substituting Resource Property Values</h2>
 <p>It's possible to refer to properties from the primary resource (the resource that triggered this pipeline) in the template steps. The values will be substituted in at runtime.</p>
 <p>The syntax is <code>{{ resource.propertyName }}</code>. For example: <code>"{{ resource.properties.display_name }}"</code>.</p>
+<h3 id="accessing-parent-resource-properties">Accessing Parent Resource Properties</h3>
+<p>It's also possible to access properties from the parent resources. This is useful when a resource needs information from its container (e.g. a user resource needing the workspace service's address space).</p>
+<table>
+<thead>
+<tr>
+<th>Resource Type</th>
+<th>Available References</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User Resource</td>
+<td><code>{{ resource.parent.properties... }}</code></td>
+<td>Properties of the <strong>Workspace Service</strong></td>
+</tr>
+<tr>
+<td>User Resource</td>
+<td><code>{{ resource.parent.parent.properties... }}</code></td>
+<td>Properties of the <strong>Workspace</strong></td>
+</tr>
+<tr>
+<td>Workspace Service</td>
+<td><code>{{ resource.parent.properties... }}</code></td>
+<td>Properties of the <strong>Workspace</strong></td>
+</tr>
+<tr>
+<td>Workspace</td>
+<td>N/A</td>
+<td>Workspaces do not have parents in this context</td>
+</tr>
+<tr>
+<td>Shared Service</td>
+<td>N/A</td>
+<td>Shared Services do not have parents in this context</td>
+</tr>
+</tbody>
+</table>
 <p>Example pipeline in <code>template_schema.json</code>:
 The below example references 2 properties from the primary resource to be used in updating the firewall shared service.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;pipeline&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
