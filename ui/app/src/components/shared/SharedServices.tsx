@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Resource } from "../../models/resource";
 import { ResourceCardList } from "../shared/ResourceCardList";
-import { PrimaryButton, Stack, Spinner, SpinnerSize } from "@fluentui/react";
+import { PrimaryButton, Stack, Spinner, SpinnerSize, IconButton } from "@fluentui/react";
 import { ResourceType } from "../../models/resourceType";
 import { SharedService } from "../../models/sharedService";
 import { HttpMethod, useAuthApiCall } from "../../hooks/useAuthApiCall";
@@ -25,17 +25,18 @@ export const SharedServices: React.FunctionComponent<SharedServiceProps> = (
   const [loadingState, setLoadingState] = useState(LoadingState.Loading);
   const apiCall = useAuthApiCall();
 
+  const getSharedServices = async () => {
+    try {
+      const ss = (await apiCall(ApiEndpoint.SharedServices, HttpMethod.Get))
+        .sharedServices;
+      setSharedServices(ss);
+      setLoadingState(LoadingState.Ok);
+    } catch (err) {
+      setLoadingState(LoadingState.Error);
+    }
+  };
+
   useEffect(() => {
-    const getSharedServices = async () => {
-      try {
-        const ss = (await apiCall(ApiEndpoint.SharedServices, HttpMethod.Get))
-          .sharedServices;
-        setSharedServices(ss);
-        setLoadingState(LoadingState.Ok);
-      } catch (err) {
-        setLoadingState(LoadingState.Error);
-      }
-    };
     getSharedServices();
   }, [apiCall]);
 
@@ -66,24 +67,32 @@ export const SharedServices: React.FunctionComponent<SharedServiceProps> = (
           <Stack.Item>
             <Stack horizontal horizontalAlign="space-between">
               <h1>Shared Services</h1>
-              {!props.readonly && (
-                <SecuredByRole
-                  allowedAppRoles={[RoleName.TREAdmin]}
-                  element={
-                    <PrimaryButton
-                      iconProps={{ iconName: "Add" }}
-                      text="Create new"
-                      onClick={() => {
-                        createFormCtx.openCreateForm({
-                          resourceType: ResourceType.SharedService,
-                          onAdd: (r: Resource) =>
-                            addSharedService(r as SharedService),
-                        });
-                      }}
-                    />
-                  }
+              <Stack horizontal tokens={{ childrenGap: 10 }}>
+                <IconButton
+                  iconProps={{ iconName: "Refresh" }}
+                  title="Refresh shared services"
+                  ariaLabel="Refresh shared services"
+                  onClick={getSharedServices}
                 />
-              )}
+                {!props.readonly && (
+                  <SecuredByRole
+                    allowedAppRoles={[RoleName.TREAdmin]}
+                    element={
+                      <PrimaryButton
+                        iconProps={{ iconName: "Add" }}
+                        text="Create new"
+                        onClick={() => {
+                          createFormCtx.openCreateForm({
+                            resourceType: ResourceType.SharedService,
+                            onAdd: (r: Resource) =>
+                              addSharedService(r as SharedService),
+                          });
+                        }}
+                      />
+                    }
+                  />
+                )}
+              </Stack>
             </Stack>
           </Stack.Item>
           <Stack.Item>

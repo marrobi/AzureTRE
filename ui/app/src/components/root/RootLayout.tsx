@@ -35,25 +35,26 @@ export const RootLayout: React.FunctionComponent = () => {
   const appRolesCtx = useContext(AppRolesContext);
   const costsWriteCtx = useRef(useContext(CostsContext));
 
-  useEffect(() => {
-    const getWorkspaces = async () => {
-      try {
-        const r = await apiCall(
-          ApiEndpoint.Workspaces,
-          HttpMethod.Get,
-          undefined,
-          undefined,
-          ResultType.JSON,
-        );
-        setLoadingState(LoadingState.Ok);
-        r && r.workspaces && setWorkspaces(r.workspaces);
-      } catch (e: any) {
-        e.userMessage = "Error retrieving resources";
-        setApiError(e);
-        setLoadingState(LoadingState.Error);
-      }
-    };
+  // Fetch workspaces function that can be called for both initial load and refresh
+  const getWorkspaces = async () => {
+    try {
+      const r = await apiCall(
+        ApiEndpoint.Workspaces,
+        HttpMethod.Get,
+        undefined,
+        undefined,
+        ResultType.JSON,
+      );
+      setLoadingState(LoadingState.Ok);
+      r && r.workspaces && setWorkspaces(r.workspaces);
+    } catch (e: any) {
+      e.userMessage = "Error retrieving resources";
+      setApiError(e);
+      setLoadingState(LoadingState.Error);
+    }
+  };
 
+  useEffect(() => {
     getWorkspaces();
   }, [apiCall]);
 
@@ -158,6 +159,7 @@ export const RootLayout: React.FunctionComponent = () => {
                       addWorkspace={(w: Workspace) => addWorkspace(w)}
                       updateWorkspace={(w: Workspace) => updateWorkspace(w)}
                       removeWorkspace={(w: Workspace) => removeWorkspace(w)}
+                      refreshWorkspaces={getWorkspaces}
                     />
                   }
                 />
