@@ -45,18 +45,15 @@ describe("useTheme hook", () => {
   });
 
   it("allows toggling theme", () => {
-    let isDark = false;
-    const toggle = () => {
-      isDark = !isDark;
-    };
+    const mockToggle = vi.fn();
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <ThemeContext.Provider value={{ isDarkMode: isDark, toggleTheme: toggle }}>
+      <ThemeContext.Provider value={{ isDarkMode: false, toggleTheme: mockToggle }}>
         {children}
       </ThemeContext.Provider>
     );
 
-    const { result, rerender } = renderHook(() => useTheme(), { wrapper });
+    const { result } = renderHook(() => useTheme(), { wrapper });
 
     expect(result.current.isDarkMode).toBe(false);
 
@@ -64,9 +61,7 @@ describe("useTheme hook", () => {
       result.current.toggleTheme();
     });
 
-    rerender();
-    // Note: In real implementation, the state would update through React's state management
-    // This test verifies the toggle function is callable
-    expect(typeof result.current.toggleTheme).toBe("function");
+    // Verify that the toggle function was called
+    expect(mockToggle).toHaveBeenCalledTimes(1);
   });
 });
