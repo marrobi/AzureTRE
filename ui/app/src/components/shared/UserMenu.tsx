@@ -6,15 +6,25 @@ import {
   PrimaryButton,
 } from "@fluentui/react";
 import { useAccount, useMsal } from "@azure/msal-react";
+import { useTheme } from "../../hooks/useTheme";
 
 export const UserMenu: React.FunctionComponent = () => {
   const { instance, accounts } = useMsal();
   const account = useAccount(accounts[0] || {});
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const menuProps: IContextualMenuProps = {
     shouldFocusOnMount: true,
     directionalHint: 6, // bottom right edge
     items: [
+      {
+        key: "darkMode",
+        text: isDarkMode ? "Light Mode" : "Dark Mode",
+        iconProps: { iconName: isDarkMode ? "Sunny" : "ClearNight" },
+        onClick: () => {
+          toggleTheme();
+        },
+      },
       {
         key: "logout",
         text: "Logout",

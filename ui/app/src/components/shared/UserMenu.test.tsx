@@ -3,6 +3,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { UserMenu } from "./UserMenu";
 
+// Mock useTheme hook
+const mockToggleTheme = vi.fn();
+vi.mock("../../hooks/useTheme", () => ({
+  useTheme: () => ({
+    isDarkMode: false,
+    toggleTheme: mockToggleTheme,
+  }),
+}));
+
 // Mock MSAL
 const mockLogout = vi.fn();
 const mockAccount = {
@@ -102,11 +111,27 @@ describe("UserMenu Component", () => {
     });
   });
 
+  it("renders dark mode toggle menu item", () => {
+    render(<UserMenu />);
+
+    expect(screen.getByTestId("menu-item-darkMode")).toBeInTheDocument();
+    expect(screen.getByText("Dark Mode")).toBeInTheDocument();
+  });
+
   it("renders logout menu item", () => {
     render(<UserMenu />);
 
     expect(screen.getByTestId("menu-item-logout")).toBeInTheDocument();
     expect(screen.getByText("Logout")).toBeInTheDocument();
+  });
+
+  it("calls toggleTheme when dark mode menu item is clicked", () => {
+    render(<UserMenu />);
+
+    const darkModeItem = screen.getByTestId("menu-item-darkMode");
+    fireEvent.click(darkModeItem);
+
+    expect(mockToggleTheme).toHaveBeenCalledTimes(1);
   });
 
   it("calls logout when logout menu item is clicked", () => {
