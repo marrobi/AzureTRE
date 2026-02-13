@@ -43,7 +43,7 @@ All traffic between the TRE workspace and Fabric stays on the private network:
 
 - **The following Fabric tenant settings must be enabled** by a Fabric Administrator in the [Admin Portal](https://app.fabric.microsoft.com/admin-portal) under **Tenant Settings** → **Network Security**:
 
-    | Setting | Required for | 
+    | Setting | Required for |
     | ------- | ------------ |
     | **Configure workspace-level inbound network rules** | Workspace-level private endpoint (inbound access from workspace VMs to Fabric) |
     | **Configure workspace-level outbound network rules** | Managed private endpoints (outbound access from Fabric to workspace storage) |
