@@ -105,6 +105,19 @@ resource "azurerm_firewall_policy_rule_collection_group" "core" {
       source_ip_groups = [var.resource_processor_ip_group_id]
     }
 
+    # Required for the Microsoft Fabric Terraform provider to reach the Fabric API
+    rule {
+      name = "fabric-api"
+      protocols {
+        port = "443"
+        type = "Https"
+      }
+      destination_fqdns = [
+        "api.fabric.microsoft.com",
+      ]
+      source_ip_groups = [var.resource_processor_ip_group_id]
+    }
+
 
   }
 

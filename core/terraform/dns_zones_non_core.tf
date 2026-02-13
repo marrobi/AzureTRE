@@ -60,3 +60,33 @@ resource "azurerm_private_dns_zone" "nexus" {
 
   lifecycle { ignore_changes = [tags] }
 }
+
+# AI Services DNS zone - not in terraform_azurerm_environment_configuration private_links mapping,
+# so created as a standalone resource.
+resource "azurerm_private_dns_zone" "ai_services" {
+  name                = "privatelink.services.ai.azure.com"
+  resource_group_name = azurerm_resource_group.core.name
+  tags                = local.tre_core_tags
+
+  lifecycle { ignore_changes = [tags] }
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "ai_services" {
+  resource_group_name   = azurerm_resource_group.core.name
+  virtual_network_id    = module.network.core_vnet_id
+  private_dns_zone_name = azurerm_private_dns_zone.ai_services.name
+  name                  = azurerm_private_dns_zone.ai_services.name
+  registration_enabled  = false
+  tags                  = local.tre_core_tags
+  lifecycle { ignore_changes = [tags] }
+}
+
+# Fabric DNS zone - not in terraform_azurerm_environment_configuration private_links mapping,
+# so created as a standalone resource.
+resource "azurerm_private_dns_zone" "fabric" {
+  name                = "privatelink.fabric.microsoft.com"
+  resource_group_name = azurerm_resource_group.core.name
+  tags                = local.tre_core_tags
+
+  lifecycle { ignore_changes = [tags] }
+}

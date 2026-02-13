@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/microsoft/AzureTRE/templates/workspace_services/fabric/template_schema.json",
+  "type": "object",
+  "title": "Microsoft Fabric",
+  "description": "Microsoft Fabric workspace service with dedicated capacity, Lakehouse, and private connectivity.",
+  "required": [],
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "title": "Name for the workspace service",
+      "description": "The name of the workspace service to be displayed to users",
+      "default": "Microsoft Fabric",
+      "updateable": true
+    },
+    "description": {
+      "type": "string",
+      "title": "Description of the workspace service",
+      "description": "Description of the workspace service",
+      "default": "Microsoft Fabric is a unified analytics platform that brings together data engineering, data science, real-time analytics, and business intelligence in a single SaaS experience.",
+      "updateable": true
+    },
+    "overview": {
+      "type": "string",
+      "title": "Workspace Service Overview",
+      "description": "Long form description of the workspace service, in markdown syntax",
+      "default": "Microsoft Fabric provides a unified analytics platform built on a lakehouse architecture.\nThis workspace service provisions a dedicated Fabric capacity, workspace, and default Lakehouse with private connectivity to the TRE workspace.\n\n**Included resources:**\n- Fabric Capacity (configurable SKU)\n- Fabric Workspace with workspace-level private link\n- Default Lakehouse\n- Managed private endpoints for secure access to workspace storage\n\n[Microsoft Fabric documentation](https://learn.microsoft.com/en-us/fabric/)",
+      "updateable": true
+    },
+    "fabric_capacity_sku": {
+      "$id": "#/properties/fabric_capacity_sku",
+      "type": "string",
+      "title": "Fabric Capacity SKU",
+      "description": "The SKU tier for the Fabric capacity. Larger SKUs provide more compute power but cost more.",
+      "default": "F2",
+      "enum": [
+        "F2",
+        "F4",
+        "F8",
+        "F16",
+        "F32",
+        "F64",
+        "F128",
+        "F256",
+        "F512",
+        "F1024",
+        "F2048"
+      ],
+      "updateable": true
+    },
+    "is_exposed_externally": {
+      "$id": "#/properties/is_exposed_externally",
+      "type": "boolean",
+      "title": "Expose externally",
+      "description": "Is the Fabric workspace accessible from outside of the workspace network",
+      "default": false
+    }
+  },
+  "uiSchema": {
+    "is_exposed_externally": {
+      "classNames": "tre-hidden"
+    }
+  },
+  "pipeline": {
+    "install": [
+      {
+        "stepId": "main"
+      }
+    ],
+    "upgrade": [
+      {
+        "stepId": "main"
+      }
+    ],
+    "uninstall": [
+      {
+        "stepId": "main"
+      }
+    ]
+  }
+}
