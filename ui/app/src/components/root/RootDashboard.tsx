@@ -15,6 +15,7 @@ interface RootDashboardProps {
   updateWorkspace: (w: Workspace) => void;
   removeWorkspace: (w: Workspace) => void;
   addWorkspace: (w: Workspace) => void;
+  refreshWorkspaces: () => void;
 }
 
 export const RootDashboard: React.FunctionComponent<RootDashboardProps> = (
@@ -56,6 +57,7 @@ export const RootDashboard: React.FunctionComponent<RootDashboardProps> = (
             updateWorkspace={props.updateWorkspace}
             removeWorkspace={props.removeWorkspace}
             addWorkspace={props.addWorkspace}
+            refreshWorkspaces={props.refreshWorkspaces}
           />
         </Stack.Item>
       </Stack>

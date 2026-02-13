@@ -228,6 +228,22 @@ export const WorkspaceProvider: React.FunctionComponent = () => {
     setWorkspaceServices(ws);
   };
 
+  const refreshWorkspaceServices = async () => {
+    try {
+      const ws = workspaceCtx.current.workspace;
+      if (ws && ws.id && ws.properties && ws.properties.scope_id) {
+        const workspaceServices = await apiCall(
+          `${ApiEndpoint.Workspaces}/${ws.id}/${ApiEndpoint.WorkspaceServices}`,
+          HttpMethod.Get,
+          ws.properties.scope_id,
+        );
+        setWorkspaceServices(workspaceServices.workspaceServices);
+      }
+    } catch (e: any) {
+      console.error("Error refreshing workspace services:", e);
+    }
+  };
+
   switch (loadingState) {
     case LoadingState.Ok:
       return (
@@ -272,6 +288,7 @@ export const WorkspaceProvider: React.FunctionComponent = () => {
                               removeWorkspaceService={(ws: WorkspaceService) =>
                                 removeWorkspaceService(ws)
                               }
+                              refreshWorkspaceServices={refreshWorkspaceServices}
                             />
                           ) : (
                             <Stack className="tre-panel">
@@ -309,6 +326,7 @@ export const WorkspaceProvider: React.FunctionComponent = () => {
                               removeWorkspaceService={(ws: WorkspaceService) =>
                                 removeWorkspaceService(ws)
                               }
+                              refreshWorkspaceServices={refreshWorkspaceServices}
                             />
                           }
                         />
