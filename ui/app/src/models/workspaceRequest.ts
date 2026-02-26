@@ -11,6 +11,7 @@ export interface WorkspaceRequest {
   title: string;
   businessJustification: string;
   workspaceType: string;
+  properties: Record<string, unknown>;
   status: WorkspaceRequestStatus;
   allowedUserActions: Array<WorkspaceRequestAction>;
   reviews?: Array<WorkspaceRequestReview>;
@@ -37,6 +38,7 @@ export interface NewWorkspaceRequest {
   title: string;
   businessJustification: string;
   workspaceType: string;
+  properties: Record<string, unknown>;
 }
 
 export enum WorkspaceRequestAction {

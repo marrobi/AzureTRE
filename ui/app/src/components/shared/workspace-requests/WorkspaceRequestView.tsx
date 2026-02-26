@@ -313,6 +313,35 @@ export const WorkspaceRequestView: React.FunctionComponent<
               </Stack.Item>
             </Stack>
 
+            {request.properties &&
+              Object.keys(request.properties).length > 0 && (
+                <>
+                  <Stack
+                    style={{ marginTop: "20px" }}
+                    styles={underlineStackStyles}
+                  >
+                    <Stack.Item styles={stackItemStyles}>
+                      <b>Workspace Options</b>
+                    </Stack.Item>
+                  </Stack>
+                  {Object.entries(request.properties).map(([key, value]) => (
+                    <Stack
+                      key={key}
+                      horizontal
+                      horizontalAlign="space-between"
+                      styles={underlineStackStyles}
+                    >
+                      <Stack.Item styles={stackItemStyles}>
+                        <span>{key.replace(/_/g, " ")}</span>
+                      </Stack.Item>
+                      <Stack.Item styles={stackItemStyles}>
+                        <p>{String(value)}</p>
+                      </Stack.Item>
+                    </Stack>
+                  ))}
+                </>
+              )}
+
             {request.reviews && request.reviews.length > 0 && (
               <>
                 <Stack

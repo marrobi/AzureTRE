@@ -23,8 +23,13 @@ import {
 import { ApiEndpoint } from "../../../models/apiEndpoints";
 import { APIError } from "../../../models/exceptions";
 import { ExceptionLayout } from "../ExceptionLayout";
-import { ResourceTemplate } from "../../../models/resourceTemplate";
+import {
+  ResourceTemplate,
+  filterTemplateForRequest,
+} from "../../../models/resourceTemplate";
 import { LoadingState } from "../../../models/loadingState";
+import Form from "@rjsf/fluent-ui";
+import validator from "@rjsf/validator-ajv8";
 
 interface WorkspaceRequestNewProps {
   onCreateRequest: (request: WorkspaceRequest) => void;
@@ -37,6 +42,7 @@ export const WorkspaceRequestNew: React.FunctionComponent<
     title: "",
     businessJustification: "",
     workspaceType: "",
+    properties: {},
   });
   const [requestValid, setRequestValid] = useState(false);
   const [hideCreateDialog, setHideCreateDialog] = useState(true);
@@ -49,6 +55,8 @@ export const WorkspaceRequestNew: React.FunctionComponent<
   const [templatesLoading, setTemplatesLoading] = useState(
     LoadingState.Loading,
   );
+  const [requestSchema, setRequestSchema] = useState<any | null>(null);
+  const [loadingSchema, setLoadingSchema] = useState(false);
   const navigate = useNavigate();
   const apiCall = useAuthApiCall();
 
@@ -98,15 +106,43 @@ export const WorkspaceRequestNew: React.FunctionComponent<
   );
 
   const onTemplateChange = useCallback(
-    (_event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+    async (
+      _event: React.FormEvent<HTMLDivElement>,
+      option?: IDropdownOption,
+    ) => {
       if (option) {
+        const templateName = option.key as string;
         setNewRequest((request) => ({
           ...request,
-          workspaceType: option.key as string,
+          workspaceType: templateName,
+          properties: {},
         }));
+        setRequestSchema(null);
+
+        // Fetch the full template to extract show_in_request fields
+        setLoadingSchema(true);
+        try {
+          const templateResponse = (await apiCall(
+            `${ApiEndpoint.WorkspaceTemplates}/${templateName}`,
+            HttpMethod.Get,
+          )) as ResourceTemplate;
+
+          const filtered = filterTemplateForRequest(templateResponse);
+          // Only show the schema form if there are show_in_request properties
+          if (
+            filtered.properties &&
+            Object.keys(filtered.properties).length > 0
+          ) {
+            setRequestSchema(filtered);
+          }
+        } catch (err: any) {
+          // Non-critical: template fields just won't show
+          console.warn("Could not load template schema", err);
+        }
+        setLoadingSchema(false);
       }
     },
-    [],
+    [apiCall],
   );
 
   useEffect(
@@ -205,6 +241,32 @@ export const WorkspaceRequestNew: React.FunctionComponent<
           rows={6}
           required
         />
+        {loadingSchema && (
+          <Spinner
+            label="Loading template options..."
+            size={SpinnerSize.small}
+          />
+        )}
+        {requestSchema && (
+          <>
+            <h3 style={{ marginTop: 16, marginBottom: 0 }}>
+              Workspace Options
+            </h3>
+            <Form
+              omitExtraData={true}
+              schema={requestSchema}
+              formData={newRequest.properties}
+              validator={validator}
+              onChange={(e: any) =>
+                setNewRequest((request) => ({
+                  ...request,
+                  properties: e.formData,
+                }))
+              }
+              children={<></>}
+            />
+          </>
+        )}
       </Stack>
       <Dialog
         hidden={hideCreateDialog}

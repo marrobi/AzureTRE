@@ -43,11 +43,23 @@ class TestWorkspaceRequestRoutesForTREUser:
         input_data = {
             "title": "New Workspace",
             "businessJustification": "Need workspace for research",
-            "workspaceType": "tre-workspace-base"
+            "workspaceType": "tre-workspace-base",
+            "properties": {"enable_airlock": True}
         }
         response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_REQUEST), json=input_data)
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["workspaceRequest"]["id"] == WORKSPACE_REQUEST_ID
+
+    @patch("api.routes.workspace_requests.WorkspaceRequestRepository.create_workspace_request_item", return_value=sample_workspace_request())
+    @patch("api.routes.workspace_requests.save_workspace_request")
+    async def test_post_workspace_request_without_properties_returns_201(self, _, __, app, client):
+        input_data = {
+            "title": "New Workspace",
+            "businessJustification": "Need workspace for research",
+            "workspaceType": "tre-workspace-base"
+        }
+        response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_REQUEST), json=input_data)
+        assert response.status_code == status.HTTP_201_CREATED
 
     @patch("api.routes.workspace_requests.WorkspaceRequestRepository.create_workspace_request_item", side_effect=ValueError)
     async def test_post_workspace_request_malformed_input_returns_400(self, _, app, client):

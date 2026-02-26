@@ -20,6 +20,7 @@ def get_sample_workspace_request(request_id: str) -> dict:
         "title": "New research workspace",
         "businessJustification": "Need a workspace for genomics research",
         "workspaceType": "tre-workspace-base",
+        "properties": {"display_name": "Genomics Workspace"},
         "requestor": {
             "id": "a user id",
             "name": "a user name"
@@ -64,13 +65,15 @@ class WorkspaceRequestInCreate(BaseModel):
     title: str = Field("Workspace Request", title="Brief title for the request")
     businessJustification: str = Field("", title="Explanation that will be provided to the request reviewer")
     workspaceType: str = Field("", title="Workspace template name")
+    properties: dict = Field({}, title="Template property values provided by the requestor (show_in_request fields)")
 
     class Config:
         schema_extra = {
             "example": {
                 "title": "New research workspace",
                 "businessJustification": "Need a workspace for genomics research",
-                "workspaceType": "tre-workspace-base"
+                "workspaceType": "tre-workspace-base",
+                "properties": {"display_name": "Genomics Workspace", "description": "A workspace for genomics research"}
             }
         }
 

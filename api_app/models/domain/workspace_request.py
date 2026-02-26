@@ -54,6 +54,7 @@ class WorkspaceRequest(AzureTREModel):
     title: str = Field("Workspace Request", title="Brief title for the request")
     businessJustification: str = Field("", title="Explanation that will be provided to the request reviewer")
     workspaceType: str = Field("", title="Workspace template name")
+    properties: dict = Field({}, title="Template property values provided by the requestor (show_in_request fields)")
     status: WorkspaceRequestStatus = WorkspaceRequestStatus.Draft
     reviews: Optional[List[WorkspaceRequestReview]]
     etag: Optional[str] = Field(title="_etag", alias="_etag")

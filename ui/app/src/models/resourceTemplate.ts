@@ -46,6 +46,37 @@ export const sanitiseTemplateForRJSF = (template: ResourceTemplate) => {
   return sanitised;
 };
 
+/**
+ * Filters a template schema to only include properties with show_in_request: true.
+ * Used to render a subset of template fields in the workspace request form.
+ */
+export const filterTemplateForRequest = (template: ResourceTemplate) => {
+  const sanitised = sanitiseTemplateForRJSF(template);
+
+  if (sanitised.properties) {
+    const filtered: any = {};
+    Object.keys(sanitised.properties).forEach((key: string) => {
+      if (sanitised.properties[key].show_in_request === true) {
+        filtered[key] = { ...sanitised.properties[key] };
+        delete filtered[key].show_in_request;
+      }
+    });
+    sanitised.properties = filtered;
+  }
+
+  // Remove required fields that aren't in the filtered properties
+  if (sanitised.required && sanitised.properties) {
+    sanitised.required = sanitised.required.filter(
+      (r: string) => r in sanitised.properties,
+    );
+  }
+
+  // Remove allOf conditionals since they reference properties not in the request form
+  delete sanitised.allOf;
+
+  return sanitised;
+};
+
 export interface TemplateAction {
   name: string;
   description: string;

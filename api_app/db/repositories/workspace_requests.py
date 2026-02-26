@@ -80,6 +80,7 @@ class WorkspaceRequestRepository(BaseRepository):
             title=workspace_request_input.title,
             businessJustification=workspace_request_input.businessJustification,
             workspaceType=workspace_request_input.workspaceType,
+            properties=workspace_request_input.properties,
             requestor=user,
             createdWhen=datetime.now(UTC).timestamp(),
             updatedBy=user,
