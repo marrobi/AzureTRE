@@ -43,8 +43,7 @@ class TestWorkspaceRequestRoutesForTREUser:
         input_data = {
             "title": "New Workspace",
             "businessJustification": "Need workspace for research",
-            "workspaceType": "tre-workspace-base",
-            "properties": {}
+            "workspaceType": "tre-workspace-base"
         }
         response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_REQUEST), json=input_data)
         assert response.status_code == status.HTTP_201_CREATED
@@ -55,8 +54,7 @@ class TestWorkspaceRequestRoutesForTREUser:
         input_data = {
             "title": "New Workspace",
             "businessJustification": "justification",
-            "workspaceType": "tre-workspace-base",
-            "properties": {}
+            "workspaceType": "tre-workspace-base"
         }
         response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_REQUEST), json=input_data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST

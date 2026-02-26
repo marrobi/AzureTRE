@@ -94,6 +94,10 @@ def get_allowed_actions(request: WorkspaceRequest, user: User, workspace_request
     if can_submit_request and "TREUser" in user.roles:
         allowed_actions.append(WorkspaceRequestActions.Submit)
 
+    # Admin can deploy approved requests using the existing workspace creation flow
+    if request.status == WorkspaceRequestStatus.Approved and "TREAdmin" in user.roles:
+        allowed_actions.append(WorkspaceRequestActions.Deploy)
+
     return allowed_actions
 
 

@@ -70,7 +70,24 @@ async def test_no_actions_for_approved_request():
     request = sample_workspace_request(status=WorkspaceRequestStatus.Approved)
     actions = get_allowed_actions(request, user, repo)
 
-    assert len(actions) == 0
+    assert WorkspaceRequestActions.Deploy in actions
+    assert len(actions) == 1
+
+
+async def test_deploy_action_available_for_approved_request_admin_only():
+    repo = MagicMock(spec=WorkspaceRequestRepository)
+    repo.validate_status_update = WorkspaceRequestRepository.validate_status_update.__get__(repo, WorkspaceRequestRepository)
+
+    admin_user = create_admin_user()
+    non_admin_user = create_non_admin_user()
+
+    request = sample_workspace_request(status=WorkspaceRequestStatus.Approved)
+
+    admin_actions = get_allowed_actions(request, admin_user, repo)
+    assert WorkspaceRequestActions.Deploy in admin_actions
+
+    user_actions = get_allowed_actions(request, non_admin_user, repo)
+    assert WorkspaceRequestActions.Deploy not in user_actions
 
 
 async def test_no_actions_for_rejected_request():

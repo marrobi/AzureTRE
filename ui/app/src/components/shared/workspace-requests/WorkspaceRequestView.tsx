@@ -14,6 +14,7 @@ import {
   IStackTokens,
   mergeStyles,
   MessageBar,
+  MessageBarType,
   Modal,
   Panel,
   PanelType,
@@ -36,8 +37,10 @@ import {
 } from "../../../models/workspaceRequest";
 import { ApiEndpoint } from "../../../models/apiEndpoints";
 import { APIError } from "../../../models/exceptions";
+import { ResourceType } from "../../../models/resourceType";
 import { destructiveButtonStyles } from "../../../styles";
 import { ExceptionLayout } from "../ExceptionLayout";
+import { CreateUpdateResource } from "../create-update-resource/CreateUpdateResource";
 import { WorkspaceRequestReviewDialog } from "./WorkspaceRequestReviewDialog";
 
 interface WorkspaceRequestViewProps {
@@ -53,6 +56,7 @@ export const WorkspaceRequestView: React.FunctionComponent<
   const [hideSubmitDialog, setHideSubmitDialog] = useState(true);
   const [hideCancelDialog, setHideCancelDialog] = useState(true);
   const [reviewIsOpen, setReviewIsOpen] = useState(false);
+  const [deployIsOpen, setDeployIsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [apiError, setApiError] = useState({} as APIError);
@@ -134,6 +138,14 @@ export const WorkspaceRequestView: React.FunctionComponent<
             </MessageBar>
           </div>
         )}
+        {request.status === WorkspaceRequestStatus.Approved && (
+          <div style={{ marginTop: "10px", marginBottom: "10px" }}>
+            <MessageBar messageBarType={MessageBarType.success}>
+              This request has been approved. An admin can now deploy the
+              workspace using the &quot;Deploy Workspace&quot; button below.
+            </MessageBar>
+          </div>
+        )}
         <div style={{ textAlign: "end" }}>
           {request.allowedUserActions?.includes(
             WorkspaceRequestAction.Cancel,
@@ -165,6 +177,16 @@ export const WorkspaceRequestView: React.FunctionComponent<
           ) && (
             <PrimaryButton onClick={() => setReviewIsOpen(true)}>
               Review
+            </PrimaryButton>
+          )}
+          {request.allowedUserActions?.includes(
+            WorkspaceRequestAction.Deploy,
+          ) && (
+            <PrimaryButton
+              iconProps={{ iconName: "CloudAdd" }}
+              onClick={() => setDeployIsOpen(true)}
+            >
+              Deploy Workspace
             </PrimaryButton>
           )}
         </div>
@@ -452,6 +474,11 @@ export const WorkspaceRequestView: React.FunctionComponent<
             onClose={() => setReviewIsOpen(false)}
           />
         </Modal>
+        <CreateUpdateResource
+          isOpen={deployIsOpen}
+          onClose={() => setDeployIsOpen(false)}
+          resourceType={ResourceType.Workspace}
+        />
       </Panel>
     </>
   );

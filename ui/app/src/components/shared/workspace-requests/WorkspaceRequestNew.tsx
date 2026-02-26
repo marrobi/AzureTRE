@@ -23,13 +23,8 @@ import {
 import { ApiEndpoint } from "../../../models/apiEndpoints";
 import { APIError } from "../../../models/exceptions";
 import { ExceptionLayout } from "../ExceptionLayout";
-import {
-  ResourceTemplate,
-  sanitiseTemplateForRJSF,
-} from "../../../models/resourceTemplate";
+import { ResourceTemplate } from "../../../models/resourceTemplate";
 import { LoadingState } from "../../../models/loadingState";
-import Form from "@rjsf/fluent-ui";
-import validator from "@rjsf/validator-ajv8";
 
 interface WorkspaceRequestNewProps {
   onCreateRequest: (request: WorkspaceRequest) => void;
@@ -42,7 +37,6 @@ export const WorkspaceRequestNew: React.FunctionComponent<
     title: "",
     businessJustification: "",
     workspaceType: "",
-    properties: {},
   });
   const [requestValid, setRequestValid] = useState(false);
   const [hideCreateDialog, setHideCreateDialog] = useState(true);
@@ -52,10 +46,6 @@ export const WorkspaceRequestNew: React.FunctionComponent<
   const [workspaceTemplates, setWorkspaceTemplates] = useState<
     ResourceTemplate[]
   >([]);
-  const [selectedTemplate, setSelectedTemplate] =
-    useState<ResourceTemplate | null>(null);
-  const [templateSchema, setTemplateSchema] = useState<any | null>(null);
-  const [templateFormData, setTemplateFormData] = useState<any>({});
   const [templatesLoading, setTemplatesLoading] = useState(
     LoadingState.Loading,
   );
@@ -80,29 +70,6 @@ export const WorkspaceRequestNew: React.FunctionComponent<
     };
     getTemplates();
   }, [apiCall]);
-
-  // When a template is selected, fetch its full schema
-  useEffect(() => {
-    const getTemplateSchema = async () => {
-      if (!selectedTemplate) {
-        setTemplateSchema(null);
-        return;
-      }
-      try {
-        const templateResponse = (await apiCall(
-          `${ApiEndpoint.WorkspaceTemplates}/${selectedTemplate.name}`,
-          HttpMethod.Get,
-        )) as ResourceTemplate;
-        const sanitised = sanitiseTemplateForRJSF(templateResponse);
-        setTemplateSchema(sanitised);
-      } catch (err: any) {
-        err.userMessage = "Error fetching template schema";
-        setApiCreateError(err);
-        setTemplateSchema(null);
-      }
-    };
-    getTemplateSchema();
-  }, [apiCall, selectedTemplate]);
 
   const onChangeTitle = useCallback(
     (
@@ -133,18 +100,13 @@ export const WorkspaceRequestNew: React.FunctionComponent<
   const onTemplateChange = useCallback(
     (_event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
       if (option) {
-        const template = workspaceTemplates.find(
-          (t) => t.name === option.key,
-        );
-        setSelectedTemplate(template || null);
         setNewRequest((request) => ({
           ...request,
           workspaceType: option.key as string,
         }));
-        setTemplateFormData({});
       }
     },
-    [workspaceTemplates],
+    [],
   );
 
   useEffect(
@@ -162,15 +124,11 @@ export const WorkspaceRequestNew: React.FunctionComponent<
       setCreating(true);
       setCreateError(false);
       try {
-        const requestPayload = {
-          ...newRequest,
-          properties: templateFormData,
-        };
         const response = await apiCall(
           ApiEndpoint.WorkspaceRequests,
           HttpMethod.Post,
           undefined,
-          requestPayload,
+          newRequest,
         );
         props.onCreateRequest(response.workspaceRequest);
         setHideCreateDialog(true);
@@ -181,7 +139,7 @@ export const WorkspaceRequestNew: React.FunctionComponent<
       }
       setCreating(false);
     }
-  }, [apiCall, newRequest, props, requestValid, templateFormData]);
+  }, [apiCall, newRequest, props, requestValid]);
 
   const dismissPanel = useCallback(() => navigate("../"), [navigate]);
 
@@ -202,13 +160,6 @@ export const WorkspaceRequestNew: React.FunctionComponent<
     key: t.name,
     text: t.title || t.name,
   }));
-
-  // Use the supplied uiSchema or create a blank one
-  const uiSchema = (templateSchema && templateSchema.uiSchema) || {};
-  uiSchema.overview = { "ui:widget": "textarea" };
-  if (!uiSchema["ui:order"] || uiSchema["ui:order"].length === 0) {
-    uiSchema["ui:order"] = ["display_name", "description", "overview", "*"];
-  }
 
   return (
     <Panel
@@ -254,22 +205,6 @@ export const WorkspaceRequestNew: React.FunctionComponent<
           rows={6}
           required
         />
-        {templateSchema && (
-          <>
-            <h3 style={{ marginTop: 16, marginBottom: 0 }}>
-              Workspace Properties
-            </h3>
-            <Form
-              omitExtraData={true}
-              schema={templateSchema}
-              formData={templateFormData}
-              uiSchema={uiSchema}
-              validator={validator}
-              onChange={(e: any) => setTemplateFormData(e.formData)}
-              children={<></>}
-            />
-          </>
-        )}
       </Stack>
       <Dialog
         hidden={hideCreateDialog}
