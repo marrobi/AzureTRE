@@ -204,6 +204,37 @@ RESOURCE_TYPE_SHARED_SERVICE = "shared-service"
 AIRLOCK_RESOURCE_TYPE_REQUEST = "airlock-request"
 AIRLOCK_RESOURCE_TYPE_REVIEW = "airlock-review"
 
+# Workspace Request API Descriptions
+API_CREATE_WORKSPACE_REQUEST = "Create a workspace request"
+API_GET_WORKSPACE_REQUEST = "Get a workspace request"
+API_LIST_WORKSPACE_REQUESTS = "Get all workspace requests"
+API_SUBMIT_WORKSPACE_REQUEST = "Submit a workspace request for approval"
+API_CANCEL_WORKSPACE_REQUEST = "Cancel a workspace request"
+API_REVIEW_WORKSPACE_REQUEST = "Review a workspace request"
+
+# Workspace Request Resource Status
+WORKSPACE_REQUEST_STATUS_DRAFT = "draft"
+WORKSPACE_REQUEST_STATUS_SUBMITTED = "submitted"
+WORKSPACE_REQUEST_STATUS_INREVIEW = "in_review"
+WORKSPACE_REQUEST_STATUS_APPROVED = "approved"
+WORKSPACE_REQUEST_STATUS_REJECTED = "rejected"
+WORKSPACE_REQUEST_STATUS_CANCELLED = "cancelled"
+
+# Workspace Request Actions
+WORKSPACE_REQUEST_ACTION_SUBMIT = "submit"
+WORKSPACE_REQUEST_ACTION_CANCEL = "cancel"
+WORKSPACE_REQUEST_ACTION_REVIEW = "review"
+WORKSPACE_REQUEST_ACTION_DEPLOY = "deploy"
+
+# Workspace Request Review Decisions
+WORKSPACE_REQUEST_REVIEW_DECISION_APPROVED = "approved"
+WORKSPACE_REQUEST_REVIEW_DECISION_REJECTED = "rejected"
+
+# Workspace Request Messages
+WORKSPACE_REQUEST_DOES_NOT_EXIST = "Workspace request does not exist"
+WORKSPACE_REQUEST_ILLEGAL_STATUS_CHANGE = "Workspace request status change was illegal"
+WORKSPACE_REQUEST_UNAUTHORIZED = "You are not authorized to perform this action on this workspace request"
+
 # Airlock Resource Status
 AIRLOCK_RESOURCE_STATUS_DRAFT = "draft"
 AIRLOCK_RESOURCE_STATUS_SUBMITTED = "submitted"

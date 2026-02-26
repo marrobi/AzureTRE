@@ -13,6 +13,7 @@ import { RootDashboard } from "./RootDashboard";
 import { LeftNav } from "./LeftNav";
 import { LoadingState } from "../../models/loadingState";
 import { RequestsList } from "../shared/RequestsList";
+import { WorkspaceRequests } from "../shared/workspace-requests/WorkspaceRequests";
 import { SharedServices } from "../shared/SharedServices";
 import { SharedServiceItem } from "../shared/SharedServiceItem";
 import { SecuredByRole } from "../shared/SecuredByRole";
@@ -199,6 +200,7 @@ export const RootLayout: React.FunctionComponent = () => {
                     <Routes>
                       <Route path="/" />
                       <Route path="airlock/*" element={<RequestsList />} />
+                      <Route path="workspace-requests/*" element={<WorkspaceRequests />} />
                     </Routes>
                   }
                 />

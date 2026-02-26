@@ -80,6 +80,40 @@ Any **custom parameters** are picked up by Azure TRE API and will be queried fro
 
 When authoring a `template_schema.json` file, you can reference properties from the resource being deployed, or its parent resources. For more information see [Pipeline Template Schema](../tre-templates/pipeline-templates/pipeline-schema.md#substituting-resource-property-values).
 
+### `show_in_request` attribute
+
+When the [Workspace Requests](../azure-tre-overview/workspace-requests.md) feature is enabled, template authors can control which properties appear in the workspace request form by adding `"show_in_request": true` to individual properties in `template_schema.json`.
+
+Properties marked with `show_in_request` will be rendered dynamically in the request form when a user selects that workspace type. The values provided by the requestor are stored with the request and displayed in the request detail view for the admin reviewer.
+
+Example:
+
+```json
+{
+  "properties": {
+    "enable_airlock": {
+      "type": "boolean",
+      "title": "Enable Airlock",
+      "description": "Allow safe import and export to the workspace",
+      "default": true,
+      "updateable": true,
+      "show_in_request": true
+    },
+    "app_service_plan_sku": {
+      "type": "string",
+      "title": "App Service Plan SKU",
+      "description": "The SKU that will be used when deploying an Azure App Service Plan.",
+      "default": "P1v3"
+    }
+  }
+}
+```
+
+In this example, `enable_airlock` will appear in the workspace request form because it has `"show_in_request": true`, while `app_service_plan_sku` will only be visible in the full deployment form that the admin sees when deploying the workspace.
+
+!!! tip
+    Use `show_in_request` for properties that represent high-level workspace configuration choices that are meaningful to the requestor (e.g., enabling features, selecting sizes). Leave technical infrastructure details for the admin deployment form.
+
 ### Output
 
 !!! todo

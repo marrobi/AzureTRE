@@ -48,6 +48,13 @@ export const LeftNav: React.FunctionComponent = () => {
     icon: "Lock",
   });
 
+  requestsLinkArray.push({
+    name: "Workspace Requests",
+    url: "/requests/workspace-requests",
+    key: "workspace-requests",
+    icon: "CubeShape",
+  });
+
   // add Requests link
   navLinkGroups[0].links.push({
     name: "Requests",
