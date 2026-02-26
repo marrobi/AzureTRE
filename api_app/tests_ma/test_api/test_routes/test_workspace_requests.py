@@ -60,6 +60,7 @@ class TestWorkspaceRequestRoutesForTREUser:
         }
         response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_REQUEST), json=input_data)
         assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["workspaceRequest"]["id"] == WORKSPACE_REQUEST_ID
 
     @patch("api.routes.workspace_requests.WorkspaceRequestRepository.create_workspace_request_item", side_effect=ValueError)
     async def test_post_workspace_request_malformed_input_returns_400(self, _, app, client):

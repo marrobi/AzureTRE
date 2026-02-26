@@ -332,7 +332,11 @@ export const WorkspaceRequestView: React.FunctionComponent<
                       styles={underlineStackStyles}
                     >
                       <Stack.Item styles={stackItemStyles}>
-                        <span>{key.replace(/_/g, " ")}</span>
+                        <span>
+                          {key
+                            .replace(/_/g, " ")
+                            .replace(/\b\w/g, (c) => c.toUpperCase())}
+                        </span>
                       </Stack.Item>
                       <Stack.Item styles={stackItemStyles}>
                         <p>{String(value)}</p>

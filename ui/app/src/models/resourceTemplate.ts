@@ -54,7 +54,7 @@ export const filterTemplateForRequest = (template: ResourceTemplate) => {
   const sanitised = sanitiseTemplateForRJSF(template);
 
   if (sanitised.properties) {
-    const filtered: any = {};
+    const filtered: Record<string, any> = {};
     Object.keys(sanitised.properties).forEach((key: string) => {
       if (sanitised.properties[key].show_in_request === true) {
         filtered[key] = { ...sanitised.properties[key] };
