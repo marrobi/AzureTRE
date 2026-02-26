@@ -57,6 +57,7 @@ nav:
           - Network Architecture: azure-tre-overview/networking.md
           - Azure Resources: azure-tre-overview/tre-resources-breakdown.md
           - Airlock: azure-tre-overview/airlock.md
+          - Workspace Requests: azure-tre-overview/workspace-requests.md
           - Cost Reporting: azure-tre-overview/cost-reporting.md
       - Terms and Definitions: using-tre/terms-definitions.md
       - Case Studies: azure-tre-overview/case-studies.md
@@ -85,6 +86,7 @@ nav:
       - Using AzureTRE for Research:
           - Introduction: using-tre/tre-for-research/index.md
           - Set up of a Virtual Machine: using-tre/tre-for-research/using-vms.md
+          - Requesting a Workspace: using-tre/tre-for-research/requesting-workspaces.md
           - Importing/exporting data with Airlock: using-tre/tre-for-research/importing-exporting-data-airlock.md
           - Reviewing Airlock Requests: using-tre/tre-for-research/review-airlock-request.md
 
