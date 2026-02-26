@@ -1,7 +1,7 @@
 import copy
 import uuid
 
-from datetime import datetime, timezone, UTC
+from datetime import datetime, UTC
 from typing import List, Optional
 from pydantic import UUID4
 from azure.cosmos.exceptions import CosmosResourceNotFoundError, CosmosAccessConditionFailedError
@@ -29,7 +29,7 @@ class WorkspaceRequestRepository(BaseRepository):
         return cls
 
     def get_timestamp(self) -> float:
-        return datetime.now(timezone.utc).timestamp()
+        return datetime.now(UTC).timestamp()
 
     async def update_workspace_request_item(self, original_request: WorkspaceRequest, new_request: WorkspaceRequest, updated_by: User, request_properties: dict) -> WorkspaceRequest:
         history_item = WorkspaceRequestHistoryItem(

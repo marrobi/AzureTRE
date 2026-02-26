@@ -79,13 +79,13 @@ class WorkspaceRequestInCreate(BaseModel):
 
 
 class WorkspaceRequestReviewInCreate(BaseModel):
-    approval: bool = Field("", title="Workspace request review decision")
+    approval: bool = Field(title="Workspace request review decision")
     decisionExplanation: str = Field("Decision Explanation", title="Explanation of the reviewer for the review decision")
 
     class Config:
         schema_extra = {
             "example": {
-                "approval": "True",
+                "approval": True,
                 "decisionExplanation": "the reason why this request was approved/rejected"
             }
         }
