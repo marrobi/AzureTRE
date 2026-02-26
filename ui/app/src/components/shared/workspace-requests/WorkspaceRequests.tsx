@@ -291,7 +291,10 @@ export const WorkspaceRequests: React.FunctionComponent = () => {
       key: "awaitingReview",
       text: "Awaiting review",
       iconProps: { iconName: "TemporaryUser" },
-      onClick: () => setFilters(new Map([["status", "in_review"]])),
+      onClick: () =>
+        setFilters(
+          new Map([["status", WorkspaceRequestStatus.Submitted]]),
+        ),
     });
   }
 

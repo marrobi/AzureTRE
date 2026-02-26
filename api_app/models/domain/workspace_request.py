@@ -43,6 +43,7 @@ class WorkspaceRequestHistoryItem(AzureTREModel):
 
 class WorkspaceRequest(AzureTREModel):
     id: str = Field(title="Id", description="GUID identifying the workspace request")
+    resourceType: str = "workspace_request"
     resourceVersion: int = 0
     requestor: dict = {}
     createdWhen: float = Field(None, title="Creation time of the request")

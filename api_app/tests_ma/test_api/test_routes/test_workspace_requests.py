@@ -13,13 +13,16 @@ pytestmark = pytest.mark.asyncio
 WORKSPACE_REQUEST_ID = "af89dccd-cdf8-4e47-8cfe-995faeac0f09"
 
 
-def sample_workspace_request(status=WorkspaceRequestStatus.Draft, request_id=WORKSPACE_REQUEST_ID):
+def sample_workspace_request(status=WorkspaceRequestStatus.Draft, request_id=WORKSPACE_REQUEST_ID, requestor=None):
+    if requestor is None:
+        requestor = create_non_admin_user()
     return WorkspaceRequest(
         id=request_id,
         title="Test Workspace",
         businessJustification="test justification",
         workspaceType="tre-workspace-base",
         status=status,
+        requestor=requestor,
         reviews=[]
     )
 
@@ -71,6 +74,15 @@ class TestWorkspaceRequestRoutesForTREUser:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["workspaceRequest"]["id"] == WORKSPACE_REQUEST_ID
 
+    # [GET] /workspace-requests/{workspace_request_id} - other user's request returns 403
+    @patch("api.routes.workspace_requests.WorkspaceRequestRepository.read_item_by_id")
+    async def test_get_other_users_workspace_request_returns_403(self, mock_read, app, client):
+        other_user = create_test_user()
+        other_user.id = "other-user-id"
+        mock_read.return_value = sample_workspace_request(requestor=other_user)
+        response = await client.get(app.url_path_for(strings.API_GET_WORKSPACE_REQUEST, workspace_request_id=WORKSPACE_REQUEST_ID))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     # [POST] /workspace-requests/{workspace_request_id}/submit
     @patch("api.routes.workspace_requests.WorkspaceRequestRepository.read_item_by_id", return_value=sample_workspace_request())
     @patch("api.routes.workspace_requests.update_workspace_request", return_value=sample_workspace_request(status=WorkspaceRequestStatus.Submitted))
@@ -79,6 +91,15 @@ class TestWorkspaceRequestRoutesForTREUser:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["workspaceRequest"]["status"] == WorkspaceRequestStatus.Submitted
 
+    # [POST] /workspace-requests/{workspace_request_id}/submit - other user's request returns 403
+    @patch("api.routes.workspace_requests.WorkspaceRequestRepository.read_item_by_id")
+    async def test_submit_other_users_workspace_request_returns_403(self, mock_read, app, client):
+        other_user = create_test_user()
+        other_user.id = "other-user-id"
+        mock_read.return_value = sample_workspace_request(requestor=other_user)
+        response = await client.post(app.url_path_for(strings.API_SUBMIT_WORKSPACE_REQUEST, workspace_request_id=WORKSPACE_REQUEST_ID))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     # [POST] /workspace-requests/{workspace_request_id}/cancel
     @patch("api.routes.workspace_requests.WorkspaceRequestRepository.read_item_by_id", return_value=sample_workspace_request())
     @patch("api.routes.workspace_requests.update_workspace_request", return_value=sample_workspace_request(status=WorkspaceRequestStatus.Cancelled))
@@ -86,6 +107,15 @@ class TestWorkspaceRequestRoutesForTREUser:
         response = await client.post(app.url_path_for(strings.API_CANCEL_WORKSPACE_REQUEST, workspace_request_id=WORKSPACE_REQUEST_ID))
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["workspaceRequest"]["status"] == WorkspaceRequestStatus.Cancelled
+
+    # [POST] /workspace-requests/{workspace_request_id}/cancel - other user's request returns 403
+    @patch("api.routes.workspace_requests.WorkspaceRequestRepository.read_item_by_id")
+    async def test_cancel_other_users_workspace_request_returns_403(self, mock_read, app, client):
+        other_user = create_test_user()
+        other_user.id = "other-user-id"
+        mock_read.return_value = sample_workspace_request(requestor=other_user)
+        response = await client.post(app.url_path_for(strings.API_CANCEL_WORKSPACE_REQUEST, workspace_request_id=WORKSPACE_REQUEST_ID))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 class TestWorkspaceRequestRoutesForTREAdmin:
@@ -103,7 +133,7 @@ class TestWorkspaceRequestRoutesForTREAdmin:
         response = await client.get(app.url_path_for(strings.API_LIST_WORKSPACE_REQUESTS))
         assert response.status_code == status.HTTP_200_OK
 
-    # [POST] /workspace-requests/{workspace_request_id}/review
+    # [POST] /workspace-requests/{workspace_request_id}/review (from InReview)
     @patch("api.routes.workspace_requests.WorkspaceRequestRepository.read_item_by_id", return_value=sample_workspace_request(status=WorkspaceRequestStatus.InReview))
     @patch("api.routes.workspace_requests.review_workspace_request_service", return_value=sample_workspace_request(status=WorkspaceRequestStatus.Approved))
     async def test_review_approve_workspace_request_returns_200(self, _, __, app, client):
@@ -123,3 +153,13 @@ class TestWorkspaceRequestRoutesForTREAdmin:
             json=review_input)
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["workspaceRequest"]["status"] == WorkspaceRequestStatus.Rejected
+
+    # [POST] /workspace-requests/{workspace_request_id}/review (from Submitted - auto-transitions via InReview)
+    @patch("api.routes.workspace_requests.WorkspaceRequestRepository.read_item_by_id", return_value=sample_workspace_request(status=WorkspaceRequestStatus.Submitted))
+    @patch("api.routes.workspace_requests.review_workspace_request_service", return_value=sample_workspace_request(status=WorkspaceRequestStatus.Approved))
+    async def test_review_submitted_request_auto_transitions_and_approves(self, _, __, app, client):
+        review_input = {"approval": True, "decisionExplanation": "Approved from submitted"}
+        response = await client.post(
+            app.url_path_for(strings.API_REVIEW_WORKSPACE_REQUEST, workspace_request_id=WORKSPACE_REQUEST_ID),
+            json=review_input)
+        assert response.status_code == status.HTTP_200_OK

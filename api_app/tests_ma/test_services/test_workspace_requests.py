@@ -40,6 +40,17 @@ async def test_tre_user_can_submit_draft_request():
     assert WorkspaceRequestActions.Review not in actions
 
 
+async def test_tre_admin_can_review_submitted_request():
+    repo = MagicMock(spec=WorkspaceRequestRepository)
+    repo.validate_status_update = WorkspaceRequestRepository.validate_status_update.__get__(repo, WorkspaceRequestRepository)
+    user = create_admin_user()
+
+    request = sample_workspace_request(status=WorkspaceRequestStatus.Submitted)
+    actions = get_allowed_actions(request, user, repo)
+
+    assert WorkspaceRequestActions.Review in actions
+
+
 async def test_tre_admin_can_review_in_review_request():
     repo = MagicMock(spec=WorkspaceRequestRepository)
     repo.validate_status_update = WorkspaceRequestRepository.validate_status_update.__get__(repo, WorkspaceRequestRepository)

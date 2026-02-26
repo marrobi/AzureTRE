@@ -25,6 +25,22 @@ from services.logging import logger
 workspace_requests_core_router = APIRouter(dependencies=[Depends(get_current_tre_user_or_tre_admin)])
 
 
+def _check_workspace_request_ownership(workspace_request, user):
+    """Verify the user is the requestor of the workspace request, or raise 403."""
+    if workspace_request.requestor and hasattr(workspace_request.requestor, 'id'):
+        requestor_id = workspace_request.requestor.id
+    elif isinstance(workspace_request.requestor, dict):
+        requestor_id = workspace_request.requestor.get('id')
+    else:
+        requestor_id = None
+
+    if requestor_id and requestor_id != user.id:
+        raise HTTPException(
+            status_code=status_code.HTTP_403_FORBIDDEN,
+            detail=strings.WORKSPACE_REQUEST_UNAUTHORIZED
+        )
+
+
 @workspace_requests_core_router.post("/workspace-requests", status_code=status_code.HTTP_201_CREATED,
                                      response_model=WorkspaceRequestWithAllowedUserActions, name=strings.API_CREATE_WORKSPACE_REQUEST,
                                      dependencies=[Depends(get_current_tre_user)])
@@ -72,6 +88,9 @@ async def get_workspace_requests(workspace_request_repo=Depends(get_repository(W
 async def retrieve_workspace_request_by_id(workspace_request=Depends(get_workspace_request_by_id_from_path),
                                            workspace_request_repo=Depends(get_repository(WorkspaceRequestRepository)),
                                            user=Depends(get_current_tre_user_or_tre_admin)) -> WorkspaceRequestWithAllowedUserActions:
+    # Non-admin users can only view their own requests
+    if "TREAdmin" not in user.roles:
+        _check_workspace_request_ownership(workspace_request, user)
     allowed_actions = get_allowed_actions(workspace_request, user, workspace_request_repo)
     return WorkspaceRequestWithAllowedUserActions(workspaceRequest=workspace_request, allowedUserActions=allowed_actions)
 
@@ -82,6 +101,8 @@ async def retrieve_workspace_request_by_id(workspace_request=Depends(get_workspa
 async def submit_workspace_request(workspace_request=Depends(get_workspace_request_by_id_from_path),
                                    user=Depends(get_current_tre_user),
                                    workspace_request_repo=Depends(get_repository(WorkspaceRequestRepository))) -> WorkspaceRequestWithAllowedUserActions:
+    # Only the original requestor can submit their request
+    _check_workspace_request_ownership(workspace_request, user)
     updated_request = await update_workspace_request(workspace_request, workspace_request_repo, user,
                                                      new_status=WorkspaceRequestStatus.Submitted)
     allowed_actions = get_allowed_actions(updated_request, user, workspace_request_repo)
@@ -94,6 +115,8 @@ async def submit_workspace_request(workspace_request=Depends(get_workspace_reque
 async def cancel_workspace_request(workspace_request=Depends(get_workspace_request_by_id_from_path),
                                    user=Depends(get_current_tre_user),
                                    workspace_request_repo=Depends(get_repository(WorkspaceRequestRepository))) -> WorkspaceRequestWithAllowedUserActions:
+    # Only the original requestor can cancel their request
+    _check_workspace_request_ownership(workspace_request, user)
     updated_request = await update_workspace_request(workspace_request, workspace_request_repo, user,
                                                      new_status=WorkspaceRequestStatus.Cancelled)
     allowed_actions = get_allowed_actions(updated_request, user, workspace_request_repo)

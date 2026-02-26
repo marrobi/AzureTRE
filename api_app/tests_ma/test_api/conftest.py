@@ -28,6 +28,12 @@ def patch_user_management_enabled():
         yield
 
 
+@pytest.fixture(autouse=True, scope="session")
+def patch_workspace_requests_enabled():
+    with patch("core.config.WORKSPACE_REQUESTS_ENABLED", new=True):
+        yield
+
+
 def create_test_user() -> User:
     return User(
         id="user-guid-here",

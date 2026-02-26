@@ -52,6 +52,14 @@ async def review_workspace_request(review_input: WorkspaceRequestReviewInCreate,
                                    workspace_request_repo: WorkspaceRequestRepository) -> WorkspaceRequest:
     review = workspace_request_repo.create_workspace_request_review_item(review_input, user)
 
+    # If the request is in Submitted state, first transition to InReview
+    if workspace_request.status == WorkspaceRequestStatus.Submitted:
+        workspace_request = await update_workspace_request(
+            workspace_request=workspace_request,
+            workspace_request_repo=workspace_request_repo,
+            updated_by=user,
+            new_status=WorkspaceRequestStatus.InReview)
+
     if review.reviewDecision == WorkspaceRequestReviewDecision.Approved:
         review_status = WorkspaceRequestStatus.Approved
     else:
@@ -70,7 +78,10 @@ async def review_workspace_request(review_input: WorkspaceRequestReviewInCreate,
 def get_allowed_actions(request: WorkspaceRequest, user: User, workspace_request_repo: WorkspaceRequestRepository) -> List[str]:
     allowed_actions = []
 
-    can_review_request = workspace_request_repo.validate_status_update(request.status, WorkspaceRequestStatus.Approved)
+    can_review_request = (
+        workspace_request_repo.validate_status_update(request.status, WorkspaceRequestStatus.Approved)
+        or workspace_request_repo.validate_status_update(request.status, WorkspaceRequestStatus.InReview)
+    )
     can_cancel_request = workspace_request_repo.validate_status_update(request.status, WorkspaceRequestStatus.Cancelled)
     can_submit_request = workspace_request_repo.validate_status_update(request.status, WorkspaceRequestStatus.Submitted)
 

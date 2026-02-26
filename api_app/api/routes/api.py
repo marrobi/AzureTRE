@@ -51,7 +51,10 @@ core_router.include_router(migrations.migrations_core_router, tags=["migrations"
 core_router.include_router(costs.costs_core_router, tags=["costs"])
 core_router.include_router(costs.costs_workspace_router, tags=["costs"])
 core_router.include_router(requests.router, tags=["requests"])
-core_router.include_router(workspace_requests.workspace_requests_core_router, tags=["workspace requests"])
+
+if config.WORKSPACE_REQUESTS_ENABLED:
+    core_router.include_router(workspace_requests.workspace_requests_core_router, tags=["workspace requests"])
+
 core_router.include_router(workspace_users.workspaces_users_shared_router, tags=["users"])
 
 if config.USER_MANAGEMENT_ENABLED:

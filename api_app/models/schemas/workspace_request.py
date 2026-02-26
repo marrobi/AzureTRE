@@ -38,7 +38,7 @@ def get_sample_workspace_request_with_allowed_user_actions() -> dict:
 
 
 class WorkspaceRequestWithAllowedUserActions(BaseModel):
-    workspaceRequest: WorkspaceRequest = Field([], title="Workspace Request")
+    workspaceRequest: WorkspaceRequest = Field(title="Workspace Request")
     allowedUserActions: List[str] = Field([], title="Actions that the requesting user can do on the request")
 
     class Config:

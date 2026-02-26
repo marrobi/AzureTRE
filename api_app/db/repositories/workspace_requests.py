@@ -48,7 +48,7 @@ class WorkspaceRequestRepository(BaseRepository):
 
     @staticmethod
     def workspace_requests_query():
-        return 'SELECT * FROM c'
+        return "SELECT * FROM c WHERE c.resourceType = 'workspace_request'"
 
     def validate_status_update(self, current_status: WorkspaceRequestStatus, new_status: WorkspaceRequestStatus) -> bool:
         valid_transitions = {
@@ -104,7 +104,7 @@ class WorkspaceRequestRepository(BaseRepository):
             parameters.append({"name": "@status", "value": status})
 
         if conditions:
-            query += ' WHERE ' + ' AND '.join(conditions)
+            query += ' AND ' + ' AND '.join(conditions)
 
         if order_by:
             query += ' ORDER BY c.' + order_by

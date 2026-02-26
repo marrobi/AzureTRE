@@ -89,7 +89,7 @@ async def test_get_workspace_requests_queries_with_no_filters(workspace_request_
     workspace_request_repo.query = AsyncMock(return_value=[])
     result = await workspace_request_repo.get_workspace_requests()
 
-    workspace_request_repo.query.assert_called_once_with(query='SELECT * FROM c', parameters=[])
+    workspace_request_repo.query.assert_called_once_with(query="SELECT * FROM c WHERE c.resourceType = 'workspace_request'", parameters=[])
     assert result == []
 
 
@@ -98,7 +98,7 @@ async def test_get_workspace_requests_queries_with_requestor_filter(workspace_re
     await workspace_request_repo.get_workspace_requests(requestor_id="user-123")
 
     workspace_request_repo.query.assert_called_once_with(
-        query='SELECT * FROM c WHERE c.requestor.id=@requestor_id',
+        query="SELECT * FROM c WHERE c.resourceType = 'workspace_request' AND c.requestor.id=@requestor_id",
         parameters=[{"name": "@requestor_id", "value": "user-123"}]
     )
 
@@ -108,7 +108,7 @@ async def test_get_workspace_requests_queries_with_status_filter(workspace_reque
     await workspace_request_repo.get_workspace_requests(status=WorkspaceRequestStatus.Draft)
 
     workspace_request_repo.query.assert_called_once_with(
-        query='SELECT * FROM c WHERE c.status=@status',
+        query="SELECT * FROM c WHERE c.resourceType = 'workspace_request' AND c.status=@status",
         parameters=[{"name": "@status", "value": "draft"}]
     )
 
@@ -118,7 +118,7 @@ async def test_get_workspace_requests_queries_with_order_by(workspace_request_re
     await workspace_request_repo.get_workspace_requests(order_by="createdWhen", order_ascending=False)
 
     workspace_request_repo.query.assert_called_once_with(
-        query='SELECT * FROM c ORDER BY c.createdWhen DESC',
+        query="SELECT * FROM c WHERE c.resourceType = 'workspace_request' ORDER BY c.createdWhen DESC",
         parameters=[]
     )
 

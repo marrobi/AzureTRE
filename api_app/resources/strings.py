@@ -232,6 +232,7 @@ WORKSPACE_REQUEST_REVIEW_DECISION_REJECTED = "rejected"
 # Workspace Request Messages
 WORKSPACE_REQUEST_DOES_NOT_EXIST = "Workspace request does not exist"
 WORKSPACE_REQUEST_ILLEGAL_STATUS_CHANGE = "Workspace request status change was illegal"
+WORKSPACE_REQUEST_UNAUTHORIZED = "You are not authorized to perform this action on this workspace request"
 
 # Airlock Resource Status
 AIRLOCK_RESOURCE_STATUS_DRAFT = "draft"
