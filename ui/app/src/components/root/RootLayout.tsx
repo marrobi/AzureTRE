@@ -148,7 +148,8 @@ export const RootLayout: React.FunctionComponent = () => {
             <Stack.Item className="tre-left-nav" style={{ marginTop: 2 }}>
               <LeftNav />
             </Stack.Item>
-            <Stack.Item id="tre-body" className="tre-body-content">
+            <Stack.Item className="tre-body-content">
+              <main id="main-content" tabIndex={-1}>
               <Routes>
                 <Route
                   path="/"
@@ -203,6 +204,7 @@ export const RootLayout: React.FunctionComponent = () => {
                   }
                 />
               </Routes>
+              </main>
             </Stack.Item>
           </Stack>
         </>

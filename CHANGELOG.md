@@ -7,6 +7,7 @@ ENHANCEMENTS:
 * Add interactive browser login method to TRE CLI for easier authentication ([#4856](https://github.com/microsoft/AzureTRE/issues/4856))
 * Harden security of the app gateway. ([#4863](https://github.com/microsoft/AzureTRE/pull/4863))
 * Pass OIDC vars directly to the devcontainer ([#4871](https://github.com/microsoft/AzureTRE/issues/4871))
+* Update UI to comply with GDS Design System and WCAG 2.1 AA accessibility standards: GDS header/footer with GOV.UK crown, skip link, semantic landmarks, govuk-tag status badges, and GDS Typography ([#4876](https://github.com/microsoft/AzureTRE/issues/4876))
 
 BUG FIXES:
 * Fix property substitution not occuring where there is only a main step in the pipeline ([#4824](https://github.com/microsoft/AzureTRE/issues/4824))

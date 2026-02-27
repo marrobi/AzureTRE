@@ -7,109 +7,75 @@ import { TopNav } from "./TopNav";
 // Mock child components
 vi.mock("./UserMenu", () => {
   const UserMenu = () => <div data-testid="user-menu">User Menu</div>;
-  UserMenu.displayName = 'UserMenu';
+  UserMenu.displayName = "UserMenu";
   return { UserMenu };
 });
 
 vi.mock("./notifications/NotificationPanel", () => {
-  const NotificationPanel = () => <div data-testid="notification-panel">Notifications</div>;
-  NotificationPanel.displayName = 'NotificationPanel';
+  const NotificationPanel = () => (
+    <div data-testid="notification-panel">Notifications</div>
+  );
+  NotificationPanel.displayName = "NotificationPanel";
   return { NotificationPanel };
 });
 
 // Mock config.json
 vi.mock("../../config.json", () => ({
   default: {
-    uiSiteName: "Test TRE Environment"
-  }
+    uiSiteName: "Test TRE Environment",
+  },
 }));
 
-// Mock FluentUI components
-vi.mock("@fluentui/react", () => {
-  const MockStack = ({ children, horizontal }: any) => (
-    <div data-testid="stack" data-horizontal={horizontal}>
-      {children}
-    </div>
-  );
-
-  const Item = ({ children, grow }: any) => (
-    <div data-testid="stack-item" data-grow={grow}>
-      {children}
-    </div>
-  );
-  Item.displayName = 'StackItem';
-  MockStack.Item = Item;
-
-  return {
-    getTheme: () => ({
-      palette: {
-        themeDark: "#004578",
-        white: "#ffffff",
-      },
-    }),
-    Icon: ({ iconName, style }: any) => (
-      <span data-testid={`icon-${iconName}`} style={style}>
-        {iconName}
-      </span>
-    ),
-    mergeStyles: (styles: any) => styles,
-    Stack: MockStack,
-  };
-});
-
 const renderWithRouter = (component: React.ReactElement) => {
-  return render(
-    <BrowserRouter>
-      {component}
-    </BrowserRouter>
-  );
+  return render(<BrowserRouter>{component}</BrowserRouter>);
 };
 
 describe("TopNav Component", () => {
-  it("renders the navigation bar with all components", () => {
+  it("renders the GDS header with banner role", () => {
     renderWithRouter(<TopNav />);
 
-    // Check if main container is rendered
-    expect(screen.getByTestId("stack")).toBeInTheDocument();
+    const header = screen.getByRole("banner");
+    expect(header).toBeInTheDocument();
+    expect(header.tagName).toBe("HEADER");
+    expect(header).toHaveClass("govuk-header");
+  });
 
-    // Check if site icon is rendered
-    expect(screen.getByTestId("icon-TestBeakerSolid")).toBeInTheDocument();
+  it("renders the GOV.UK logo link", () => {
+    renderWithRouter(<TopNav />);
 
-    // Check if custom site name is displayed
+    const homepageLink = screen.getByRole("link");
+    expect(homepageLink).toHaveAttribute("href", "/");
+    expect(homepageLink).toHaveClass("govuk-header__homepage-link");
+  });
+
+  it("renders the service/product name", () => {
+    renderWithRouter(<TopNav />);
+
     expect(screen.getByText("Test TRE Environment")).toBeInTheDocument();
+  });
 
-    // Check if child components are rendered
+  it("renders the GOV.UK logotype SVG", () => {
+    renderWithRouter(<TopNav />);
+
+    // The SVG has aria-label="GOV.UK"
+    const svg = screen.getByRole("img", { name: "GOV.UK" });
+    expect(svg).toBeInTheDocument();
+    expect(svg).toHaveClass("govuk-header__logotype");
+  });
+
+  it("renders child components (notifications and user menu)", () => {
+    renderWithRouter(<TopNav />);
+
     expect(screen.getByTestId("notification-panel")).toBeInTheDocument();
     expect(screen.getByTestId("user-menu")).toBeInTheDocument();
   });
 
-  it("renders home link that navigates to root", () => {
+  it("uses full-width container class", () => {
     renderWithRouter(<TopNav />);
 
-    const homeLink = screen.getByRole("link");
-    expect(homeLink).toHaveAttribute("href", "/");
-    expect(homeLink).toHaveClass("tre-home-link");
-  });
-
-  it("has proper layout structure with growing stack items", () => {
-    renderWithRouter(<TopNav />);
-
-    const stackItems = screen.getAllByTestId("stack-item");
-
-    // First item (home link) should have grow=100
-    expect(stackItems[0]).toHaveAttribute("data-grow", "100");
-
-    // Second item (notifications) should not have grow specified
-    expect(stackItems[1]).not.toHaveAttribute("data-grow");
-
-    // Third item (user menu) should have grow attribute set to true (converted to string)
-    expect(stackItems[2]).toHaveAttribute("data-grow", "true");
-  });
-
-  it("renders site name as h5 with inline display", () => {
-    renderWithRouter(<TopNav />);
-
-    const heading = screen.getByRole("heading", { level: 5 });
-    expect(heading).toHaveTextContent("Test TRE Environment");
+    const container = document
+      .querySelector(".govuk-header__container--full-width");
+    expect(container).toBeInTheDocument();
   });
 });
+
