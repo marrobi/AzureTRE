@@ -1,8 +1,7 @@
+@import "govuk-frontend/dist/govuk/govuk-frontend.min.css";
+
 body {
   margin: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -26,9 +25,27 @@ code {
   width: 70%;
 }
 
-.tre-top-nav {
-  box-shadow: 0 1px 2px 0px #033d68;
-  z-index: 100;
+// GDS header customisation – keep user actions right-aligned alongside the logo
+.tre-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.tre-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+
+  // Ensure FluentUI buttons inside the header are visible on the dark background
+  button,
+  .ms-Button {
+    color: #fff;
+    background: transparent;
+    border: none;
+  }
 }
 
 .ms-CommandBar {
@@ -85,6 +102,36 @@ ul.tre-notifications-steps-list li {
   font-style: italic;
   text-align: right;
   font-size: 12px;
+}
+
+// GDS footer customisation
+.tre-footer-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 20px;
+}
+
+.tre-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.tre-footer-info-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.1em;
+
+  &:hover {
+    text-decoration-thickness: 3px;
+  }
 }
 
 .tre-home-link {

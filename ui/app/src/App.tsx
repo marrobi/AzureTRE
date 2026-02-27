@@ -105,6 +105,9 @@ export const App: React.FunctionComponent = () => {
                     updateResource={createFormResource.updateResource}
                   />
                   <Stack styles={stackStyles} className="tre-root">
+                    <a href="#main-content" className="govuk-skip-link">
+                      Skip to main content
+                    </a>
                     <Stack.Item grow className="tre-top-nav">
                       <TopNav />
                     </Stack.Item>

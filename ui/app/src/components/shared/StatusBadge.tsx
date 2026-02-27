@@ -63,8 +63,8 @@ export const StatusBadge: React.FunctionComponent<StatusBadgeProps> = (
   };
 
   switch (badgeType) {
-    case "inProgress":
-      let label = awaitingStates.includes(props.status)
+    case "inProgress": {
+      const label = awaitingStates.includes(props.status)
         ? "pending"
         : props.status.replace("_", " ");
       return (
@@ -76,6 +76,7 @@ export const StatusBadge: React.FunctionComponent<StatusBadgeProps> = (
           size={SpinnerSize.xSmall}
         />
       );
+    }
     case "failed":
       return (
         <TooltipHost
@@ -88,6 +89,10 @@ export const StatusBadge: React.FunctionComponent<StatusBadgeProps> = (
             iconName="AlertSolid"
             className={errorIcon}
           />
+          {/* Decorative tag hidden from assistive tech — icon already conveys meaning */}
+          <strong className="govuk-tag govuk-tag--red" aria-hidden={true}>
+            Failed
+          </strong>
         </TooltipHost>
       );
     case "disabled":
@@ -104,6 +109,9 @@ export const StatusBadge: React.FunctionComponent<StatusBadgeProps> = (
               className={disabledIcon}
             />
           </TooltipHost>
+          <strong className="govuk-tag govuk-tag--grey tre-badge-status">
+            Disabled
+          </strong>
         </>
       );
     default:
