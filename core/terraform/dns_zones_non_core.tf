@@ -90,3 +90,15 @@ resource "azurerm_private_dns_zone" "fabric" {
 
   lifecycle { ignore_changes = [tags] }
 }
+
+# Link Fabric DNS zone to core VNet so the resource processor can resolve
+# workspace-specific Fabric hostnames to private endpoint IPs.
+resource "azurerm_private_dns_zone_virtual_network_link" "fabric" {
+  resource_group_name   = azurerm_resource_group.core.name
+  virtual_network_id    = module.network.core_vnet_id
+  private_dns_zone_name = azurerm_private_dns_zone.fabric.name
+  name                  = azurerm_private_dns_zone.fabric.name
+  registration_enabled  = false
+  tags                  = local.tre_core_tags
+  lifecycle { ignore_changes = [tags] }
+}

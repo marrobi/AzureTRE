@@ -45,12 +45,13 @@ provider "azurerm" {
 provider "azapi" {}
 
 provider "fabric" {
-  tenant_id     = var.arm_tenant_id
-  client_id     = var.arm_client_id
-  client_secret = var.arm_use_msi ? null : var.arm_client_secret
-  use_msi       = var.arm_use_msi
-  use_cli       = !var.arm_use_msi
-  preview       = true # Required for managed private endpoints and shortcuts
+  tenant_id                          = var.arm_tenant_id
+  client_id                          = var.arm_client_id
+  client_secret                      = var.arm_use_msi ? null : var.arm_client_secret
+  use_msi                            = var.arm_use_msi
+  use_cli                            = !var.arm_use_msi
+  preview                            = true # Required for managed private endpoints and shortcuts
+  use_workspace_private_link_endpoint = true # Route API calls through private endpoint
 }
 
 module "terraform_azurerm_environment_configuration" {

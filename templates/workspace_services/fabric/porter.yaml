@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-service-fabric
-version: 0.1.6
+version: 0.1.25
 description: "An Azure TRE workspace service for Microsoft Fabric."
 registry: azuretre
 dockerfile: Dockerfile.tmpl
@@ -50,7 +50,12 @@ parameters:
     env: ARM_ENVIRONMENT
     type: string
     default: "public"
-
+  - name: workspace_owners_group_id
+    type: string
+    description: "Object ID of the workspace owners AAD group"
+  - name: workspace_researchers_group_id
+    type: string
+    description: "Object ID of the workspace researchers AAD group"
 outputs:
   - name: fabric_workspace_name
     type: string
@@ -77,6 +82,16 @@ outputs:
     applyTo:
       - install
       - upgrade
+  - name: is_exposed_externally
+    type: boolean
+    applyTo:
+      - install
+      - upgrade
+  - name: workspace_address_spaces
+    type: string
+    applyTo:
+      - install
+      - upgrade
 
 mixins:
   - terraform:
@@ -97,6 +112,8 @@ install:
         arm_client_secret: ${ bundle.credentials.azure_client_secret }
         arm_use_msi: ${ bundle.parameters.arm_use_msi }
         arm_environment: ${ bundle.parameters.arm_environment }
+        workspace_owners_group_id: ${ bundle.parameters.workspace_owners_group_id }
+        workspace_researchers_group_id: ${ bundle.parameters.workspace_researchers_group_id }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"
@@ -110,6 +127,8 @@ install:
         - name: connection_uri
         - name: lakehouse_name
         - name: fabric_workspace_id
+        - name: is_exposed_externally
+        - name: workspace_address_spaces
 
 upgrade:
   - terraform:
@@ -126,6 +145,8 @@ upgrade:
         arm_client_secret: ${ bundle.credentials.azure_client_secret }
         arm_use_msi: ${ bundle.parameters.arm_use_msi }
         arm_environment: ${ bundle.parameters.arm_environment }
+        workspace_owners_group_id: ${ bundle.parameters.workspace_owners_group_id }
+        workspace_researchers_group_id: ${ bundle.parameters.workspace_researchers_group_id }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"
@@ -139,6 +160,8 @@ upgrade:
         - name: connection_uri
         - name: lakehouse_name
         - name: fabric_workspace_id
+        - name: is_exposed_externally
+        - name: workspace_address_spaces
 
 uninstall:
   - terraform:
@@ -155,6 +178,8 @@ uninstall:
         arm_client_secret: ${ bundle.credentials.azure_client_secret }
         arm_use_msi: ${ bundle.parameters.arm_use_msi }
         arm_environment: ${ bundle.parameters.arm_environment }
+        workspace_owners_group_id: ${ bundle.parameters.workspace_owners_group_id }
+        workspace_researchers_group_id: ${ bundle.parameters.workspace_researchers_group_id }
       backendConfig:
         use_azuread_auth: "true"
         use_oidc: "true"

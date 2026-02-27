@@ -54,25 +54,244 @@
       "title": "Expose externally",
       "description": "Is the Fabric workspace accessible from outside of the workspace network",
       "default": false
+    },
+    "workspace_owners_group_id": {
+      "$id": "#/properties/workspace_owners_group_id",
+      "type": "string",
+      "title": "Workspace Owners Group ID",
+      "description": "Object ID of the workspace owners AAD group",
+      "updateable": true
+    },
+    "workspace_researchers_group_id": {
+      "$id": "#/properties/workspace_researchers_group_id",
+      "type": "string",
+      "title": "Workspace Researchers Group ID",
+      "description": "Object ID of the workspace researchers AAD group",
+      "updateable": true
     }
   },
   "uiSchema": {
     "is_exposed_externally": {
+      "classNames": "tre-hidden"
+    },
+    "workspace_owners_group_id": {
+      "classNames": "tre-hidden"
+    },
+    "workspace_researchers_group_id": {
       "classNames": "tre-hidden"
     }
   },
   "pipeline": {
     "install": [
       {
-        "stepId": "main"
+        "stepId": "main",
+        "properties": [
+          {
+            "name": "workspace_owners_group_id",
+            "type": "string",
+            "value": "{{ resource.parent.properties.workspace_owners_group_id }}"
+          },
+          {
+            "name": "workspace_researchers_group_id",
+            "type": "string",
+            "value": "{{ resource.parent.properties.workspace_researchers_group_id }}"
+          }
+        ]
+      },
+      {
+        "stepId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+        "stepTitle": "Add firewall rules for Microsoft Fabric",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_fabric",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "Workspace_Authentication",
+                  "description": "Workspace VM Authentication for Fabric",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory",
+                    "AzureResourceManager"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_fabric",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "Fabric",
+                  "description": "Microsoft Fabric portal and services",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "target_fqdns": [
+                    "app.fabric.microsoft.com",
+                    "api.fabric.microsoft.com",
+                    "*.fabric.microsoft.com",
+                    "*.powerbi.com",
+                    "*.analysis.windows.net",
+                    "*.pbidedicated.windows.net",
+                    "*.frontend.clouddatahub.net",
+                    "content.powerapps.com",
+                    "login.microsoftonline.com",
+                    "login.microsoft.com",
+                    "aadcdn.msauth.net",
+                    "*.msftauth.net",
+                    "*.msauth.net"
+                  ],
+                  "protocols": [
+                    {
+                      "port": "443",
+                      "type": "Https"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
       }
     ],
     "upgrade": [
       {
-        "stepId": "main"
+        "stepId": "main",
+        "properties": [
+          {
+            "name": "workspace_owners_group_id",
+            "type": "string",
+            "value": "{{ resource.parent.properties.workspace_owners_group_id }}"
+          },
+          {
+            "name": "workspace_researchers_group_id",
+            "type": "string",
+            "value": "{{ resource.parent.properties.workspace_researchers_group_id }}"
+          }
+        ]
+      },
+      {
+        "stepId": "f1a2b3c4-d5e6-7890-abcd-ef1234567891",
+        "stepTitle": "Update firewall rules for Microsoft Fabric",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_fabric",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "Workspace_Authentication",
+                  "description": "Workspace VM Authentication for Fabric",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory",
+                    "AzureResourceManager"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_fabric",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "Fabric",
+                  "description": "Microsoft Fabric portal and services",
+                  "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
+                  "target_fqdns": [
+                    "app.fabric.microsoft.com",
+                    "api.fabric.microsoft.com",
+                    "*.fabric.microsoft.com",
+                    "*.powerbi.com",
+                    "*.analysis.windows.net",
+                    "*.pbidedicated.windows.net",
+                    "*.frontend.clouddatahub.net",
+                    "content.powerapps.com",
+                    "login.microsoftonline.com",
+                    "login.microsoft.com",
+                    "aadcdn.msauth.net",
+                    "*.msftauth.net",
+                    "*.msauth.net"
+                  ],
+                  "protocols": [
+                    {
+                      "port": "443",
+                      "type": "Https"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
       }
     ],
     "uninstall": [
+      {
+        "stepId": "f1a2b3c4-d5e6-7890-abcd-ef1234567892",
+        "stepTitle": "Remove firewall rules for Microsoft Fabric",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_fabric"
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_fabric"
+            }
+          }
+        ]
+      },
       {
         "stepId": "main"
       }

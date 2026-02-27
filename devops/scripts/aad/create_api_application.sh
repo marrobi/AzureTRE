@@ -190,6 +190,12 @@ appDefinition=$(jq -c . << JSON
         "value": "TREAdmin"
     }
   ],
+  "isFallbackPublicClient": true,
+  "publicClient": {
+      "redirectUris": [
+          "http://localhost"
+      ]
+  },
   "signInAudience": "AzureADMyOrg",
   "requiredResourceAccess": [
     {

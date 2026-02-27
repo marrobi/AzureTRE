@@ -16,7 +16,7 @@ All traffic between the TRE workspace and Fabric stays on the private network:
 
 - **Inbound (workspace → Fabric):** A workspace-level private endpoint is created in `ServicesSubnet` using `Microsoft.Fabric/privateLinkServicesForFabric`. DNS resolves via `privatelink.fabric.microsoft.com` zone linked to the workspace VNet.
 - **Outbound (Fabric → storage):** Managed private endpoints connect the Fabric workspace to the workspace's shared ADLS Gen2 storage account for both blob and DFS access.
-- **No firewall rules required** — all Fabric traffic is routed through private endpoints.
+- **Firewall rules:** Application rules allow workspace VMs to reach the Fabric portal (`app.fabric.microsoft.com`, `*.powerbi.com`, etc.) and network rules allow access to the `AzureActiveDirectory` service tag for authentication.
 
 ## Prerequisites
 
@@ -50,6 +50,23 @@ All traffic between the TRE workspace and Fabric stays on the private network:
 
     !!! tip
         The **Configure workspace IP firewall rules** setting is optional for this service since access is controlled via private endpoints rather than IP rules.
+
+- **Tenant-level Private Link and public access blocking must be configured** by a Fabric Administrator to prevent data exfiltration:
+
+    1. Go to the [Fabric Admin Portal](https://app.fabric.microsoft.com/admin-portal)
+    2. Navigate to **Tenant Settings** → **Advanced networking**
+    3. Enable the following settings:
+
+    | Setting | Required for |
+    | ------- | ------------ |
+    | **Azure Private Link** (`AllowAccessOverPrivateLinks`) | Allows private endpoint connections to Fabric |
+    | **Block Public Internet Access** (`BlockAccessFromPublicNetworks`) | Prevents access to Fabric from outside private endpoints |
+
+    !!! warning
+        **Both settings are required for data exfiltration prevention.** Without "Block Public Internet Access", users with valid credentials can access Fabric workspaces from any internet-connected device, bypassing the TRE network controls. These settings apply **tenant-wide** and cannot be scoped to individual workspaces.
+
+    !!! note
+        "Azure Private Link" must be enabled **before** "Block Public Internet Access" can be turned on. These settings cannot currently be automated via API — they must be configured manually in the Fabric Admin Portal.
 
 - The `Microsoft.Fabric` resource provider must be registered on the Azure subscription:
     ```bash
@@ -91,17 +108,31 @@ If the deploying service principal has `Microsoft.Storage/storageAccounts/privat
 
 ## Restricting Public Access
 
-The workspace-level private endpoint provides a private network path but does **not** automatically block public internet access to the Fabric workspace. Within the TRE, workspace VMs are restricted by the firewall and can only reach Fabric via the private endpoint. However, for defense-in-depth, you should also block public access on the Fabric side.
+Public access to the Fabric workspace is restricted at multiple levels:
 
-**Recommended:** After deployment, configure workspace IP firewall rules to block public access:
+### Outbound access protection (automated)
 
-1. In the Fabric workspace settings, navigate to **Network Security**
-2. Set the IP allowlist to empty (no allowed IPs)
-
-This ensures the workspace is only accessible via the private endpoint. See [Fabric IP firewall rules](https://learn.microsoft.com/en-us/fabric/security/security-private-links-use) for details.
+During deployment, this service automatically calls the Fabric [Set Network Communication Policy](https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/set-network-communication-policy) API to set the workspace outbound public access to **Deny**. This prevents Fabric workloads from making outbound connections to public endpoints, blocking data exfiltration from the workspace.
 
 !!! note
-    There is currently no Terraform resource to automate workspace IP firewall rules. This must be configured manually or via the [Fabric REST API](https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces).
+    Inbound public access is left as **Allow** because the TRE resource processor (VMSS) needs to manage the workspace via the Fabric API from core infrastructure. Users inside workspace VMs still access Fabric exclusively through the private endpoint, enforced by the workspace VNet and firewall rules.
+
+### Tenant-level (manual prerequisite)
+
+To fully prevent data exfiltration, you **must** also enable tenant-level private link and block public access (see [Prerequisites](#prerequisites)). The two tenant-level settings work together:
+
+1. **Azure Private Link** — enables private endpoint connections to Fabric
+2. **Block Public Internet Access** — ensures Fabric is **only** accessible via private endpoints
+
+These are configured in the [Fabric Admin Portal](https://app.fabric.microsoft.com/admin-portal) → **Tenant Settings** → **Advanced networking**.
+
+!!! warning
+    These settings are **tenant-wide**. Enabling "Block Public Internet Access" will affect all Fabric workspaces in the tenant, not just TRE-managed ones.
+
+See [Fabric Private Links](https://learn.microsoft.com/en-us/fabric/security/security-private-links-use) for details.
+
+!!! note
+    There is currently no Terraform resource or API to automate the tenant-level private link settings. They must be configured manually in the Fabric Admin Portal.
 
 ## Accessing Workspace Storage from Fabric
 

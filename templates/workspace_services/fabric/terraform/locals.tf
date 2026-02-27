@@ -19,4 +19,19 @@ locals {
     tre_workspace_id         = var.workspace_id
     tre_workspace_service_id = var.tre_resource_id
   }
+
+  # Fabric capacity administration_members - only user/SP principals allowed (not groups)
+  capacity_admin_ids = [
+    data.azurerm_client_config.current.object_id,
+  ]
+
+  # Extract the workspace-scoped API FQDN from the private endpoint DNS config
+  # e.g. "9522917d...z95.w.api.privatelink.fabric.microsoft.com" → "9522917d...z95.w.api.fabric.microsoft.com"
+  fabric_pe_record_sets = flatten([
+    for cfg in azurerm_private_endpoint.fabric_workspace.private_dns_zone_configs : cfg.record_sets
+  ])
+  fabric_workspace_api_fqdn = replace(
+    [for rs in local.fabric_pe_record_sets : rs.fqdn if length(regexall("\\.w\\.api\\.", rs.fqdn)) > 0][0],
+    ".privatelink.", "."
+  )
 }

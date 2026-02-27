@@ -62,3 +62,23 @@ variable "arm_environment" {
   default     = "public"
   description = "Azure cloud environment"
 }
+
+variable "workspace_owners_group_id" {
+  type        = string
+  description = "Object ID of the workspace owners AAD group"
+
+  validation {
+    condition     = length(trimspace(var.workspace_owners_group_id)) > 0
+    error_message = "workspace_owners_group_id must be provided; Entra ID workspace groups are required."
+  }
+}
+
+variable "workspace_researchers_group_id" {
+  type        = string
+  description = "Object ID of the workspace researchers AAD group"
+
+  validation {
+    condition     = length(trimspace(var.workspace_researchers_group_id)) > 0
+    error_message = "workspace_researchers_group_id must be provided; Entra ID workspace groups are required."
+  }
+}

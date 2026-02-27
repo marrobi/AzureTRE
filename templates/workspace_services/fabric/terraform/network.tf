@@ -63,20 +63,5 @@ resource "azurerm_private_endpoint" "fabric_workspace" {
   }
 }
 
-# -------------------------------------------------------------------
-# Link the Fabric private DNS zone to the workspace VNet
-#
-# This ensures that DNS queries for *.fabric.microsoft.com from within
-# the workspace VNet resolve to the private endpoint IP addresses.
-# -------------------------------------------------------------------
-resource "azurerm_private_dns_zone_virtual_network_link" "fabric" {
-  provider              = azurerm.core
-  name                  = "fabric-dns-link-ws-${local.short_workspace_id}-svc-${local.short_service_id}"
-  resource_group_name   = local.core_resource_group_name
-  private_dns_zone_name = data.azurerm_private_dns_zone.fabric.name
-  virtual_network_id    = data.azurerm_virtual_network.ws.id
 
-  lifecycle {
-    ignore_changes = [tags]
-  }
-}
+

@@ -6,7 +6,7 @@ resource "azurerm_fabric_capacity" "fabric" {
   resource_group_name = data.azurerm_resource_group.ws.name
   location            = data.azurerm_resource_group.ws.location
 
-  administration_members = [data.azurerm_client_config.current.object_id]
+  administration_members = local.capacity_admin_ids
 
   sku {
     name = var.fabric_capacity_sku
@@ -55,6 +55,33 @@ resource "fabric_workspace" "researchers" {
 }
 
 # -------------------------------------------------------------------
+# Assign TRE workspace AAD groups to the Fabric workspace.
+# Workspace Owners group → Admin role
+# Workspace Researchers group → Contributor role
+# -------------------------------------------------------------------
+resource "fabric_workspace_role_assignment" "owners" {
+  workspace_id = fabric_workspace.researchers.id
+
+  principal = {
+    id   = var.workspace_owners_group_id
+    type = "Group"
+  }
+
+  role = "Admin"
+}
+
+resource "fabric_workspace_role_assignment" "researchers" {
+  workspace_id = fabric_workspace.researchers.id
+
+  principal = {
+    id   = var.workspace_researchers_group_id
+    type = "Group"
+  }
+
+  role = "Contributor"
+}
+
+# -------------------------------------------------------------------
 # Default Lakehouse
 # -------------------------------------------------------------------
 resource "fabric_lakehouse" "default" {
@@ -68,6 +95,16 @@ resource "fabric_lakehouse" "default" {
 }
 
 # -------------------------------------------------------------------
+# Wait for the Fabric managed VNet to be ready before creating PEs.
+# The workspace must be fully initialised or PE creation may fail
+# with transient "UnknownError" responses from the Fabric API.
+# -------------------------------------------------------------------
+resource "time_sleep" "wait_for_managed_vnet" {
+  depends_on      = [fabric_workspace.researchers]
+  create_duration = "30s"
+}
+
+# -------------------------------------------------------------------
 # Managed Private Endpoints (outbound from Fabric to workspace storage)
 # These allow Fabric Spark workloads to securely access the workspace
 # storage account without traversing the public internet.
@@ -75,6 +112,9 @@ resource "fabric_lakehouse" "default" {
 # NOTE: These PEs require approval on the target storage account.
 # The deploying service principal must have sufficient permissions to
 # auto-approve, or an admin must approve them manually.
+#
+# The endpoints are serialised (dfs depends_on blob) to avoid
+# concurrent-write errors against the Fabric control-plane.
 # -------------------------------------------------------------------
 resource "fabric_workspace_managed_private_endpoint" "blob" {
   workspace_id                    = fabric_workspace.researchers.id
@@ -82,6 +122,8 @@ resource "fabric_workspace_managed_private_endpoint" "blob" {
   target_private_link_resource_id = data.azurerm_storage_account.stg.id
   target_subresource_type         = "blob"
   request_message                 = "TRE Fabric workspace service - blob access for workspace ${var.workspace_id}"
+
+  depends_on = [time_sleep.wait_for_managed_vnet]
 }
 
 resource "fabric_workspace_managed_private_endpoint" "dfs" {
@@ -90,4 +132,6 @@ resource "fabric_workspace_managed_private_endpoint" "dfs" {
   target_private_link_resource_id = data.azurerm_storage_account.stg.id
   target_subresource_type         = "dfs"
   request_message                 = "TRE Fabric workspace service - dfs access for workspace ${var.workspace_id}"
+
+  depends_on = [fabric_workspace_managed_private_endpoint.blob]
 }

@@ -17,3 +17,11 @@ output "lakehouse_name" {
 output "fabric_workspace_id" {
   value = fabric_workspace.researchers.id
 }
+
+output "is_exposed_externally" {
+  value = false
+}
+
+output "workspace_address_spaces" {
+  value = jsonencode(data.azurerm_virtual_network.ws.address_space)
+}

@@ -180,15 +180,102 @@ function purge_container_repositories() {
   done
 }
 
+# Clean up Recovery Services vaults in a resource group.
+# These block resource group deletion if they contain protected items.
+function cleanup_recovery_vaults() {
+  local rg=$1
+
+  local vaults
+  vaults=$(az backup vault list --resource-group "$rg" --query "[].name" -o tsv 2>/dev/null)
+
+  local vault_name
+  for vault_name in $vaults; do
+    if [ -z "$vault_name" ]; then continue; fi
+    echo "Cleaning up Recovery Services vault: ${vault_name} in ${rg}"
+
+    # Disable soft delete so backup data can be permanently removed
+    echo "  Disabling soft delete..."
+    az backup vault backup-properties set \
+      --name "$vault_name" \
+      --resource-group "$rg" \
+      --soft-delete-feature-state Disable 2>/dev/null || true
+
+    # Disable protection and delete backup data for all backup management types
+    local bm_type
+    for bm_type in AzureStorage AzureIaasVM AzureWorkload; do
+      local items
+      items=$(az backup item list \
+        --resource-group "$rg" \
+        --vault-name "$vault_name" \
+        --backup-management-type "$bm_type" \
+        --query "[].{name:name, containerName:properties.containerName}" \
+        -o tsv 2>/dev/null)
+
+      while IFS=$'\t' read -r item_name container_name; do
+        if [ -z "$item_name" ]; then continue; fi
+        echo "  Disabling protection for: ${item_name}"
+        az backup protection disable \
+          --resource-group "$rg" \
+          --vault-name "$vault_name" \
+          --container-name "$container_name" \
+          --item-name "$item_name" \
+          --delete-backup-data true \
+          --yes 2>/dev/null || true
+      done <<< "$items"
+
+      # Unregister backup containers
+      local containers
+      containers=$(az backup container list \
+        --resource-group "$rg" \
+        --vault-name "$vault_name" \
+        --backup-management-type "$bm_type" \
+        --query "[].name" -o tsv 2>/dev/null)
+
+      local container
+      for container in $containers; do
+        if [ -z "$container" ]; then continue; fi
+        echo "  Unregistering container: ${container}"
+        az backup container unregister \
+          --resource-group "$rg" \
+          --vault-name "$vault_name" \
+          --container-name "$container" \
+          --backup-management-type "$bm_type" \
+          --yes 2>/dev/null || true
+      done
+    done
+
+    echo "  Done cleaning vault: ${vault_name}"
+  done
+}
+
 # this will find the mgmt, core resource groups as well as any workspace ones
 # we are reverse-sorting to first delete the workspace groups (might not be
 # good enough because we use no-wait sometimes)
 az group list --query "[?starts_with(name, '${core_tre_rg}')].[name]" -o tsv | sort -r |
 while read -r rg_item; do
   purge_container_repositories "$rg_item"
+  cleanup_recovery_vaults "$rg_item"
 
   echo "Deleting resource group: ${rg_item}"
   # remove any resource locks on resources inside the resource group
   az lock list --resource-group "${rg_item}" --query "[].id" -o tsv | xargs -r -I {} az lock delete --id "{}"
-  az group delete --resource-group "${rg_item}" --yes ${no_wait_option}
+  # Databricks-managed resource groups have deny assignments that prevent direct
+  # deletion. They are cleaned up automatically when the parent workspace RG is
+  # deleted, so we tolerate failures here and continue.
+  az group delete --resource-group "${rg_item}" --yes ${no_wait_option} || \
+    echo "Warning: Could not delete ${rg_item} (may be Databricks-managed). It will be retried or cleaned up with its parent."
 done
+
+# Retry any remaining resource groups that may have been blocked by deny assignments
+# (e.g. Databricks-managed RGs that are released after the parent workspace is deleted)
+remaining_rgs=$(az group list --query "[?starts_with(name, '${core_tre_rg}')].[name]" -o tsv 2>/dev/null | sort -r)
+if [ -n "${remaining_rgs:-}" ]; then
+  echo "Retrying deletion of remaining resource groups..."
+  while IFS= read -r rg_item; do
+    if [ -z "$rg_item" ]; then continue; fi
+    echo "Retrying deletion of resource group: ${rg_item}"
+    az lock list --resource-group "${rg_item}" --query "[].id" -o tsv 2>/dev/null | xargs -r -I {} az lock delete --id "{}"
+    az group delete --resource-group "${rg_item}" --yes ${no_wait_option} || \
+      echo "Warning: Could not delete ${rg_item} on retry."
+  done <<< "$remaining_rgs"
+fi
