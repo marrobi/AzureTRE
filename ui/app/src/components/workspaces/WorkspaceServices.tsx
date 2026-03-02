@@ -2,7 +2,7 @@ import React, { useContext } from "react";
 import { Resource } from "../../models/resource";
 import { WorkspaceService } from "../../models/workspaceService";
 import { ResourceCardList } from "../shared/ResourceCardList";
-import { PrimaryButton, Stack } from "@fluentui/react";
+import { PrimaryButton, Stack, IconButton } from "@fluentui/react";
 import { ResourceType } from "../../models/resourceType";
 import { WorkspaceContext } from "../../contexts/WorkspaceContext";
 import { CreateUpdateResourceContext } from "../../contexts/CreateUpdateResourceContext";
@@ -16,6 +16,7 @@ interface WorkspaceServicesProps {
   addWorkspaceService: (workspaceService: WorkspaceService) => void;
   updateWorkspaceService: (workspaceService: WorkspaceService) => void;
   removeWorkspaceService: (workspaceService: WorkspaceService) => void;
+  refreshWorkspaceServices?: () => void;
 }
 
 export const WorkspaceServices: React.FunctionComponent<
@@ -30,30 +31,40 @@ export const WorkspaceServices: React.FunctionComponent<
         <Stack.Item>
           <Stack horizontal horizontalAlign="space-between">
             <h1>Workspace Services</h1>
-            <SecuredByRole
-              allowedWorkspaceRoles={[WorkspaceRoleName.WorkspaceOwner]}
-              element={
-                <PrimaryButton
-                  iconProps={{ iconName: "Add" }}
-                  text="Create new"
-                  disabled={
-                    successStates.indexOf(
-                      workspaceCtx.workspace.deploymentStatus,
-                    ) === -1 || !workspaceCtx.workspace.isEnabled
-                  }
-                  onClick={() => {
-                    createFormCtx.openCreateForm({
-                      resourceType: ResourceType.WorkspaceService,
-                      resourceParent: workspaceCtx.workspace,
-                      onAdd: (r: Resource) =>
-                        props.addWorkspaceService(r as WorkspaceService),
-                      workspaceApplicationIdURI:
-                        workspaceCtx.workspaceApplicationIdURI,
-                    });
-                  }}
+            <Stack horizontal tokens={{ childrenGap: 10 }}>
+              {props.refreshWorkspaceServices && (
+                <IconButton
+                  iconProps={{ iconName: "Refresh" }}
+                  title="Refresh workspace services"
+                  ariaLabel="Refresh workspace services"
+                  onClick={props.refreshWorkspaceServices}
                 />
-              }
-            />
+              )}
+              <SecuredByRole
+                allowedWorkspaceRoles={[WorkspaceRoleName.WorkspaceOwner]}
+                element={
+                  <PrimaryButton
+                    iconProps={{ iconName: "Add" }}
+                    text="Create new"
+                    disabled={
+                      successStates.indexOf(
+                        workspaceCtx.workspace.deploymentStatus,
+                      ) === -1 || !workspaceCtx.workspace.isEnabled
+                    }
+                    onClick={() => {
+                      createFormCtx.openCreateForm({
+                        resourceType: ResourceType.WorkspaceService,
+                        resourceParent: workspaceCtx.workspace,
+                        onAdd: (r: Resource) =>
+                          props.addWorkspaceService(r as WorkspaceService),
+                        workspaceApplicationIdURI:
+                          workspaceCtx.workspaceApplicationIdURI,
+                      });
+                    }}
+                  />
+                }
+              />
+            </Stack>
           </Stack>
         </Stack.Item>
         <Stack.Item>

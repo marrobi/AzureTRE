@@ -24,6 +24,7 @@ interface WorkspaceListProps {
   updateWorkspace: (w: Workspace) => void;
   removeWorkspace: (w: Workspace) => void;
   addWorkspace: (w: Workspace) => void;
+  refreshWorkspaces: () => void;
 }
 
 type SortOption = "name" | "id" | "created" | "cost";
@@ -33,6 +34,7 @@ export const WorkspaceList: React.FunctionComponent<WorkspaceListProps> = ({
   updateWorkspace,
   removeWorkspace,
   addWorkspace,
+  refreshWorkspaces,
 }) => {
   // State for sorting and filtering
   const [sortBy, setSortBy] = useState<SortOption>("name");
@@ -214,6 +216,12 @@ export const WorkspaceList: React.FunctionComponent<WorkspaceListProps> = ({
   };
 
   const farCommandBarItems: ICommandBarItemProps[] = [
+    {
+      key: "refresh",
+      text: "Refresh",
+      iconProps: { iconName: "Refresh" },
+      onClick: () => refreshWorkspaces(),
+    },
     {
       key: "sort",
       text: getSortDisplayText(),

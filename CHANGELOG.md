@@ -34,6 +34,9 @@ ENHANCEMENTS:
 * Update SuperLinter to version 8.3.2 ([#4815](https://github.com/microsoft/AzureTRE/issues/4815))
 * Add porter build cache in CI ([#4827](https://github.com/microsoft/AzureTRE/issues/4827))
 * Migrate GitHub Actions workflows to use ubuntu-slim runners for improved efficiency and reduced cost ([#4831](https://github.com/microsoft/AzureTRE/pull/4831))
+* UI: Group user resources by ownership with "My Resources" section for workspace owners ([#2832](https://github.com/microsoft/AzureTRE/issues/2832))
+* UI: Add refresh buttons to workspace list, workspace services, user resources, and shared services pages ([#3983](https://github.com/microsoft/AzureTRE/issues/3983))
+* UI: Enable automatic polling (30s interval) to refresh VM status and available actions ([#4204](https://github.com/microsoft/AzureTRE/issues/4204))
 
 BUG FIXES:
 * Fix Azure Health Data Services deployment failures by upgrading AzureRM provider to 4.58.0, switching to RBAC group assignments, and adding workspace group parameter mappings ([#4844](https://github.com/microsoft/AzureTRE/issues/4844))
