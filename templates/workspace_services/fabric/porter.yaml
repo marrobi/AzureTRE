@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-service-fabric
-version: 0.1.25
+version: 0.1.35
 description: "An Azure TRE workspace service for Microsoft Fabric."
 registry: azuretre
 dockerfile: Dockerfile.tmpl
@@ -94,6 +94,7 @@ outputs:
       - upgrade
 
 mixins:
+  - exec
   - terraform:
       clientVersion: 1.9.8
 
@@ -129,6 +130,17 @@ install:
         - name: fabric_workspace_id
         - name: is_exposed_externally
         - name: workspace_address_spaces
+  - exec:
+      description: "Provision managed VNet by triggering a Spark session"
+      command: ./provision_managed_vnet.sh
+      arguments:
+        - ${ bundle.outputs.fabric_workspace_id }
+  - exec:
+      description: "Set Fabric workspace inbound networking to private links only"
+      command: ./set_networking_policy.sh
+      arguments:
+        - Deny
+        - ${ bundle.outputs.fabric_workspace_id }
 
 upgrade:
   - terraform:
@@ -164,6 +176,12 @@ upgrade:
         - name: workspace_address_spaces
 
 uninstall:
+  - exec:
+      description: "Allow public access for management operations"
+      command: ./set_networking_policy.sh
+      arguments:
+        - Allow
+        - ${ bundle.outputs.fabric_workspace_id }
   - terraform:
       description: "Uninstall Microsoft Fabric Workspace Service"
       vars:

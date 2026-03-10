@@ -51,7 +51,11 @@ provider "fabric" {
   use_msi                            = var.arm_use_msi
   use_cli                            = !var.arm_use_msi
   preview                            = true # Required for managed private endpoints and shortcuts
-  use_workspace_private_link_endpoint = true # Route API calls through private endpoint
+  # NOTE: use_workspace_private_link_endpoint is intentionally disabled.
+  # The resource processor VMSS runs in the core VNet and cannot reliably
+  # route through the workspace private endpoint, causing context deadline
+  # exceeded errors on Fabric API calls. End-user access via the PE is
+  # configured separately through the workspace private endpoint resources.
 }
 
 module "terraform_azurerm_environment_configuration" {

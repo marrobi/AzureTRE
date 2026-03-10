@@ -143,7 +143,7 @@
               "rules": [
                 {
                   "name": "Fabric",
-                  "description": "Microsoft Fabric portal and services",
+                  "description": "Microsoft Fabric portal and services. NOTE: FQDN list needs review for data exfiltration risk before merge - wildcards like *.powerbi.com, *.analysis.windows.net, *.notebooks.azure.net, and CDN domains (res.cdn.office.net, aznb-ame-prod.azureedge.net) should be assessed.",
                   "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
                   "target_fqdns": [
                     "app.fabric.microsoft.com",
@@ -158,7 +158,12 @@
                     "login.microsoft.com",
                     "aadcdn.msauth.net",
                     "*.msftauth.net",
-                    "*.msauth.net"
+                    "*.msauth.net",
+                    "*.notebooks.azure.net",
+                    "aznb-ame-prod.azureedge.net",
+                    "dc.services.visualstudio.com",
+                    "res.cdn.office.net",
+                    "arc.msn.com"
                   ],
                   "protocols": [
                     {
@@ -234,7 +239,7 @@
               "rules": [
                 {
                   "name": "Fabric",
-                  "description": "Microsoft Fabric portal and services",
+                  "description": "Microsoft Fabric portal and services. NOTE: FQDN list needs review for data exfiltration risk before merge - wildcards like *.powerbi.com, *.analysis.windows.net, *.notebooks.azure.net, and CDN domains (res.cdn.office.net, aznb-ame-prod.azureedge.net) should be assessed.",
                   "source_addresses": "{{ resource.properties.workspace_address_spaces }}",
                   "target_fqdns": [
                     "app.fabric.microsoft.com",
@@ -249,7 +254,12 @@
                     "login.microsoft.com",
                     "aadcdn.msauth.net",
                     "*.msftauth.net",
-                    "*.msauth.net"
+                    "*.msauth.net",
+                    "*.notebooks.azure.net",
+                    "aznb-ame-prod.azureedge.net",
+                    "dc.services.visualstudio.com",
+                    "res.cdn.office.net",
+                    "arc.msn.com"
                   ],
                   "protocols": [
                     {
