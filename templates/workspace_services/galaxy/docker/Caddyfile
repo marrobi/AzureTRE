@@ -3,11 +3,14 @@
 }
 
 :80 {
+	# Galaxy UI, API, static files, reports, flower, uploads, and
+	# path-based interactive tools - all served by nginx on port 80
 	reverse_proxy {$GALAXY_VM_HOST}:80 {
 		flush_interval -1
 		transport http {
 			response_header_timeout 600s
 			dial_timeout 30s
 		}
+		header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
 	}
 }

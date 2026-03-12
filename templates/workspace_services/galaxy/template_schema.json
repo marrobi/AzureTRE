@@ -44,8 +44,8 @@
       "$id": "#/properties/galaxy_image_tag",
       "type": "string",
       "title": "Galaxy Docker Image Tag",
-      "description": "The tag of the Galaxy Docker image to deploy",
-      "default": "24.1",
+      "description": "The tag of the bgruening/galaxy Docker image to deploy",
+      "default": "latest",
       "updateable": true
     },
     "is_exposed_externally": {
