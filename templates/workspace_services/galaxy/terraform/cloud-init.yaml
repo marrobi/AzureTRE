@@ -26,15 +26,14 @@ runcmd:
   # Run bgruening/galaxy container with Docker-in-Docker support for interactive tools.
   # --privileged is required to allow Galaxy to spawn sibling Docker containers
   # for interactive tools (Jupyter, RStudio) via Docker-in-Docker.
-  # Port 80: Galaxy UI via nginx (includes API, static files, reports, uploads)
-  # Port 4002: Interactive Tools proxy (gx-it-proxy for path-based IT routing)
+  # Port 80: nginx (single entry point - routes to gunicorn, reports, flower,
+  #          tusd, static files, and gx-it-proxy for interactive tools internally)
   - |
     docker run -d \
       --name galaxy \
       --restart unless-stopped \
       --privileged \
       -p 80:80 \
-      -p 4002:4002 \
       -v /galaxy/export:/export \
       -v /var/run/docker.sock:/var/run/docker.sock \
       -e NONUSE=proftp \

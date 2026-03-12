@@ -11,7 +11,7 @@ resource "azurerm_network_security_group" "galaxy_vm" {
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_ranges    = ["80", "4002"]
+    destination_port_range     = "80"
     source_address_prefixes    = data.azurerm_subnet.web_apps.address_prefixes
     destination_address_prefix = "*"
   }
