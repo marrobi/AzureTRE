@@ -22,5 +22,5 @@ variable "vm_size" {
 }
 variable "galaxy_image_tag" {
   type    = string
-  default = "latest"
+  default = "24.2"
 }

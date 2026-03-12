@@ -45,7 +45,7 @@
       "type": "string",
       "title": "Galaxy Docker Image Tag",
       "description": "The tag of the bgruening/galaxy Docker image to deploy",
-      "default": "latest",
+      "default": "24.2",
       "updateable": true
     },
     "is_exposed_externally": {

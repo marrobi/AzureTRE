@@ -65,7 +65,7 @@ parameters:
     default: "Standard_D4s_v5"
   - name: galaxy_image_tag
     type: string
-    default: "latest"
+    default: "24.2"
     description: "The bgruening/galaxy Docker image tag to deploy"
 
 mixins:
