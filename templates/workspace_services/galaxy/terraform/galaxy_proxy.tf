@@ -36,7 +36,7 @@ resource "azurerm_linux_web_app" "galaxy_proxy" {
 
     application_stack {
       docker_registry_url = "https://${data.azurerm_container_registry.mgmt_acr.login_server}"
-      docker_image_name   = "/microsoft/azuretre/galaxy-workspace-service-proxy:${local.version}"
+      docker_image_name   = "microsoft/azuretre/${var.image_name}:${local.image_tag}"
     }
   }
 

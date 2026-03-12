@@ -7,7 +7,8 @@ locals {
   keyvault_name                  = lower("kv-${substr(local.workspace_resource_name_suffix, -20, -1)}")
   webapp_name                    = "galaxy-${local.service_resource_name_suffix}"
   vm_name                        = "galaxy-vm-${local.short_service_id}"
-  version                        = replace(replace(replace(data.local_file.version.content, "__version__ = \"", ""), "\"", ""), "\n", "")
+  image_tag_from_file            = replace(replace(replace(data.local_file.version.content, "__version__ = \"", ""), "\"", ""), "\n", "")
+  image_tag                      = var.image_tag == "" ? local.image_tag_from_file : var.image_tag
   workspace_service_tags = {
     tre_id                   = var.tre_id
     tre_workspace_id         = var.workspace_id

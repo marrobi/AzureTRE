@@ -16,6 +16,15 @@ variable "mgmt_acr_name" {
 variable "arm_environment" {
   type = string
 }
+variable "image_name" {
+  type        = string
+  description = "The Galaxy proxy image name"
+}
+variable "image_tag" {
+  type        = string
+  default     = ""
+  description = "The Galaxy proxy image tag"
+}
 variable "vm_size" {
   type    = string
   default = "Standard_D4s_v5"

@@ -60,6 +60,10 @@ parameters:
     env: ARM_ENVIRONMENT
     type: string
     default: "public"
+  - name: image_tag
+    type: string
+    default: ""
+    description: "The tag of the Galaxy proxy image"
   - name: vm_size
     type: string
     default: "Standard_D4s_v5"
@@ -100,6 +104,8 @@ install:
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
         arm_environment: ${ bundle.parameters.arm_environment }
+        image_name: ${ bundle.custom.runtime_image.name }
+        image_tag: ${ bundle.parameters.image_tag }
         vm_size: ${ bundle.parameters.vm_size }
         galaxy_image_tag: ${ bundle.parameters.galaxy_image_tag }
       backendConfig:
@@ -124,6 +130,8 @@ upgrade:
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
         arm_environment: ${ bundle.parameters.arm_environment }
+        image_name: ${ bundle.custom.runtime_image.name }
+        image_tag: ${ bundle.parameters.image_tag }
         vm_size: ${ bundle.parameters.vm_size }
         galaxy_image_tag: ${ bundle.parameters.galaxy_image_tag }
       backendConfig:
@@ -148,6 +156,8 @@ uninstall:
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
         arm_environment: ${ bundle.parameters.arm_environment }
+        image_name: ${ bundle.custom.runtime_image.name }
+        image_tag: ${ bundle.parameters.image_tag }
         vm_size: ${ bundle.parameters.vm_size }
         galaxy_image_tag: ${ bundle.parameters.galaxy_image_tag }
       backendConfig:
