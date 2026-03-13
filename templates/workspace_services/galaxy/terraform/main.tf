@@ -42,6 +42,11 @@ provider "azurerm" {
   storage_use_azuread = true
 }
 
+provider "azurerm" {
+  alias = "core"
+  features {}
+}
+
 module "terraform_azurerm_environment_configuration" {
   source          = "git::https://github.com/microsoft/terraform-azurerm-environment-configuration.git?ref=0.7.0"
   arm_environment = var.arm_environment

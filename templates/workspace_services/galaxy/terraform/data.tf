@@ -2,6 +2,11 @@ data "azurerm_resource_group" "ws" {
   name = "rg-${var.tre_id}-ws-${local.short_workspace_id}"
 }
 
+data "azurerm_resource_group" "core" {
+  provider = azurerm.core
+  name     = local.core_resource_group_name
+}
+
 data "azurerm_virtual_network" "ws" {
   name                = "vnet-${var.tre_id}-ws-${local.short_workspace_id}"
   resource_group_name = "rg-${var.tre_id}-ws-${local.short_workspace_id}"
@@ -53,4 +58,10 @@ data "azurerm_monitor_diagnostic_categories" "galaxy" {
   depends_on = [
     azurerm_linux_web_app.galaxy_proxy,
   ]
+}
+
+data "azurerm_public_ip" "app_gateway_ip" {
+  provider            = azurerm.core
+  name                = "pip-agw-${var.tre_id}"
+  resource_group_name = data.azurerm_resource_group.core.name
 }

@@ -26,10 +26,18 @@ data "cloudinit_config" "galaxy_config" {
   base64_encode = true
 
   part {
+    content_type = "text/x-shellscript"
+    content      = local.get_apt_keys_content
+  }
+
+  part {
     content_type = "text/cloud-config"
-    content = templatefile("${path.module}/cloud-init.yaml", {
-      galaxy_image_tag = var.galaxy_image_tag
-    })
+    content      = local.apt_sources_config_content
+  }
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = local.galaxy_vm_config_content
   }
 }
 
