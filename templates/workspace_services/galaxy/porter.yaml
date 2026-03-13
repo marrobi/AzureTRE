@@ -1,0 +1,169 @@
+---
+schemaVersion: 1.0.0
+name: tre-workspace-service-galaxy
+version: 0.1.0
+description: "A Galaxy Project workspace service"
+dockerfile: Dockerfile.tmpl
+registry: azuretre
+
+custom:
+  runtime_image:
+    name: galaxy-workspace-service-proxy
+    build:
+      version_file: version.txt
+      docker_file: docker/Dockerfile
+      docker_context: docker
+
+credentials:
+  - name: azure_tenant_id
+    env: ARM_TENANT_ID
+  - name: azure_subscription_id
+    env: ARM_SUBSCRIPTION_ID
+  - name: azure_client_id
+    env: ARM_CLIENT_ID
+  - name: azure_client_secret
+    env: ARM_CLIENT_SECRET
+parameters:
+  - name: workspace_id
+    type: string
+  - name: tre_id
+    type: string
+  - name: mgmt_acr_name
+    type: string
+    env: mgmt_acr_name
+    description: "The devops ACR name"
+  - name: mgmt_resource_group_name
+    type: string
+    description: "Resource group containing the devops ACR"
+    env: MGMT_RESOURCE_GROUP_NAME
+  # the following are added automatically by the resource processor
+  - name: id
+    type: string
+    description: "An Id for this installation"
+    env: id
+  - name: tfstate_resource_group_name
+    type: string
+    description: "Resource group containing the Terraform state storage account"
+  - name: tfstate_storage_account_name
+    type: string
+    description: "The name of the Terraform state storage account"
+  - name: tfstate_container_name
+    env: tfstate_container_name
+    type: string
+    default: "tfstate"
+    description: "The name of the Terraform state storage container"
+  - name: arm_use_msi
+    env: ARM_USE_MSI
+    type: boolean
+    default: false
+  - name: arm_environment
+    env: ARM_ENVIRONMENT
+    type: string
+    default: "public"
+  - name: image_tag
+    type: string
+    default: ""
+    description: "The tag of the Galaxy proxy image"
+  - name: vm_size
+    type: string
+    default: "Standard_D4s_v5"
+  - name: galaxy_image_tag
+    type: string
+    default: "24.2"
+    description: "The bgruening/galaxy Docker image tag to deploy"
+
+mixins:
+  - exec
+  - terraform:
+      clientVersion: 1.9.8
+
+outputs:
+  - name: connection_uri
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: workspace_address_space
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: is_exposed_externally
+    type: boolean
+    applyTo:
+      - install
+      - upgrade
+
+install:
+  - terraform:
+      description: "Deploy Galaxy workspace service"
+      vars:
+        workspace_id: ${ bundle.parameters.workspace_id }
+        tre_id: ${ bundle.parameters.tre_id }
+        id: ${ bundle.parameters.id }
+        mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
+        mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
+        arm_environment: ${ bundle.parameters.arm_environment }
+        image_name: ${ bundle.custom.runtime_image.name }
+        image_tag: ${ bundle.parameters.image_tag }
+        vm_size: ${ bundle.parameters.vm_size }
+        galaxy_image_tag: ${ bundle.parameters.galaxy_image_tag }
+      backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
+        resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
+        storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
+        container_name: ${ bundle.parameters.tfstate_container_name }
+        key: tre-workspace-service-galaxy-${ bundle.parameters.id }
+      outputs:
+        - name: connection_uri
+        - name: workspace_address_space
+        - name: is_exposed_externally
+
+upgrade:
+  - terraform:
+      description: "Upgrade Galaxy workspace service"
+      vars:
+        workspace_id: ${ bundle.parameters.workspace_id }
+        tre_id: ${ bundle.parameters.tre_id }
+        id: ${ bundle.parameters.id }
+        mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
+        mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
+        arm_environment: ${ bundle.parameters.arm_environment }
+        image_name: ${ bundle.custom.runtime_image.name }
+        image_tag: ${ bundle.parameters.image_tag }
+        vm_size: ${ bundle.parameters.vm_size }
+        galaxy_image_tag: ${ bundle.parameters.galaxy_image_tag }
+      backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
+        resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
+        storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
+        container_name: ${ bundle.parameters.tfstate_container_name }
+        key: tre-workspace-service-galaxy-${ bundle.parameters.id }
+      outputs:
+        - name: connection_uri
+        - name: workspace_address_space
+        - name: is_exposed_externally
+
+uninstall:
+  - terraform:
+      description: "Tear down Galaxy workspace service"
+      vars:
+        workspace_id: ${ bundle.parameters.workspace_id }
+        tre_id: ${ bundle.parameters.tre_id }
+        id: ${ bundle.parameters.id }
+        mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
+        mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
+        arm_environment: ${ bundle.parameters.arm_environment }
+        image_name: ${ bundle.custom.runtime_image.name }
+        image_tag: ${ bundle.parameters.image_tag }
+        vm_size: ${ bundle.parameters.vm_size }
+        galaxy_image_tag: ${ bundle.parameters.galaxy_image_tag }
+      backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
+        resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
+        storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
+        container_name: ${ bundle.parameters.tfstate_container_name }
+        key: tre-workspace-service-galaxy-${ bundle.parameters.id }

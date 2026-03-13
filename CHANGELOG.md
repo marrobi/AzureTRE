@@ -8,6 +8,7 @@ ENHANCEMENTS:
 * Add interactive browser login method to TRE CLI for easier authentication ([#4856](https://github.com/microsoft/AzureTRE/issues/4856))
 * Harden security of the app gateway. ([#4863](https://github.com/microsoft/AzureTRE/pull/4863))
 * Pass OIDC vars directly to the devcontainer ([#4871](https://github.com/microsoft/AzureTRE/issues/4871))
+* Add Galaxy Project workspace service for bioinformatics data analysis ([#1599](https://github.com/microsoft/AzureTRE/issues/1599))
 
 BUG FIXES:
 * Fix property substitution not occuring where there is only a main step in the pipeline ([#4824](https://github.com/microsoft/AzureTRE/issues/4824))

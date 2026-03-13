@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/microsoft/AzureTRE/templates/workspace_services/galaxy/template_schema.json",
+  "type": "object",
+  "title": "Galaxy Project",
+  "description": "Galaxy is an open-source platform for accessible, reproducible, and transparent data analysis, often used in bioinformatics.",
+  "required": [],
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "title": "Name for the workspace service",
+      "description": "The name of the workspace service to be displayed to users",
+      "default": "Galaxy",
+      "updateable": true
+    },
+    "description": {
+      "type": "string",
+      "title": "Description of the workspace service",
+      "description": "Description of the workspace service",
+      "default": "Galaxy is an open-source platform for accessible, reproducible, and transparent data analysis.",
+      "updateable": true
+    },
+    "overview": {
+      "type": "string",
+      "title": "Workspace Service Overview",
+      "description": "Long form description of the workspace service, in markdown syntax",
+      "default": "Galaxy is an open-source platform for accessible, reproducible, and transparent data analysis, often used in bioinformatics. It supports Jupyter notebooks, RStudio, and hundreds of analysis tools. Documentation can be found here: [https://galaxyproject.org/](https://galaxyproject.org/).",
+      "updateable": true
+    },
+    "vm_size": {
+      "$id": "#/properties/vm_size",
+      "type": "string",
+      "title": "Galaxy VM Size",
+      "description": "The size of the VM to host Galaxy",
+      "updateable": true,
+      "enum": [
+        "Standard_D4s_v5",
+        "Standard_D8s_v5",
+        "Standard_D16s_v5"
+      ],
+      "default": "Standard_D4s_v5"
+    },
+    "galaxy_image_tag": {
+      "$id": "#/properties/galaxy_image_tag",
+      "type": "string",
+      "title": "Galaxy Docker Image Tag",
+      "description": "The tag of the bgruening/galaxy Docker image to deploy (requires re-deployment to change)",
+      "default": "24.2"
+    },
+    "is_exposed_externally": {
+      "$id": "#/properties/is_exposed_externally",
+      "type": "boolean",
+      "title": "Expose externally",
+      "description": "Is Galaxy accessible from outside of the TRE network.",
+      "default": false
+    }
+  },
+  "uiSchema": {
+    "is_exposed_externally": {
+      "classNames": "tre-hidden"
+    }
+  },
+  "pipeline": {
+    "install": [
+      {
+        "stepId": "main"
+      },
+      {
+        "stepId": "fc6a4c47-b6a2-4b07-8e6e-1e3a5a3c7d01",
+        "stepTitle": "Add network firewall rules for Galaxy",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_galaxy",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AzureAD",
+                  "description": "AAD access",
+                  "source_addresses": "{{ resource.properties.workspace_address_space }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "*"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "upgrade": [
+      {
+        "stepId": "main"
+      },
+      {
+        "stepId": "fc6a4c47-b6a2-4b07-8e6e-1e3a5a3c7d02",
+        "stepTitle": "Update network firewall rules for Galaxy",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_galaxy",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AzureAD",
+                  "description": "AAD access for authNZ",
+                  "source_addresses": "{{ resource.properties.workspace_address_space }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "*"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "uninstall": [
+      {
+        "stepId": "fc6a4c47-b6a2-4b07-8e6e-1e3a5a3c7d03",
+        "stepTitle": "Remove network firewall rules for Galaxy",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_galaxy"
+            }
+          }
+        ]
+      },
+      {
+        "stepId": "main"
+      }
+    ]
+  }
+}
