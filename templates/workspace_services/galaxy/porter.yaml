@@ -10,7 +10,7 @@ custom:
   runtime_image:
     name: galaxy-workspace-service-proxy
     build:
-      version_file: docker/version.txt
+      version_file: version.txt
       docker_file: docker/Dockerfile
       docker_context: docker
 
