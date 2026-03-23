@@ -2,6 +2,10 @@ output "connection_uri" {
   value = "https://${azurerm_linux_web_app.galaxy_proxy.default_hostname}/"
 }
 
+output "authentication_callback_uri" {
+  value = "https://${azurerm_linux_web_app.galaxy_proxy.default_hostname}/authnz/azure/callback"
+}
+
 output "workspace_address_space" {
   value = jsonencode(data.azurerm_virtual_network.ws.address_space)
 }

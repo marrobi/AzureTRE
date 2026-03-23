@@ -27,9 +27,17 @@ variable "image_tag" {
 }
 variable "vm_size" {
   type    = string
-  default = "Standard_D4s_v5"
+  default = "Standard_D4s_v6"
 }
 variable "galaxy_image_tag" {
   type    = string
   default = "24.2"
+}
+variable "aad_authority_url" {
+  type    = string
+  default = "https://login.microsoftonline.com"
+}
+variable "galaxy_admin_users" {
+  type    = string
+  default = ""
 }

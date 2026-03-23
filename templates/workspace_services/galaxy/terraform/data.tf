@@ -48,6 +48,21 @@ data "azurerm_key_vault" "ws" {
   resource_group_name = data.azurerm_resource_group.ws.name
 }
 
+data "azurerm_key_vault_secret" "aad_tenant_id" {
+  name         = "auth-tenant-id"
+  key_vault_id = data.azurerm_key_vault.ws.id
+}
+
+data "azurerm_key_vault_secret" "workspace_client_id" {
+  name         = "workspace-client-id"
+  key_vault_id = data.azurerm_key_vault.ws.id
+}
+
+data "azurerm_key_vault_secret" "workspace_client_secret" {
+  name         = "workspace-client-secret"
+  key_vault_id = data.azurerm_key_vault.ws.id
+}
+
 data "azurerm_service_plan" "workspace" {
   name                = "plan-${var.workspace_id}"
   resource_group_name = data.azurerm_resource_group.ws.name

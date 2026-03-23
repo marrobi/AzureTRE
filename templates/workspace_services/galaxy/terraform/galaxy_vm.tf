@@ -73,7 +73,7 @@ resource "azurerm_linux_virtual_machine" "galaxy_vm" {
     type = "SystemAssigned"
   }
 
-  lifecycle { ignore_changes = [tags, custom_data] }
+  lifecycle { ignore_changes = [tags] }
 }
 
 resource "azurerm_key_vault_secret" "galaxy_vm_password" {

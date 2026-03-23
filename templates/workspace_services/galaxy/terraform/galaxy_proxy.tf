@@ -33,6 +33,7 @@ resource "azurerm_linux_web_app" "galaxy_proxy" {
     always_on                                     = true
     minimum_tls_version                           = "1.3"
     vnet_route_all_enabled                        = true
+    websockets_enabled                            = true
 
     application_stack {
       docker_registry_url = "https://${data.azurerm_container_registry.mgmt_acr.login_server}"
@@ -145,4 +146,10 @@ resource "azurerm_role_assignment" "galaxy_acrpull_role" {
   scope                = data.azurerm_container_registry.mgmt_acr.id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_user_assigned_identity.galaxy_id.principal_id
+}
+
+resource "azurerm_role_assignment" "galaxy_vm_acrpull_role" {
+  scope                = data.azurerm_container_registry.mgmt_acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_linux_virtual_machine.galaxy_vm.identity[0].principal_id
 }

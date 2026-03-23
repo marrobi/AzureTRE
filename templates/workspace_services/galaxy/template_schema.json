@@ -34,11 +34,11 @@
       "description": "The size of the VM to host Galaxy",
       "updateable": true,
       "enum": [
-        "Standard_D4s_v5",
-        "Standard_D8s_v5",
-        "Standard_D16s_v5"
+        "Standard_D4s_v6",
+        "Standard_D8s_v6",
+        "Standard_D16s_v6"
       ],
-      "default": "Standard_D4s_v5"
+      "default": "Standard_D4s_v6"
     },
     "galaxy_image_tag": {
       "$id": "#/properties/galaxy_image_tag",
@@ -46,6 +46,14 @@
       "title": "Galaxy Docker Image Tag",
       "description": "The tag of the bgruening/galaxy Docker image to deploy (requires re-deployment to change)",
       "default": "24.2"
+    },
+    "galaxy_admin_users": {
+      "$id": "#/properties/galaxy_admin_users",
+      "type": "string",
+      "title": "Galaxy Admin Users",
+      "description": "Comma-separated list of email addresses that will have Galaxy admin access. These users can manage tools, users, groups, roles, and libraries.",
+      "default": "",
+      "updateable": true
     },
     "is_exposed_externally": {
       "$id": "#/properties/is_exposed_externally",
@@ -64,6 +72,24 @@
     "install": [
       {
         "stepId": "main"
+      },
+      {
+        "stepId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "stepTitle": "Add Galaxy redirect URI to AAD",
+        "resourceType": "workspace",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "aad_redirect_uris",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "{{ resource.id }}",
+              "value": "{{ resource.properties.authentication_callback_uri }}"
+            }
+          }
+        ]
       },
       {
         "stepId": "fc6a4c47-b6a2-4b07-8e6e-1e3a5a3c7d01",
@@ -106,6 +132,24 @@
         "stepId": "main"
       },
       {
+        "stepId": "a1b2c3d4-e5f6-7890-abcd-ef1234567891",
+        "stepTitle": "Update Galaxy redirect URI in AAD",
+        "resourceType": "workspace",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "aad_redirect_uris",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "{{ resource.id }}",
+              "value": "{{ resource.properties.authentication_callback_uri }}"
+            }
+          }
+        ]
+      },
+      {
         "stepId": "fc6a4c47-b6a2-4b07-8e6e-1e3a5a3c7d02",
         "stepTitle": "Update network firewall rules for Galaxy",
         "resourceTemplateName": "tre-shared-service-firewall",
@@ -142,6 +186,23 @@
       }
     ],
     "uninstall": [
+      {
+        "stepId": "a1b2c3d4-e5f6-7890-abcd-ef1234567892",
+        "stepTitle": "Remove Galaxy redirect URI from AAD",
+        "resourceType": "workspace",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "aad_redirect_uris",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "{{ resource.id }}"
+            }
+          }
+        ]
+      },
       {
         "stepId": "fc6a4c47-b6a2-4b07-8e6e-1e3a5a3c7d03",
         "stepTitle": "Remove network firewall rules for Galaxy",

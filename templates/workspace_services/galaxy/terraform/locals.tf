@@ -28,8 +28,17 @@ locals {
     nexus_proxy_url = local.nexus_proxy_url
   })
 
+  aad_tenant_id = data.azurerm_key_vault_secret.aad_tenant_id.value
+  webapp_suffix  = module.terraform_azurerm_environment_configuration.web_app_suffix
+
   galaxy_vm_config_content = templatefile("${path.module}/galaxy_vm_config.sh", {
-    NEXUS_PROXY_URL  = local.nexus_proxy_url
+    MGMT_ACR_NAME    = var.mgmt_acr_name
     GALAXY_IMAGE_TAG = var.galaxy_image_tag
+    OIDC_CLIENT_ID     = data.azurerm_key_vault_secret.workspace_client_id.value
+    OIDC_CLIENT_SECRET = data.azurerm_key_vault_secret.workspace_client_secret.value
+    OIDC_TENANT_ID     = local.aad_tenant_id
+    OIDC_AUTHORITY_URL  = var.aad_authority_url
+    GALAXY_HOSTNAME    = "${local.webapp_name}.${local.webapp_suffix}"
+    GALAXY_ADMIN_USERS = var.galaxy_admin_users
   })
 }

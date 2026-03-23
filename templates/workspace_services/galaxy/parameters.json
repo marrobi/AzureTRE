@@ -69,6 +69,18 @@
       "source": {
         "env": "GALAXY_IMAGE_TAG"
       }
+    },
+    {
+      "name": "aad_authority_url",
+      "source": {
+        "env": "AAD_AUTHORITY_URL"
+      }
+    },
+    {
+      "name": "galaxy_admin_users",
+      "source": {
+        "env": "GALAXY_ADMIN_USERS"
+      }
     }
   ]
 }

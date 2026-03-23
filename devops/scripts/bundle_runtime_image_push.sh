@@ -27,3 +27,15 @@ version_array=( ${version_line//=/ } ) # split by =
 version="${version_array[1]//\"}" # second element is what we want, remove " chars
 
 docker push "${FULL_IMAGE_NAME_PREFIX}/${image_name}:${version}"
+
+# Push additional builds
+if [ "$(yq eval ".custom.additional_builds" porter.yaml)" != "null" ]; then
+  count=$(yq eval ".custom.additional_builds | length" porter.yaml)
+  for i in $(seq 0 $((count - 1))); do
+    build_name=$(yq eval ".custom.additional_builds[$i].name" porter.yaml)
+    build_tag=$(yq eval ".custom.additional_builds[$i].tag" porter.yaml)
+    full_tag="${FULL_IMAGE_NAME_PREFIX}/${build_name}:${build_tag}"
+    echo "Pushing additional image ${full_tag}..."
+    docker push "${full_tag}"
+  done
+fi
