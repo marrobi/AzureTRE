@@ -59,3 +59,34 @@ ${DOCKER_BUILD_COMMAND} --build-arg BUILDKIT_INLINE_CACHE=1 \
   -t "${FULL_IMAGE_NAME_PREFIX}/${image_name}:${version}" \
   "${docker_cache[@]}" -f "${docker_file}" "${docker_context}"
 
+# Process additional imports (for bundles that need both a built image and imported images)
+if [ "$(yq eval ".custom.additional_imports" porter.yaml)" != "null" ]; then
+  count=$(yq eval ".custom.additional_imports | length" porter.yaml)
+  for i in $(seq 0 $((count - 1))); do
+    import_name=$(yq eval ".custom.additional_imports[$i].name" porter.yaml)
+    import_source=$(yq eval ".custom.additional_imports[$i].source" porter.yaml)
+    import_tag=$(yq eval ".custom.additional_imports[$i].tag" porter.yaml)
+    echo "Importing ${import_source}:${import_tag} to ACR as ${import_name}:${import_tag}..."
+    az acr import --name "${ACR_NAME}" \
+      --source "${import_source}:${import_tag}" \
+      --image "${import_name}:${import_tag}" \
+      --force
+    echo "Image ${import_name}:${import_tag} imported successfully"
+  done
+fi
+
+# Process additional builds (for bundles that need extra images built and pushed to ACR)
+if [ "$(yq eval ".custom.additional_builds" porter.yaml)" != "null" ]; then
+  count=$(yq eval ".custom.additional_builds | length" porter.yaml)
+  for i in $(seq 0 $((count - 1))); do
+    build_name=$(yq eval ".custom.additional_builds[$i].name" porter.yaml)
+    build_tag=$(yq eval ".custom.additional_builds[$i].tag" porter.yaml)
+    build_docker_file=$(yq eval ".custom.additional_builds[$i].docker_file" porter.yaml)
+    build_docker_context=$(yq eval ".custom.additional_builds[$i].docker_context" porter.yaml)
+    full_tag="${FULL_IMAGE_NAME_PREFIX}/${build_name}:${build_tag}"
+    echo "Building additional image ${full_tag}..."
+    ${DOCKER_BUILD_COMMAND} -t "${full_tag}" -f "${build_docker_file}" "${build_docker_context}"
+    echo "Image ${full_tag} built successfully"
+  done
+fi
+
