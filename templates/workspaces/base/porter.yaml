@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-workspace-base
-version: 2.9.0
+version: 2.10.0
 description: "A base Azure TRE workspace"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -233,6 +233,31 @@ outputs:
     applyTo:
       - install
       - upgrade
+  - name: import_approved_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_internal_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_inprogress_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_rejected_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_blocked_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
   - name: unique_identifier_suffix
     type: string
     applyTo:
@@ -307,6 +332,11 @@ install:
         - name: workspace_researchers_group_id
         - name: workspace_airlock_managers_group_id
         - name: storage_account_name
+        - name: import_approved_storage_name
+        - name: export_internal_storage_name
+        - name: export_inprogress_storage_name
+        - name: export_rejected_storage_name
+        - name: export_blocked_storage_name
         - name: unique_identifier_suffix
 
 upgrade:
@@ -370,6 +400,11 @@ upgrade:
         - name: workspace_researchers_group_id
         - name: workspace_airlock_managers_group_id
         - name: storage_account_name
+        - name: import_approved_storage_name
+        - name: export_internal_storage_name
+        - name: export_inprogress_storage_name
+        - name: export_rejected_storage_name
+        - name: export_blocked_storage_name
         - name: unique_identifier_suffix
   - az:
       description: "Set Azure Cloud Environment"

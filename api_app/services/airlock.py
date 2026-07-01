@@ -42,9 +42,15 @@ def get_workspace_unique_identifier_suffix(workspace: Workspace) -> str:
     return workspace.properties.get("unique_identifier_suffix") or workspace.id[-4:]
 
 
+def get_workspace_scoped_storage_account(workspace: Workspace, property_name: str, name_constant: str) -> str:
+    # Prefer the actual storage account name exposed by the workspace bundle (single source of
+    # truth). Fall back to building the name from the unique_identifier_suffix / workspace id for
+    # workspaces created before the storage account names were exposed as properties (see #2893, #3666).
+    return workspace.properties.get(property_name) or name_constant.format(get_workspace_unique_identifier_suffix(workspace))
+
+
 def get_account_by_request(airlock_request: AirlockRequest, workspace: Workspace) -> str:
     tre_id = config.TRE_ID
-    unique_identifier_suffix = get_workspace_unique_identifier_suffix(workspace)
     if airlock_request.type == constants.IMPORT_TYPE:
         if airlock_request.status == AirlockRequestStatus.Draft:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_EXTERNAL.format(tre_id)
@@ -53,24 +59,24 @@ def get_account_by_request(airlock_request: AirlockRequest, workspace: Workspace
         elif airlock_request.status == AirlockRequestStatus.InReview:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_INPROGRESS.format(tre_id)
         elif airlock_request.status == AirlockRequestStatus.Approved:
-            return constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(unique_identifier_suffix)
+            return get_workspace_scoped_storage_account(workspace, "import_approved_storage_name", constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED)
         elif airlock_request.status == AirlockRequestStatus.Rejected:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_REJECTED.format(tre_id)
         elif airlock_request.status == AirlockRequestStatus.Blocked:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_BLOCKED.format(tre_id)
     else:
         if airlock_request.status == AirlockRequestStatus.Draft:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format(unique_identifier_suffix)
+            return get_workspace_scoped_storage_account(workspace, "export_internal_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL)
         elif airlock_request.status in AirlockRequestStatus.Submitted:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(unique_identifier_suffix)
+            return get_workspace_scoped_storage_account(workspace, "export_inprogress_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS)
         elif airlock_request.status == AirlockRequestStatus.InReview:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(unique_identifier_suffix)
+            return get_workspace_scoped_storage_account(workspace, "export_inprogress_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS)
         elif airlock_request.status == AirlockRequestStatus.Approved:
             return constants.STORAGE_ACCOUNT_NAME_EXPORT_APPROVED.format(tre_id)
         elif airlock_request.status == AirlockRequestStatus.Rejected:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED.format(unique_identifier_suffix)
+            return get_workspace_scoped_storage_account(workspace, "export_rejected_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED)
         elif airlock_request.status == AirlockRequestStatus.Blocked:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED.format(unique_identifier_suffix)
+            return get_workspace_scoped_storage_account(workspace, "export_blocked_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED)
 
 
 def validate_user_allowed_to_access_storage_account(user: User, airlock_request: AirlockRequest):
