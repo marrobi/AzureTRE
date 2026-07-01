@@ -27,6 +27,8 @@ async def test_add_unique_identifier_suffix_field_sets_last_4_chars(resource_mig
     resource_migration.update_item_dict.assert_called_once()
     updated = resource_migration.update_item_dict.call_args[0][0]
     assert updated["properties"]["unique_identifier_suffix"] == "753e"
+    # only workspaces should be backfilled - services/user resources are out of scope
+    assert "c.resourceType = 'workspace'" in resource_migration.query.call_args[0][0]
 
 
 async def test_add_unique_identifier_suffix_field_creates_properties_when_missing(resource_migration):

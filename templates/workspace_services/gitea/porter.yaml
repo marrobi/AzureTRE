@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-workspace-service-gitea
-version: 1.4.0
+version: 1.3.3
 description: "A Gitea workspace service"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -41,10 +41,6 @@ parameters:
     type: string
     description: "An Id for this installation"
     env: id
-  - name: unique_identifier_suffix
-    type: string
-    default: ""
-    description: "A globally-unique suffix used to build resource names (e.g. storage accounts). Falls back to the last 4 characters of the resource ID for backwards compatibility."
   - name: tfstate_resource_group_name
     type: string
     description: "Resource group containing the Terraform state storage account"
@@ -106,7 +102,6 @@ install:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         id: ${ bundle.parameters.id }
-        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
@@ -133,7 +128,6 @@ upgrade:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         id: ${ bundle.parameters.id }
-        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
@@ -160,7 +154,6 @@ uninstall:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         id: ${ bundle.parameters.id }
-        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }

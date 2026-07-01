@@ -10,14 +10,15 @@ class ResourceMigration(ResourceRepository):
         return cls
 
     async def add_unique_identifier_suffix_field(self) -> int:
-        """Add a unique_identifier_suffix property to resources created before the field existed.
+        """Add a unique_identifier_suffix property to workspaces created before the field existed.
 
-        The value used is the last 4 characters of the resource id, which is what was previously
-        used to build globally-unique resource names (e.g. storage accounts). This preserves the
-        existing resource names for already-deployed resources (see #2893, #3243, #3666).
+        The value used is the last 4 characters of the workspace id, which is what was previously
+        used to build the workspace-scoped (base and airlock) storage account names. This preserves
+        the existing storage account names for already-deployed workspaces (see #2893, #3666).
+        Only workspaces are backfilled - workspace services and user resources are out of scope.
         """
         num_updated = 0
-        for resource in await self.query("SELECT * from c WHERE NOT IS_DEFINED(c.properties.unique_identifier_suffix)"):
+        for resource in await self.query("SELECT * from c WHERE c.resourceType = 'workspace' AND NOT IS_DEFINED(c.properties.unique_identifier_suffix)"):
             if "properties" not in resource:
                 resource["properties"] = {}
             resource["properties"]["unique_identifier_suffix"] = resource["id"][-4:]

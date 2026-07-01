@@ -3,7 +3,6 @@ locals {
   container_subnet_address_space = local.databricks_subnets[0] # .0 - .127
   host_subnet_address_space      = local.databricks_subnets[1] # .128 - .254
   short_service_id               = substr(var.tre_resource_id, -4, -1)
-  service_unique_identifier      = var.unique_identifier_suffix != "" ? var.unique_identifier_suffix : local.short_service_id
   short_workspace_id             = substr(var.workspace_id, -4, -1)
   workspace_resource_name_suffix = "${var.tre_id}-ws-${local.short_workspace_id}"
   service_resource_name_suffix   = "${var.tre_id}-ws-${local.short_workspace_id}-svc-${local.short_service_id}"
@@ -19,7 +18,7 @@ locals {
   route_table_name               = "rt-${local.service_resource_name_suffix}"
   # databricks-udr.json was build according to this page https://learn.microsoft.com/en-us/azure/databricks/administration-guide/cloud-configurations/azure/udr
   map_location_url_config = jsondecode(file("${path.module}/databricks-udr.json"))
-  storage_name            = lower(replace("stgdbfssvc${local.service_unique_identifier}", "-", ""))
+  storage_name            = lower(replace("stgdbfs${substr(local.service_resource_name_suffix, -8, -1)}", "-", ""))
 
   tre_workspace_service_tags = {
     tre_id                   = var.tre_id

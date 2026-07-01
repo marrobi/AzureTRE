@@ -7,10 +7,6 @@ variable "tre_id" {
 variable "id" {
   type = string
 }
-variable "unique_identifier_suffix" {
-  type    = string
-  default = ""
-}
 variable "mgmt_resource_group_name" {
   type = string
 }

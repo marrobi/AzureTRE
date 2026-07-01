@@ -7,10 +7,6 @@ variable "tre_resource_id" {
   type        = string
   description = "Unique TRE Resource ID"
 }
-variable "unique_identifier_suffix" {
-  type    = string
-  default = ""
-}
 
 variable "workspace_id" {
   type        = string

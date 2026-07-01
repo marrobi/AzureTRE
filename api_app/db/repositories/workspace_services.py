@@ -78,11 +78,8 @@ class WorkspaceServiceRepository(ResourceRepository):
 
         template = await self.validate_input_against_template(workspace_service_input.templateName, workspace_service_input, ResourceType.WorkspaceService, user_roles)
 
-        # generate a unique suffix used for globally-unique resource names (e.g. storage accounts)
-        unique_identifier_suffix_param = {"unique_identifier_suffix": self.generate_unique_identifier_suffix()}
-
         # we don't want something in the input to overwrite the system parameters, so dict.update can't work.
-        resource_spec_parameters = {**workspace_service_input.properties, **unique_identifier_suffix_param, **self.get_workspace_service_spec_params()}
+        resource_spec_parameters = {**workspace_service_input.properties, **self.get_workspace_service_spec_params()}
 
         workspace_service = WorkspaceService(
             id=full_workspace_service_id,
