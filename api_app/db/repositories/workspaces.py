@@ -7,6 +7,7 @@ from models.domain.resource_template import ResourceTemplate
 from models.domain.authentication import User
 
 import resources.strings as strings
+from resources import constants
 from core import config, credentials
 from db.errors import EntityDoesNotExist, InvalidInput, ResourceIsNotDeployed
 from db.repositories.resource_templates import ResourceTemplateRepository
@@ -80,15 +81,34 @@ class WorkspaceRepository(ResourceRepository):
         return parse_obj_as(Workspace, workspaces[0])
 
     # Remove this method once not using last 4 digits for naming - https://github.com/microsoft/AzureTRE/issues/3666
+    @staticmethod
+    def get_workspace_storage_account_names(workspace_id: str) -> List[str]:
+        # The workspace (and its airlock) create several globally-unique storage accounts whose
+        # names are derived from the last 4 characters of the workspace id. All of them must be
+        # available, otherwise the deployment fails with "StorageAccountAlreadyTaken".
+        short_workspace_id = workspace_id[-4:]
+        return [
+            constants.STORAGE_ACCOUNT_NAME_WORKSPACE.format(short_workspace_id),
+            constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(short_workspace_id),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format(short_workspace_id),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(short_workspace_id),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED.format(short_workspace_id),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED.format(short_workspace_id),
+        ]
+
+    # Remove this method once not using last 4 digits for naming - https://github.com/microsoft/AzureTRE/issues/3666
     async def is_workspace_storage_account_available(self, workspace_id: str) -> bool:
         storage_client = StorageManagementClient(credentials.get_credential(), config.SUBSCRIPTION_ID)
-        # check for storage account with last 4 digits of workspace_id
-        availability_result = storage_client.storage_accounts.check_name_availability(
-            {
-                "name": f"stgws{workspace_id[-4:]}"
-            }
-        )
-        return availability_result.name_available
+        # check that all storage accounts derived from the last 4 digits of workspace_id are available
+        for storage_account_name in self.get_workspace_storage_account_names(workspace_id):
+            availability_result = storage_client.storage_accounts.check_name_availability(
+                {
+                    "name": storage_account_name
+                }
+            )
+            if not availability_result.name_available:
+                return False
+        return True
 
     async def create_workspace_item(self, workspace_input: WorkspaceInCreate, auth_info: dict, workspace_owner_object_id: str, user_roles: List[str]) -> Tuple[Workspace, ResourceTemplate]:
 

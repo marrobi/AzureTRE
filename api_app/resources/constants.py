@@ -2,6 +2,9 @@
 CORE_RESOURCE_GROUP_NAME = "rg-{}"
 WORKSPACE_RESOURCE_GROUP_NAME = "rg-{}-ws-{}"
 
+# Workspace storage account (base workspace bundle - templates/workspaces/base/terraform/locals.tf)
+STORAGE_ACCOUNT_NAME_WORKSPACE = "stgws{}"
+
 IMPORT_TYPE = "import"
 EXPORT_TYPE = "export"
 # Import
