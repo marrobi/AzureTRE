@@ -70,6 +70,9 @@ class ResourceRepository(BaseRepository):
 
     @staticmethod
     def generate_unique_identifier_suffix() -> str:
+        # Generates a random suffix only. Callers that need the resulting resource names to be
+        # globally unique (e.g. storage accounts) are responsible for checking availability and
+        # regenerating on collision - see WorkspaceRepository.generate_available_unique_identifier_suffix.
         return "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(ResourceRepository.UNIQUE_IDENTIFIER_SUFFIX_LENGTH))
 
     async def get_resource_dict_by_id(self, resource_id: UUID4) -> dict:
