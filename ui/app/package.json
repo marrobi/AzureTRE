@@ -7,6 +7,7 @@
     "@azure/msal-browser": "^2.35.0",
     "@azure/msal-react": "^1.5.12",
     "@fluentui/react": "^8.122.1",
+    "@fluentui/react-charting": "^5.25.10",
     "@fluentui/react-file-type-icons": "^8.12.6",
     "@reduxjs/toolkit": "^1.8.6",
     "@rjsf/core": "^5.24.3",
@@ -58,7 +59,9 @@
   },
   "scripts": {
     "start": "vite",
+    "start:mock": "VITE_MOCK=true vite",
     "build": "tsc && vite build",
+    "build:mock": "tsc && VITE_MOCK=true vite build",
     "serve": "vite preview",
     "test": "vitest",
     "test:coverage": "vitest run --coverage --watch=false",

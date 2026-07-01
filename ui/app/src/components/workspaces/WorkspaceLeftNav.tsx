@@ -6,6 +6,7 @@ import { WorkspaceService } from "../../models/workspaceService";
 import { WorkspaceContext } from "../../contexts/WorkspaceContext";
 import { SharedService } from "../../models/sharedService";
 import { successStates } from "../../models/operation";
+import { WorkspaceRoleName } from "../../models/roleNames";
 
 // TODO:
 // - active item is sometimes lost
@@ -73,6 +74,15 @@ export const WorkspaceLeftNav: React.FunctionComponent<
             links: sharedServiceLinkArray,
           });
 
+        // Budget appears only for the Workspace Owner.
+        if (workspaceCtx.roles?.includes(WorkspaceRoleName.WorkspaceOwner)) {
+          navLinks[0].links.push({
+            name: "Budget",
+            key: `/${ApiEndpoint.Workspaces}/${workspaceCtx.workspace.id}/workspace-billing`,
+            url: `/${ApiEndpoint.Workspaces}/${workspaceCtx.workspace.id}/workspace-billing`,
+          });
+        }
+
 
         // Only show airlock link if enabled for workspace
         if (
@@ -107,6 +117,7 @@ export const WorkspaceLeftNav: React.FunctionComponent<
     workspaceCtx.workspace.id,
     workspaceCtx.workspace.properties,
     workspaceCtx.workspace.deploymentStatus,
+    workspaceCtx.roles,
   ]);
 
   return (

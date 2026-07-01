@@ -22,6 +22,7 @@ import { ExceptionLayout } from "../shared/ExceptionLayout";
 import { AppRolesContext } from "../../contexts/AppRolesContext";
 import { CostsContext } from "../../contexts/CostsContext";
 import config from "../../config.json";
+import { BillingAdminView } from "../billing/BillingAdminView";
 
 export const RootLayout: React.FunctionComponent = () => {
   const [workspaces, setWorkspaces] = useState([] as Array<Workspace>);
@@ -162,6 +163,16 @@ export const RootLayout: React.FunctionComponent = () => {
                   }
                 />
                 <Route path="/admin" element={<Admin />} />
+                <Route
+                  path="/billing"
+                  element={
+                    <SecuredByRole
+                      element={<BillingAdminView />}
+                      allowedAppRoles={[RoleName.TREAdmin]}
+                      errorString={"You must be a TRE Admin to access this area"}
+                    />
+                  }
+                />
                 <Route
                   path="/shared-services/*"
                   element={

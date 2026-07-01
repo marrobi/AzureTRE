@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   CommandBar,
+  DefaultButton,
   DefaultPalette,
   ICommandBarItemProps,
   SearchBox,
@@ -40,6 +41,8 @@ export const WorkspaceList: React.FunctionComponent<WorkspaceListProps> = ({
   const [searchFilter, setSearchFilter] = useState("");
   const [filteredWorkspaces, setFilteredWorkspaces] = useState<Workspace[]>([]);
   const [contextMenuProps, setContextMenuProps] = useState<IContextualMenuProps>();
+  const [page, setPage] = useState(0);
+  const pageSize = 12;
 
   const costsCtx = useContext(CostsContext);
   const theme = getTheme();
@@ -132,6 +135,11 @@ export const WorkspaceList: React.FunctionComponent<WorkspaceListProps> = ({
     const sorted = sortWorkspaces(filtered);
     setFilteredWorkspaces(sorted);
   }, [workspaces, filterWorkspaces, sortWorkspaces]);
+
+  // Reset to first page when the result set changes
+  useEffect(() => {
+    setPage(0);
+  }, [searchFilter, sortBy, sortAscending]);
 
   // Handle sort change
   const handleSortChange = (newSortBy: SortOption) => {
@@ -229,6 +237,13 @@ export const WorkspaceList: React.FunctionComponent<WorkspaceListProps> = ({
     },
   ];
 
+  const pageCount = Math.max(1, Math.ceil(filteredWorkspaces.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedWorkspaces = filteredWorkspaces.slice(
+    safePage * pageSize,
+    safePage * pageSize + pageSize,
+  );
+
   return (
     <>
       <Stack>
@@ -241,7 +256,7 @@ export const WorkspaceList: React.FunctionComponent<WorkspaceListProps> = ({
         </Stack.Item>
         <Stack.Item>
           <ResourceCardList
-            resources={filteredWorkspaces}
+            resources={pagedWorkspaces}
             updateResource={(r: Resource) => updateWorkspace(r as Workspace)}
             removeResource={(r: Resource) => removeWorkspace(r as Workspace)}
             emptyText={
@@ -251,6 +266,34 @@ export const WorkspaceList: React.FunctionComponent<WorkspaceListProps> = ({
             }
           />
         </Stack.Item>
+        {pageCount > 1 && (
+          <Stack.Item>
+            <Stack
+              horizontal
+              verticalAlign="center"
+              horizontalAlign="center"
+              tokens={{ childrenGap: 12 }}
+              style={{ padding: "12px 0" }}
+            >
+              <DefaultButton
+                text="Previous"
+                iconProps={{ iconName: "ChevronLeft" }}
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              />
+              <Text>
+                Page {page + 1} of {pageCount} ({filteredWorkspaces.length} workspaces)
+              </Text>
+              <DefaultButton
+                text="Next"
+                iconProps={{ iconName: "ChevronRight" }}
+                menuIconProps={{ iconName: "" }}
+                disabled={page >= pageCount - 1}
+                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              />
+            </Stack>
+          </Stack.Item>
+        )}
       </Stack>
       {contextMenuProps && <ContextualMenu {...contextMenuProps} />}
     </>

@@ -6,6 +6,8 @@ import { useMsal, useAccount } from "@azure/msal-react";
 import { useCallback } from "react";
 import { APIError } from "../models/exceptions";
 import config from "../config.json";
+import { isMockMode } from "../mocks/mockConfig";
+import { mockApiCall } from "../mocks/mockApi";
 
 export enum ResultType {
   JSON = "JSON",
@@ -50,6 +52,20 @@ export const useAuthApiCall = () => {
       tokenOnly?: boolean,
       etag?: string,
     ) => {
+      // In mock mode, route every call to the in-memory mock API (no auth, no network).
+      if (isMockMode()) {
+        return mockApiCall(
+          endpoint,
+          method,
+          workspaceApplicationIdURI,
+          body,
+          resultType,
+          setRoles,
+          tokenOnly,
+          etag,
+        );
+      }
+
       config.debug &&
         console.log("API call", {
           endpoint: endpoint,

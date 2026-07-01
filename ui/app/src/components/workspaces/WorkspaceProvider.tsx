@@ -32,6 +32,7 @@ import { LoadingState } from "../../models/loadingState";
 import { ExceptionLayout } from "../shared/ExceptionLayout";
 import { AppRolesContext } from "../../contexts/AppRolesContext";
 import { RoleName, WorkspaceRoleName } from "../../models/roleNames";
+import { WorkspaceBudgetView } from "../billing/WorkspaceBudgetView";
 
 export const WorkspaceProvider: React.FunctionComponent = () => {
   const apiCall = useAuthApiCall();
@@ -336,6 +337,10 @@ export const WorkspaceProvider: React.FunctionComponent = () => {
                           element={<SharedServiceItem readonly={true} />}
                         />
                         <Route path="requests/*" element={<Airlock />} />
+                        <Route
+                          path="workspace-billing"
+                          element={<WorkspaceBudgetView />}
+                        />
                       </>)}
                     <Route path="users/*" element={<WorkspaceUsers />} />
                   </Routes>

@@ -27,6 +27,21 @@ import { initializeFileTypeIcons } from "@fluentui/react-file-type-icons";
 import { CostResource } from "./models/costs";
 import { CostsContext } from "./contexts/CostsContext";
 import { LoadingState } from "./models/loadingState";
+import { BillingDemoApp } from "./components/billing/BillingDemoApp";
+import { BillingProvider } from "./contexts/BillingContext";
+import { isMockMode } from "./mocks/mockConfig";
+
+// In mock mode we bypass the Entra ID login so the full UI runs locally with mock data.
+const AuthGate: React.FunctionComponent<{ children: React.ReactNode }> = ({
+  children,
+}) =>
+  isMockMode() ? (
+    <>{children}</>
+  ) : (
+    <MsalAuthenticationTemplate interactionType={InteractionType.Redirect}>
+      {children}
+    </MsalAuthenticationTemplate>
+  );
 
 export const App: React.FunctionComponent = () => {
   const [appRoles, setAppRoles] = useState([] as Array<string>);
@@ -69,12 +84,12 @@ export const App: React.FunctionComponent = () => {
   return (
     <>
       <Routes>
+        {/* Standalone, unauthenticated demo route for the Billing & Budget module. */}
+        <Route path="/billing-demo" element={<BillingDemoApp />} />
         <Route
           path="*"
           element={
-            <MsalAuthenticationTemplate
-              interactionType={InteractionType.Redirect}
-            >
+            <AuthGate>
               <AppRolesContext.Provider
                 value={{
                   roles: appRoles,
@@ -122,34 +137,36 @@ export const App: React.FunctionComponent = () => {
                             },
                           }}
                         >
-                          <Routes>
-                            <Route path="*" element={<RootLayout />} />
-                            <Route
-                              path="/workspaces/:workspaceId//*"
-                              element={
-                                <WorkspaceContext.Provider
-                                  value={{
-                                    roles: workspaceRoles,
-                                    setRoles: (roles: Array<string>) => {
-                                      setWorkspaceRoles(roles);
-                                    },
-                                    costs: workspaceCosts,
-                                    setCosts: (costs: Array<CostResource>) => {
-                                      setWorkspaceCosts(costs);
-                                    },
-                                    workspace: selectedWorkspace,
-                                    setWorkspace: (w: Workspace) => {
-                                      setSelectedWorkspace(w);
-                                    },
-                                    workspaceApplicationIdURI:
-                                      selectedWorkspace.properties?.scope_id,
-                                  }}
-                                >
-                                  <WorkspaceProvider />
-                                </WorkspaceContext.Provider>
-                              }
-                            />
-                          </Routes>
+                          <BillingProvider>
+                            <Routes>
+                              <Route path="*" element={<RootLayout />} />
+                              <Route
+                                path="/workspaces/:workspaceId//*"
+                                element={
+                                  <WorkspaceContext.Provider
+                                    value={{
+                                      roles: workspaceRoles,
+                                      setRoles: (roles: Array<string>) => {
+                                        setWorkspaceRoles(roles);
+                                      },
+                                      costs: workspaceCosts,
+                                      setCosts: (costs: Array<CostResource>) => {
+                                        setWorkspaceCosts(costs);
+                                      },
+                                      workspace: selectedWorkspace,
+                                      setWorkspace: (w: Workspace) => {
+                                        setSelectedWorkspace(w);
+                                      },
+                                      workspaceApplicationIdURI:
+                                        selectedWorkspace.properties?.scope_id,
+                                    }}
+                                  >
+                                    <WorkspaceProvider />
+                                  </WorkspaceContext.Provider>
+                                }
+                              />
+                            </Routes>
+                          </BillingProvider>
                         </CostsContext.Provider>
                       </GenericErrorBoundary>
                     </Stack.Item>
@@ -159,7 +176,7 @@ export const App: React.FunctionComponent = () => {
                   </Stack>
                 </CreateUpdateResourceContext.Provider>
               </AppRolesContext.Provider>
-            </MsalAuthenticationTemplate>
+            </AuthGate>
           }
         />
         <Route
