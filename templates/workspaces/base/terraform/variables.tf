@@ -8,6 +8,12 @@ variable "tre_resource_id" {
   description = "Resource ID"
 }
 
+variable "unique_identifier_suffix" {
+  type        = string
+  description = "A globally-unique suffix used to build resource names (e.g. storage accounts). Falls back to the last 4 characters of the resource ID for backwards compatibility."
+  default     = ""
+}
+
 variable "workspace_subscription_id" {
   type        = string
   description = "Subscription ID for the workspace resources"

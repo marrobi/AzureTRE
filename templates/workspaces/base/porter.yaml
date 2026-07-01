@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-workspace-base
-version: 2.8.3
+version: 2.10.0
 description: "A base Azure TRE workspace"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -31,6 +31,10 @@ parameters:
   - name: id
     type: string
     description: "the resource ID for this installation"
+  - name: unique_identifier_suffix
+    type: string
+    description: "A globally-unique suffix used to build resource names (e.g. storage accounts). Falls back to the last 4 characters of the resource ID for backwards compatibility."
+    default: ""
   - name: azure_environment
     type: string
     default: "AzureCloud"
@@ -224,6 +228,41 @@ outputs:
     applyTo:
       - install
       - upgrade
+  - name: storage_account_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: import_approved_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_internal_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_inprogress_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_rejected_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: export_blocked_storage_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: unique_identifier_suffix
+    type: string
+    applyTo:
+      - install
+      - upgrade
 
 mixins:
   - exec
@@ -238,6 +277,7 @@ install:
       vars:
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         location: ${ bundle.parameters.azure_location }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         address_spaces: ${ bundle.parameters.address_spaces }
@@ -291,6 +331,13 @@ install:
         - name: workspace_owners_group_id
         - name: workspace_researchers_group_id
         - name: workspace_airlock_managers_group_id
+        - name: storage_account_name
+        - name: import_approved_storage_name
+        - name: export_internal_storage_name
+        - name: export_inprogress_storage_name
+        - name: export_rejected_storage_name
+        - name: export_blocked_storage_name
+        - name: unique_identifier_suffix
 
 upgrade:
   - terraform:
@@ -298,6 +345,7 @@ upgrade:
       vars:
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         location: ${ bundle.parameters.azure_location }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         address_spaces: ${ bundle.parameters.address_spaces }
@@ -351,6 +399,13 @@ upgrade:
         - name: workspace_owners_group_id
         - name: workspace_researchers_group_id
         - name: workspace_airlock_managers_group_id
+        - name: storage_account_name
+        - name: import_approved_storage_name
+        - name: export_internal_storage_name
+        - name: export_inprogress_storage_name
+        - name: export_rejected_storage_name
+        - name: export_blocked_storage_name
+        - name: unique_identifier_suffix
   - az:
       description: "Set Azure Cloud Environment"
       arguments:
@@ -382,6 +437,7 @@ uninstall:
       vars:
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         location: ${ bundle.parameters.azure_location }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         address_spaces: ${ bundle.parameters.address_spaces }

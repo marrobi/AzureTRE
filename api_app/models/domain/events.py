@@ -40,3 +40,12 @@ class StatusChangedData(AzureTREModel):
     previous_status: Optional[str]
     type: str
     workspace_id: str
+    unique_identifier_suffix: str
+    # The actual workspace-scoped airlock storage account names, resolved by the API from the
+    # workspace properties (single source of truth). The airlock processor uses these directly
+    # instead of re-deriving them from the suffix. Optional for backward compatibility.
+    import_approved_storage_name: Optional[str] = None
+    export_internal_storage_name: Optional[str] = None
+    export_inprogress_storage_name: Optional[str] = None
+    export_rejected_storage_name: Optional[str] = None
+    export_blocked_storage_name: Optional[str] = None

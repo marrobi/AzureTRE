@@ -7,6 +7,7 @@ from models.domain.resource_template import ResourceTemplate
 from models.domain.authentication import User
 
 import resources.strings as strings
+from resources import constants
 from core import config, credentials
 from db.errors import EntityDoesNotExist, InvalidInput, ResourceIsNotDeployed
 from db.repositories.resource_templates import ResourceTemplateRepository
@@ -79,24 +80,48 @@ class WorkspaceRepository(ResourceRepository):
             raise EntityDoesNotExist
         return parse_obj_as(Workspace, workspaces[0])
 
-    # Remove this method once not using last 4 digits for naming - https://github.com/microsoft/AzureTRE/issues/3666
-    async def is_workspace_storage_account_available(self, workspace_id: str) -> bool:
+    @staticmethod
+    def get_workspace_storage_account_names(unique_identifier_suffix: str) -> List[str]:
+        # The workspace (and its airlock) create several globally-unique storage accounts whose
+        # names are built from the workspace's unique_identifier_suffix. All of them must be
+        # available, otherwise the deployment fails with "StorageAccountAlreadyTaken".
+        return [
+            constants.STORAGE_ACCOUNT_NAME_WORKSPACE.format(unique_identifier_suffix),
+            constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(unique_identifier_suffix),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format(unique_identifier_suffix),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(unique_identifier_suffix),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED.format(unique_identifier_suffix),
+            constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED.format(unique_identifier_suffix),
+        ]
+
+    async def is_workspace_storage_account_available(self, unique_identifier_suffix: str) -> bool:
         storage_client = StorageManagementClient(credentials.get_credential(), config.SUBSCRIPTION_ID)
-        # check for storage account with last 4 digits of workspace_id
-        availability_result = storage_client.storage_accounts.check_name_availability(
-            {
-                "name": f"stgws{workspace_id[-4:]}"
-            }
-        )
-        return availability_result.name_available
+        # check that all workspace-scoped storage accounts built from the suffix are available
+        for storage_account_name in self.get_workspace_storage_account_names(unique_identifier_suffix):
+            availability_result = storage_client.storage_accounts.check_name_availability(
+                {
+                    "name": storage_account_name
+                }
+            )
+            if not availability_result.name_available:
+                return False
+        return True
+
+    async def generate_available_unique_identifier_suffix(self) -> str:
+        # Generate a unique suffix and make sure all the workspace-scoped storage accounts that
+        # will be derived from it are available before using it (see #2893, #3666).
+        unique_identifier_suffix = self.generate_unique_identifier_suffix()
+        while not await self.is_workspace_storage_account_available(unique_identifier_suffix):
+            unique_identifier_suffix = self.generate_unique_identifier_suffix()
+        return unique_identifier_suffix
 
     async def create_workspace_item(self, workspace_input: WorkspaceInCreate, auth_info: dict, workspace_owner_object_id: str, user_roles: List[str]) -> Tuple[Workspace, ResourceTemplate]:
 
         full_workspace_id = str(uuid.uuid4())
 
-        # Ensure workspace with last four digits of ID does not already exist - remove when https://github.com/microsoft/AzureTRE/issues/3666 is resolved
-        while not await self.is_workspace_storage_account_available(full_workspace_id):
-            full_workspace_id = str(uuid.uuid4())
+        # Generate a unique suffix for globally-unique resource names (e.g. storage accounts) and
+        # ensure the derived storage account names are available before proceeding.
+        unique_identifier_suffix = await self.generate_available_unique_identifier_suffix()
 
         template = await self.validate_input_against_template(workspace_input.templateName, workspace_input, ResourceType.Workspace, user_roles)
 
@@ -116,7 +141,7 @@ class WorkspaceRepository(ResourceRepository):
                                     **auto_app_registration_param,
                                     **workspace_owner_param,
                                     **auth_info,
-                                    **self.get_workspace_spec_params(full_workspace_id)}
+                                    **self.get_workspace_spec_params(full_workspace_id, unique_identifier_suffix)}
 
         workspace = Workspace(
             id=full_workspace_id,
@@ -175,10 +200,11 @@ class WorkspaceRepository(ResourceRepository):
         workspace_template = await resource_template_repo.get_template_by_name_and_version(workspace.templateName, workspace.templateVersion, ResourceType.Workspace)
         return await self.patch_resource(workspace, workspace_patch, workspace_template, etag, resource_template_repo, resource_history_repo, user, strings.RESOURCE_ACTION_UPDATE, force_version_update)
 
-    def get_workspace_spec_params(self, full_workspace_id: str):
+    def get_workspace_spec_params(self, full_workspace_id: str, unique_identifier_suffix: str):
         params = self.get_resource_base_spec_params()
         params.update({
             "azure_location": config.RESOURCE_LOCATION,
             "workspace_id": full_workspace_id[-4:],  # TODO: remove with #729
+            "unique_identifier_suffix": unique_identifier_suffix,
         })
         return params

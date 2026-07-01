@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-workspace-service-ohdsi
-version: 0.3.7
+version: 0.4.0
 description: "An OHDSI workspace service"
 registry: azuretre
 dockerfile: Dockerfile.tmpl
@@ -33,6 +33,10 @@ parameters:
     type: string
     description: "An Id for this installation"
     env: id
+  - name: workspace_storage_name
+    type: string
+    default: ""
+    description: "The name of the workspace shared storage account, provided by the parent workspace."
   - name: tfstate_resource_group_name
     type: string
     description: "Resource group containing the Terraform state storage account"
@@ -122,6 +126,7 @@ install:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        workspace_storage_name: ${ bundle.parameters.workspace_storage_name }
         address_space: ${ bundle.parameters.address_space }
         arm_environment: ${ bundle.parameters.arm_environment }
         configure_data_source: ${ bundle.parameters.configure_data_source }
@@ -175,6 +180,7 @@ upgrade:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        workspace_storage_name: ${ bundle.parameters.workspace_storage_name }
         address_space: ${ bundle.parameters.address_space }
         arm_environment: ${ bundle.parameters.arm_environment }
         configure_data_source: ${ bundle.parameters.configure_data_source }
@@ -199,6 +205,7 @@ uninstall:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        workspace_storage_name: ${ bundle.parameters.workspace_storage_name }
         address_space: ${ bundle.parameters.address_space }
         arm_environment: ${ bundle.parameters.arm_environment }
         configure_data_source: ${ bundle.parameters.configure_data_source }

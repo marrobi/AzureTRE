@@ -36,9 +36,21 @@ from event_grid.event_sender import send_status_changed_event, send_airlock_noti
 STORAGE_ENDPOINT = config.STORAGE_ENDPOINT_SUFFIX
 
 
+def get_workspace_unique_identifier_suffix(workspace: Workspace) -> str:
+    # Fall back to the last 4 characters of the workspace id for workspaces created before the
+    # unique_identifier_suffix property was introduced (see #2893, #3666).
+    return workspace.properties.get("unique_identifier_suffix") or workspace.id[-4:]
+
+
+def get_workspace_scoped_storage_account(workspace: Workspace, property_name: str, name_constant: str) -> str:
+    # Prefer the actual storage account name exposed by the workspace bundle (single source of
+    # truth). Fall back to building the name from the unique_identifier_suffix / workspace id for
+    # workspaces created before the storage account names were exposed as properties (see #2893, #3666).
+    return workspace.properties.get(property_name) or name_constant.format(get_workspace_unique_identifier_suffix(workspace))
+
+
 def get_account_by_request(airlock_request: AirlockRequest, workspace: Workspace) -> str:
     tre_id = config.TRE_ID
-    short_workspace_id = workspace.id[-4:]
     if airlock_request.type == constants.IMPORT_TYPE:
         if airlock_request.status == AirlockRequestStatus.Draft:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_EXTERNAL.format(tre_id)
@@ -47,24 +59,24 @@ def get_account_by_request(airlock_request: AirlockRequest, workspace: Workspace
         elif airlock_request.status == AirlockRequestStatus.InReview:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_INPROGRESS.format(tre_id)
         elif airlock_request.status == AirlockRequestStatus.Approved:
-            return constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(short_workspace_id)
+            return get_workspace_scoped_storage_account(workspace, "import_approved_storage_name", constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED)
         elif airlock_request.status == AirlockRequestStatus.Rejected:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_REJECTED.format(tre_id)
         elif airlock_request.status == AirlockRequestStatus.Blocked:
             return constants.STORAGE_ACCOUNT_NAME_IMPORT_BLOCKED.format(tre_id)
     else:
         if airlock_request.status == AirlockRequestStatus.Draft:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format(short_workspace_id)
+            return get_workspace_scoped_storage_account(workspace, "export_internal_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL)
         elif airlock_request.status in AirlockRequestStatus.Submitted:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(short_workspace_id)
+            return get_workspace_scoped_storage_account(workspace, "export_inprogress_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS)
         elif airlock_request.status == AirlockRequestStatus.InReview:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(short_workspace_id)
+            return get_workspace_scoped_storage_account(workspace, "export_inprogress_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS)
         elif airlock_request.status == AirlockRequestStatus.Approved:
             return constants.STORAGE_ACCOUNT_NAME_EXPORT_APPROVED.format(tre_id)
         elif airlock_request.status == AirlockRequestStatus.Rejected:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED.format(short_workspace_id)
+            return get_workspace_scoped_storage_account(workspace, "export_rejected_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED)
         elif airlock_request.status == AirlockRequestStatus.Blocked:
-            return constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED.format(short_workspace_id)
+            return get_workspace_scoped_storage_account(workspace, "export_blocked_storage_name", constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED)
 
 
 def validate_user_allowed_to_access_storage_account(user: User, airlock_request: AirlockRequest):
@@ -288,7 +300,7 @@ async def save_and_publish_event_airlock_request(airlock_request: AirlockRequest
 
     try:
         logger.debug(f"Sending status changed event for airlock request item: {airlock_request.id}")
-        await send_status_changed_event(airlock_request=airlock_request, previous_status=None)
+        await send_status_changed_event(airlock_request=airlock_request, previous_status=None, workspace=workspace)
         await send_airlock_notification_event(airlock_request, workspace, role_assignment_details)
     except Exception:
         await airlock_request_repo.delete_item(airlock_request.id)
@@ -330,7 +342,7 @@ async def update_and_publish_event_airlock_request(
 
     try:
         logger.debug(f"Sending status changed event for airlock request item: {airlock_request.id}")
-        await send_status_changed_event(airlock_request=updated_airlock_request, previous_status=airlock_request.status)
+        await send_status_changed_event(airlock_request=updated_airlock_request, previous_status=airlock_request.status, workspace=workspace)
         access_service = get_access_service()
         role_assignment_details = access_service.get_workspace_user_emails_by_role_assignment(workspace)
         await send_airlock_notification_event(updated_airlock_request, workspace, role_assignment_details)

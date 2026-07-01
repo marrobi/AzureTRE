@@ -20,6 +20,37 @@ class TestPropertiesExtraction():
         assert req_prop.type == "101112"
         assert req_prop.workspace_id == "ws1"
 
+    def test_extract_prop_unique_identifier_suffix_optional(self):
+        # unique_identifier_suffix is optional for backward compatibility with older messages
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        req_prop = extract_properties(message)
+        assert req_prop.unique_identifier_suffix is None
+
+    def test_extract_prop_unique_identifier_suffix_returned_when_present(self):
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        req_prop = extract_properties(message)
+        assert req_prop.unique_identifier_suffix == "abc123xyz"
+
+    def test_extract_prop_storage_account_names_optional(self):
+        # workspace-scoped storage account names are optional for backward compatibility
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        req_prop = extract_properties(message)
+        assert req_prop.import_approved_storage_name is None
+        assert req_prop.export_internal_storage_name is None
+        assert req_prop.export_inprogress_storage_name is None
+        assert req_prop.export_rejected_storage_name is None
+        assert req_prop.export_blocked_storage_name is None
+
+    def test_extract_prop_storage_account_names_returned_when_present(self):
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\", \"import_approved_storage_name\":\"stalimappwscustom\", \"export_internal_storage_name\":\"stalexintwscustom\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        req_prop = extract_properties(message)
+        assert req_prop.import_approved_storage_name == "stalimappwscustom"
+        assert req_prop.export_internal_storage_name == "stalexintwscustom"
+
     def test_extract_prop_missing_arg_throws(self):
         message_body = "{ \"data\": { \"status\":\"456\" , \"type\":\"789\", \"workspace_id\":\"ws1\"  }}"
         message = _mock_service_bus_message(body=message_body)
@@ -107,6 +138,59 @@ class TestFileEnumeration():
         request_properties = extract_properties(message)
         get_request_files(request_properties)
         mock_get_request_files.assert_called_with(account_name=source_storage_account_for_submitted_stage, request_id=request_properties.request_id)
+
+
+class TestUniqueIdentifierSuffix():
+    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_draft_uses_unique_identifier_suffix_when_present(self, mock_create_container):
+        # when unique_identifier_suffix is provided, storage account name is built from it
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+        expected_account_name = constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL + 'abc123xyz'
+        mock_create_container.assert_called_with(expected_account_name, "123")
+
+    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_draft_falls_back_to_workspace_id_when_suffix_absent(self, mock_create_container):
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+        expected_account_name = constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL + 'ws1'
+        mock_create_container.assert_called_with(expected_account_name, "123")
+
+
+class TestWorkspaceStorageAccountNames():
+    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_draft_uses_provided_storage_account_name_when_present(self, mock_create_container):
+        # when the actual storage account name is provided on the event, it is used directly
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\", \"export_internal_storage_name\":\"stalexintwscustom\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+        mock_create_container.assert_called_with("stalexintwscustom", "123")
+
+    @patch("StatusChangedQueueTrigger.blob_operations.copy_data")
+    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_copy_uses_provided_storage_account_names_when_present(self, mock_create_container, mock_copy_data):
+        # export rejection_in_progress: source export_inprogress, dest export_rejected; both provided on the event
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"rejection_in_progress\" ,\"previous_status\":\"submitted\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\", \"export_inprogress_storage_name\":\"stalexipwscustom\", \"export_rejected_storage_name\":\"stalexrejwscustom\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+        mock_create_container.assert_called_with("stalexrejwscustom", "123")
+        mock_copy_data.assert_called_with("stalexipwscustom", "stalexrejwscustom", "123")
+
+    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_draft_falls_back_to_suffix_when_name_absent(self, mock_create_container):
+        # without the provided name the account name is still built from the suffix
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+        expected_account_name = constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL + 'abc123xyz'
+        mock_create_container.assert_called_with(expected_account_name, "123")
 
 
 class TestFilesDeletion():

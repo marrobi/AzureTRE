@@ -1,6 +1,10 @@
 variable "workspace_id" {
   type = string
 }
+variable "workspace_storage_name" {
+  type    = string
+  default = ""
+}
 variable "tre_id" {
   type = string
 }

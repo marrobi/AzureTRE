@@ -172,7 +172,7 @@ class TestAirlockRoutesThatRequireOwnerOrResearcherRights():
 
     @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id", return_value=sample_workspace(workspace_properties={}))
     @patch("api.routes.airlock.AirlockRequestRepository.delete_item")
-    @patch("event_grid.event_sender.send_status_changed_event", side_effect=HttpResponseError)
+    @patch("services.airlock.send_status_changed_event", side_effect=HttpResponseError)
     async def test_post_airlock_request_with_event_grid_not_responding_returns_503(self, _, __, ___, app, client, sample_airlock_request_input_data):
         response = await client.post(app.url_path_for(strings.API_CREATE_AIRLOCK_REQUEST, workspace_id=WORKSPACE_ID), json=sample_airlock_request_input_data)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
@@ -229,7 +229,7 @@ class TestAirlockRoutesThatRequireOwnerOrResearcherRights():
     @patch("api.routes.airlock.AirlockRequestRepository.read_item_by_id", return_value=sample_airlock_request_object())
     @patch("api.routes.airlock.AirlockRequestRepository.update_airlock_request")
     @patch("api.routes.airlock.AirlockRequestRepository.delete_item")
-    @patch("event_grid.event_sender.send_status_changed_event", side_effect=HttpResponseError)
+    @patch("services.airlock.send_status_changed_event", side_effect=HttpResponseError)
     async def test_post_submit_airlock_request_with_event_grid_not_responding_returns_503(self, _, __, ___, ____, app, client):
         response = await client.post(app.url_path_for(strings.API_SUBMIT_AIRLOCK_REQUEST, workspace_id=WORKSPACE_ID, airlock_request_id=AIRLOCK_REQUEST_ID))
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
@@ -335,7 +335,7 @@ class TestAirlockRoutesThatRequireAirlockManagerRights():
     @patch("services.airlock.AirlockRequestRepository.create_airlock_review_item", return_value=sample_airlock_review_object())
     @patch("services.airlock.AirlockRequestRepository.save_item")
     @patch("services.airlock.AirlockRequestRepository.update_airlock_request")
-    @patch("event_grid.event_sender.send_status_changed_event", side_effect=HttpResponseError)
+    @patch("services.airlock.send_status_changed_event", side_effect=HttpResponseError)
     async def test_post_create_airlock_review_with_event_grid_not_responding_returns_503(self, _, __, ___, ____, _____, app, client, sample_airlock_review_input_data):
         response = await client.post(app.url_path_for(strings.API_REVIEW_AIRLOCK_REQUEST, workspace_id=WORKSPACE_ID, airlock_request_id=AIRLOCK_REQUEST_ID), json=sample_airlock_review_input_data)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
@@ -449,7 +449,7 @@ class TestAirlockRoutesThatRequireAirlockManagerRights():
     @patch("services.airlock.AirlockRequestRepository.read_item_by_id", return_value=sample_airlock_request_object(status=AirlockRequestStatus.Approved))
     @patch("services.airlock.AirlockRequestRepository.update_airlock_request")
     @patch("services.airlock.AirlockRequestRepository.delete_item")
-    @patch("event_grid.event_sender.send_status_changed_event", side_effect=HttpResponseError)
+    @patch("services.airlock.send_status_changed_event", side_effect=HttpResponseError)
     async def test_post_revoke_airlock_request_with_event_grid_not_responding_returns_503(self, _, __, ___, ____, app, client):
         reason_data = {"reason": "Test revocation reason"}
         response = await client.post(app.url_path_for(strings.API_REVOKE_AIRLOCK_REQUEST, workspace_id=WORKSPACE_ID, airlock_request_id=AIRLOCK_REQUEST_ID), json=reason_data)

@@ -4,7 +4,9 @@ import pytest_asyncio
 import time
 from resources import strings
 from services.airlock import validate_user_allowed_to_access_storage_account, get_required_permission, \
-    validate_request_status, cancel_request, delete_review_user_resource, check_email_exists, revoke_request
+    validate_request_status, cancel_request, delete_review_user_resource, check_email_exists, revoke_request, \
+    get_account_by_request
+from resources import constants
 from models.domain.airlock_request import AirlockRequest, AirlockRequestStatus, AirlockRequestType, AirlockReview, AirlockReviewDecision, AirlockActions, AirlockReviewUserResource
 from tests_ma.test_api.conftest import create_workspace_owner_user, create_workspace_researcher_user, get_required_roles
 from mock import AsyncMock, patch, MagicMock
@@ -83,9 +85,17 @@ def sample_airlock_user_resource_object():
 
 
 def sample_status_changed_event(new_status="draft", previous_status=None):
+    short_workspace_id = WORKSPACE_ID[-4:]
     status_changed_event = EventGridEvent(
         event_type="statusChanged",
-        data=StatusChangedData(request_id=AIRLOCK_REQUEST_ID, new_status=new_status, previous_status=previous_status, type=AirlockRequestType.Import, workspace_id=WORKSPACE_ID[-4:]).__dict__,
+        data=StatusChangedData(
+            request_id=AIRLOCK_REQUEST_ID, new_status=new_status, previous_status=previous_status, type=AirlockRequestType.Import, workspace_id=short_workspace_id, unique_identifier_suffix=short_workspace_id,
+            import_approved_storage_name=constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(short_workspace_id),
+            export_internal_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format(short_workspace_id),
+            export_inprogress_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(short_workspace_id),
+            export_rejected_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED.format(short_workspace_id),
+            export_blocked_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED.format(short_workspace_id),
+        ).__dict__,
         subject=f"{AIRLOCK_REQUEST_ID}/statusChanged",
         data_version="2.0"
     )
@@ -586,3 +596,37 @@ async def test_delete_review_user_resource_disables_the_resource_before_deletion
                                       resource_history_repo=AsyncMock(),
                                       user=create_test_user())
     disable_user_resource.assert_called_once()
+
+
+def test_get_account_by_request_uses_workspace_storage_name_property_when_present():
+    # When the workspace exposes the airlock storage account names as properties, they are used
+    # as the single source of truth rather than being re-derived from the suffix.
+    workspace = sample_workspace()
+    workspace.properties["export_internal_storage_name"] = "stalexintwscustomname"
+
+    airlock_request = sample_airlock_request(status=AirlockRequestStatus.Draft)
+    airlock_request.type = AirlockRequestType.Export
+
+    assert get_account_by_request(airlock_request, workspace) == "stalexintwscustomname"
+
+
+def test_get_account_by_request_falls_back_to_suffix_when_property_missing():
+    # Workspaces created before the storage account names were exposed as properties fall back to
+    # building the name from the unique_identifier_suffix.
+    workspace = sample_workspace()
+    workspace.properties["unique_identifier_suffix"] = "abcdef123"
+
+    airlock_request = sample_airlock_request(status=AirlockRequestStatus.Draft)
+    airlock_request.type = AirlockRequestType.Export
+
+    assert get_account_by_request(airlock_request, workspace) == constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format("abcdef123")
+
+
+def test_get_account_by_request_falls_back_to_workspace_id_when_no_suffix():
+    # Oldest workspaces (no suffix property) fall back to the last 4 characters of the workspace id.
+    workspace = sample_workspace()
+
+    airlock_request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+    airlock_request.type = AirlockRequestType.Import
+
+    assert get_account_by_request(airlock_request, workspace) == constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(WORKSPACE_ID[-4:])
