@@ -23,7 +23,7 @@ async def migrate_database(resource_migration=Depends(get_repository(ResourceMig
         # and this folder:
         # https://github.com/microsoft/AzureTRE/tree/v0.22.0/api_app/db/migrations
 
-        logger.info("PR 4938 - Add unique_identifier_suffix field to resources")
+        logger.info("Running migration add_unique_identifier_suffix_field (#2893)")
         num_rows = await resource_migration.add_unique_identifier_suffix_field()
         migrations.append(Migration(issueNumber="2893", status=f'Updated {num_rows} resource objects'))
 
