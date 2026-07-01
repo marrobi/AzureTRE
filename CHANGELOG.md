@@ -2,6 +2,7 @@
 ## (Unreleased)
 **BREAKING CHANGES**
 * Remove Windows 10 and dsvm image support from Guacamole. ([#4890](https://github.com/microsoft/AzureTRE/issues/4890))
+* Workspaces, workspace services and their storage accounts now use a `unique_identifier_suffix` property to build globally-unique resource names instead of the last 4 characters of the resource id, preventing `StorageAccountAlreadyTaken` deployment failures. Existing resources retain their current names via a database migration. Requires running the `/api/migrations` endpoint (invoked automatically on deployment) and upgrading the base workspace and affected workspace services. ([#2893](https://github.com/microsoft/AzureTRE/issues/2893), [#3243](https://github.com/microsoft/AzureTRE/issues/3243), [#3666](https://github.com/microsoft/AzureTRE/issues/3666))
 
 ENHANCEMENTS:
 * Specify default_outbound_access_enabled = false setting for all subnets ([#4757](https://github.com/microsoft/AzureTRE/pull/4757))
@@ -11,7 +12,7 @@ ENHANCEMENTS:
 * Exclude recovery service vaults from e2e tests ([#4920](https://github.com/microsoft/AzureTRE/issues/4920))
 
 BUG FIXES:
-* Check all workspace-scoped storage account names (workspace and airlock storage accounts) for availability before creating a workspace, preventing `StorageAccountAlreadyTaken` deployment failures ([#2893](https://github.com/microsoft/AzureTRE/issues/2893))
+* Generate a longer random `unique_identifier_suffix` for workspace-scoped storage account names and check all workspace and airlock storage account names for availability before creating a workspace, preventing `StorageAccountAlreadyTaken` deployment failures ([#2893](https://github.com/microsoft/AzureTRE/issues/2893))
 
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**

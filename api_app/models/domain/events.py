@@ -40,3 +40,4 @@ class StatusChangedData(AzureTREModel):
     previous_status: Optional[str]
     type: str
     workspace_id: str
+    unique_identifier_suffix: str

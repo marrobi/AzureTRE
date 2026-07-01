@@ -11,16 +11,19 @@ from models.domain.workspace import Workspace
 from services.logging import logger
 
 
-async def send_status_changed_event(airlock_request: AirlockRequest, previous_status: Optional[AirlockRequestStatus]):
+async def send_status_changed_event(airlock_request: AirlockRequest, previous_status: Optional[AirlockRequestStatus], workspace: Workspace):
     request_id = airlock_request.id
     new_status = airlock_request.status.value
     previous_status = previous_status.value if previous_status else None
     request_type = airlock_request.type.value
     short_workspace_id = airlock_request.workspaceId[-4:]
+    # The suffix used to build the workspace-scoped airlock storage account names. Fall back to the
+    # last 4 characters of the workspace id for workspaces created before the property existed.
+    unique_identifier_suffix = workspace.properties.get("unique_identifier_suffix") or short_workspace_id
 
     status_changed_event = EventGridEvent(
         event_type="statusChanged",
-        data=StatusChangedData(request_id=request_id, new_status=new_status, previous_status=previous_status, type=request_type, workspace_id=short_workspace_id).__dict__,
+        data=StatusChangedData(request_id=request_id, new_status=new_status, previous_status=previous_status, type=request_type, workspace_id=short_workspace_id, unique_identifier_suffix=unique_identifier_suffix).__dict__,
         subject=f"{request_id}/statusChanged",
         data_version="2.0"
     )

@@ -19,6 +19,9 @@ class RequestProperties(BaseModel):
     previous_status: Optional[str]
     type: str
     workspace_id: str
+    # Suffix used to build the workspace-scoped airlock storage account names. Optional for
+    # backward compatibility with messages sent before this field was introduced (#2893, #3666).
+    unique_identifier_suffix: Optional[str] = None
 
 
 class ContainersCopyMetadata:
@@ -48,7 +51,9 @@ def handle_status_changed(request_properties: RequestProperties, stepResultEvent
     new_status = request_properties.new_status
     previous_status = request_properties.previous_status
     req_id = request_properties.request_id
-    ws_id = request_properties.workspace_id
+    # Prefer the unique_identifier_suffix (used to build the workspace-scoped storage account
+    # names); fall back to the workspace id for backward compatibility with older messages.
+    ws_id = request_properties.unique_identifier_suffix or request_properties.workspace_id
     request_type = request_properties.type
 
     logging.info('Processing request with id %s. new status is "%s", type is "%s"', req_id, new_status, request_type)
