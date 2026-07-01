@@ -85,9 +85,17 @@ def sample_airlock_user_resource_object():
 
 
 def sample_status_changed_event(new_status="draft", previous_status=None):
+    short_workspace_id = WORKSPACE_ID[-4:]
     status_changed_event = EventGridEvent(
         event_type="statusChanged",
-        data=StatusChangedData(request_id=AIRLOCK_REQUEST_ID, new_status=new_status, previous_status=previous_status, type=AirlockRequestType.Import, workspace_id=WORKSPACE_ID[-4:], unique_identifier_suffix=WORKSPACE_ID[-4:]).__dict__,
+        data=StatusChangedData(
+            request_id=AIRLOCK_REQUEST_ID, new_status=new_status, previous_status=previous_status, type=AirlockRequestType.Import, workspace_id=short_workspace_id, unique_identifier_suffix=short_workspace_id,
+            import_approved_storage_name=constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(short_workspace_id),
+            export_internal_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format(short_workspace_id),
+            export_inprogress_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(short_workspace_id),
+            export_rejected_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED.format(short_workspace_id),
+            export_blocked_storage_name=constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED.format(short_workspace_id),
+        ).__dict__,
         subject=f"{AIRLOCK_REQUEST_ID}/statusChanged",
         data_version="2.0"
     )
