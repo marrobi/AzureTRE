@@ -19,6 +19,10 @@ variable "airlock_processor_subnet_id" {
 variable "short_workspace_id" {
   type = string
 }
+variable "unique_identifier_suffix" {
+  type    = string
+  default = ""
+}
 variable "tre_workspace_tags" {
   type = map(string)
 }

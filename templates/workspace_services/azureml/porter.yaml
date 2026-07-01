@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-service-azureml
-version: 1.1.4
+version: 1.2.0
 description: "An Azure TRE service for Azure Machine Learning"
 registry: azuretre
 dockerfile: Dockerfile.tmpl
@@ -25,6 +25,10 @@ parameters:
   - name: id
     type: string
     description: "Resource ID"
+  - name: unique_identifier_suffix
+    type: string
+    default: ""
+    description: "A globally-unique suffix used to build resource names (e.g. storage accounts). Falls back to the last 4 characters of the resource ID for backwards compatibility."
   - name: display_name
     description: "Display name for the workspace"
   - name: description
@@ -134,6 +138,7 @@ install:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         display_name: ${ bundle.parameters.display_name }
         description: ${ bundle.parameters.description }
         address_space: ${ bundle.parameters.address_space }
@@ -171,6 +176,7 @@ upgrade:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         display_name: ${ bundle.parameters.display_name }
         description: ${ bundle.parameters.description }
         address_space: ${ bundle.parameters.address_space }
@@ -208,6 +214,7 @@ uninstall:
         workspace_id: ${ bundle.parameters.workspace_id }
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         display_name: ${ bundle.parameters.display_name }
         description: ${ bundle.parameters.description }
         address_space: ${ bundle.parameters.address_space }

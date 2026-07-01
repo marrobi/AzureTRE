@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-service-guacamole-linuxvm
-version: 1.4.3
+version: 1.5.0
 description: "An Azure TRE User Resource Template for Guacamole (Linux)"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -53,6 +53,10 @@ credentials:
 parameters:
   - name: workspace_id
     type: string
+  - name: workspace_storage_name
+    type: string
+    default: ""
+    description: "The name of the workspace shared storage account, provided by the parent workspace."
   - name: tre_id
     type: string
   - name: azure_environment
@@ -168,6 +172,7 @@ install:
       description: "Deploy Guacamole User Resource Service (Linux VM)"
       vars:
         workspace_id: ${ bundle.parameters.workspace_id }
+        workspace_storage_name: ${ bundle.parameters.workspace_storage_name }
         tre_id: ${ bundle.parameters.tre_id }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         parent_service_id: ${ bundle.parameters.parent_service_id }
@@ -205,6 +210,7 @@ upgrade:
       description: "Update Guacamole User Resource Service (Linux VM)"
       vars:
         workspace_id: ${ bundle.parameters.workspace_id }
+        workspace_storage_name: ${ bundle.parameters.workspace_storage_name }
         tre_id: ${ bundle.parameters.tre_id }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         parent_service_id: ${ bundle.parameters.parent_service_id }
@@ -254,6 +260,7 @@ uninstall:
       description: "Delete the Guacamole User Resource Service"
       vars:
         workspace_id: ${ bundle.parameters.workspace_id }
+        workspace_storage_name: ${ bundle.parameters.workspace_storage_name }
         tre_id: ${ bundle.parameters.tre_id }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         parent_service_id: ${ bundle.parameters.parent_service_id }

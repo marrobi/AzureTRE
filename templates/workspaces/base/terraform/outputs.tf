@@ -2,6 +2,14 @@ output "workspace_resource_name_suffix" {
   value = local.workspace_resource_name_suffix
 }
 
+output "unique_identifier_suffix" {
+  value = local.unique_identifier_suffix
+}
+
+output "storage_account_name" {
+  value = local.storage_name
+}
+
 # The following outputs are dependent on an Automatic AAD Workspace Application Registration.
 # If we are not creating an App Reg we simple pass back the same values that were already created
 # This is necessary so that we don't delete workspace properties

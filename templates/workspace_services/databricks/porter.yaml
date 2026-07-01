@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-service-databricks
-version: 1.0.16
+version: 1.1.0
 description: "An Azure TRE service for Azure Databricks."
 registry: azuretre
 dockerfile: Dockerfile.tmpl
@@ -24,6 +24,10 @@ parameters:
   - name: id
     type: string
     description: "Resource ID"
+  - name: unique_identifier_suffix
+    type: string
+    default: ""
+    description: "A globally-unique suffix used to build resource names (e.g. storage accounts). Falls back to the last 4 characters of the resource ID for backwards compatibility."
   - name: address_space
     type: string
   - name: is_exposed_externally
@@ -109,6 +113,7 @@ install:
       description: "Deploy Databricks Service"
       vars:
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         tre_id: ${ bundle.parameters.tre_id }
         workspace_id: ${ bundle.parameters.workspace_id }
         address_space: ${ bundle.parameters.address_space }
@@ -138,6 +143,7 @@ upgrade:
       description: "Upgrade Databricks Service"
       vars:
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         tre_id: ${ bundle.parameters.tre_id }
         workspace_id: ${ bundle.parameters.workspace_id }
         address_space: ${ bundle.parameters.address_space }
@@ -167,6 +173,7 @@ uninstall:
       description: "Uninstall Azure Databricks Service"
       vars:
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         tre_id: ${ bundle.parameters.tre_id }
         workspace_id: ${ bundle.parameters.workspace_id }
         address_space: ${ bundle.parameters.address_space }

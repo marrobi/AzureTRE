@@ -1,9 +1,10 @@
 locals {
   short_service_id               = substr(var.id, -4, -1)
+  service_unique_identifier      = var.unique_identifier_suffix != "" ? var.unique_identifier_suffix : local.short_service_id
   short_workspace_id             = substr(var.workspace_id, -4, -1)
   workspace_resource_name_suffix = "${var.tre_id}-ws-${local.short_workspace_id}"
   service_resource_name_suffix   = "${var.tre_id}-ws-${local.short_workspace_id}-svc-${local.short_service_id}"
-  storage_name                   = lower(replace("stg${substr(local.service_resource_name_suffix, -8, -1)}", "-", ""))
+  storage_name                   = lower(replace("stgsvc${local.service_unique_identifier}", "-", ""))
   webapp_name                    = "gitea-${local.service_resource_name_suffix}"
   core_resource_group_name       = "rg-${var.tre_id}"
   keyvault_name                  = lower("kv-${substr(local.workspace_resource_name_suffix, -20, -1)}")
