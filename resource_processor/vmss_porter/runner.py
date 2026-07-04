@@ -260,7 +260,7 @@ async def _cleanup_param_set(parameter_set_name: str, parameter_set_file: str, c
     """Best-effort cleanup of a Porter parameter set.
 
     Removes the parameter set from Porter's local store and deletes the local temp file.
-    The delete is best-effort: when ``run_porter`` returns early (e.g. Azure/ACR login or
+    The delete is best-effort: when run_porter returns early (e.g. Azure/ACR login or
     credential-set failure) the parameter set was never applied, so the delete predictably
     fails - error logging is suppressed to avoid misleading logs.
     """
