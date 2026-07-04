@@ -1,4 +1,6 @@
 import json
+import os
+import stat
 import asyncio
 import pytest
 from unittest.mock import patch, AsyncMock
@@ -58,17 +60,34 @@ async def test_build_porter_command(mock_get_porter_parameter_keys):
     msg_body = {"id": "guid", "action": "install", "name": "mybundle", "version": "1.0.0", "parameters": {"param1": "value1"}}
     mock_get_porter_parameter_keys.return_value = ["param1"]
 
-    expected_command = [[
-        "porter", "install", "guid",
-        "--reference", "myregistry.azurecr.io/mybundle:v1.0.0",
-        "--param", "param1=value1",
-        "--force",
-        "--credential-set", "arm_auth",
-        "--credential-set", "aad_auth"
-    ]]
+    commands, parameter_set_name, parameter_set_file = await build_porter_command(config, msg_body)
 
-    command = await build_porter_command(config, msg_body)
-    assert command == expected_command
+    try:
+        # Parameters are supplied via a parameter set (not inline --param) to avoid E2BIG
+        assert parameter_set_name.startswith("tre-params-guid-")
+        apply_command, action_command = commands
+
+        assert apply_command == ["porter", "parameters", "apply", parameter_set_file]
+        assert action_command == [
+            "porter", "install", "guid",
+            "--reference", "myregistry.azurecr.io/mybundle:v1.0.0",
+            "--parameter-set", parameter_set_name,
+            "--force",
+            "--credential-set", "arm_auth",
+            "--credential-set", "aad_auth"
+        ]
+
+        with open(parameter_set_file) as f:
+            parameter_set = json.load(f)
+        assert parameter_set["schemaType"] == "ParameterSet"
+        assert parameter_set["name"] == parameter_set_name
+        assert {"name": "param1", "source": {"value": "value1"}} in parameter_set["parameters"]
+
+        # File must be created with restrictive (owner read/write only) permissions
+        assert stat.S_IMODE(os.stat(parameter_set_file).st_mode) == 0o600
+    finally:
+        if os.path.exists(parameter_set_file):
+            os.remove(parameter_set_file)
 
 
 @pytest.mark.asyncio
@@ -78,18 +97,23 @@ async def test_build_porter_command_for_upgrade(mock_get_porter_parameter_keys):
     msg_body = {"id": "guid", "action": "upgrade", "name": "mybundle", "version": "1.0.0", "parameters": {"param1": "value1"}}
     mock_get_porter_parameter_keys.return_value = ["param1"]
 
-    expected_command = [[
-        "porter", "upgrade", "guid",
-        "--reference", "myregistry.azurecr.io/mybundle:v1.0.0",
-        "--param", "param1=value1",
-        "--force",
-        "--credential-set", "arm_auth",
-        "--credential-set", "aad_auth",
-        "--force-upgrade"
-    ]]
+    commands, parameter_set_name, parameter_set_file = await build_porter_command(config, msg_body)
 
-    command = await build_porter_command(config, msg_body)
-    assert command == expected_command
+    try:
+        apply_command, action_command = commands
+        assert apply_command == ["porter", "parameters", "apply", parameter_set_file]
+        assert action_command == [
+            "porter", "upgrade", "guid",
+            "--reference", "myregistry.azurecr.io/mybundle:v1.0.0",
+            "--parameter-set", parameter_set_name,
+            "--force",
+            "--credential-set", "arm_auth",
+            "--credential-set", "aad_auth",
+            "--force-upgrade"
+        ]
+    finally:
+        if os.path.exists(parameter_set_file):
+            os.remove(parameter_set_file)
 
 
 @pytest.mark.asyncio
@@ -127,33 +151,31 @@ async def test_build_porter_command_with_complex_parameters(mock_get_porter_para
 
     mock_get_porter_parameter_keys.return_value = ["dict_param", "list_param", "string_param"]
 
-    command = await build_porter_command(config, msg_body)
+    _, _, parameter_set_file = await build_porter_command(config, msg_body)
 
-    # Verify the command contains properly encoded complex parameters
-    command_args = command[0]
+    try:
+        with open(parameter_set_file) as f:
+            parameter_set = json.load(f)
 
-    # Find the indices of parameters
-    param_indices = [i for i, arg in enumerate(command_args) if arg == "--param"]
-    param_values = [command_args[i + 1] for i in param_indices]
+        # Build a lookup of parameter name -> value from the parameter set file
+        param_values = {p["name"]: p["source"]["value"] for p in parameter_set["parameters"]}
 
-    # Check for all parameters
-    dict_param = next((p for p in param_values if p.startswith("dict_param=")), None)
-    list_param = next((p for p in param_values if p.startswith("list_param=")), None)
-    string_param = next((p for p in param_values if p.startswith("string_param=")), None)
+        assert "dict_param" in param_values
+        assert "list_param" in param_values
+        assert "string_param" in param_values
+        assert param_values["string_param"] == "simple_value"
 
-    assert dict_param is not None
-    assert list_param is not None
-    assert string_param is not None
-    assert string_param == "string_param=simple_value"
+        # Verify the dict and list are base64 encoded
+        import base64
 
-    # Verify the dict and list are base64 encoded
-    import base64
+        dict_encoded = base64.b64encode(json.dumps(dict_value).encode("ascii")).decode("ascii")
+        list_encoded = base64.b64encode(json.dumps(list_value).encode("ascii")).decode("ascii")
 
-    dict_encoded = base64.b64encode(json.dumps(dict_value).encode("ascii")).decode("ascii")
-    list_encoded = base64.b64encode(json.dumps(list_value).encode("ascii")).decode("ascii")
-
-    assert dict_param == f"dict_param={dict_encoded}"
-    assert list_param == f"list_param={list_encoded}"
+        assert param_values["dict_param"] == dict_encoded
+        assert param_values["list_param"] == list_encoded
+    finally:
+        if os.path.exists(parameter_set_file):
+            os.remove(parameter_set_file)
 
 
 @pytest.mark.asyncio
@@ -229,6 +251,27 @@ async def test_run_command_helper_error():
         assert returncode == 1
         assert stdout is None
         assert stderr == "error output"
+
+
+@pytest.mark.asyncio
+async def test_run_command_helper_suppress_error_logging():
+    """Test run_command_helper suppresses error logging when requested (best-effort cleanup)."""
+    config = {"porter_env": {}}
+    cmd_parts = ["command_that_fails"]
+
+    with patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_subprocess, \
+            patch("helpers.commands.logger") as mock_logger:
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (b"", b"error output")
+        mock_proc.returncode = 1
+        mock_subprocess.return_value = mock_proc
+
+        returncode, _, _ = await run_command_helper(cmd_parts, config, "Failed command", suppress_error_logging=True)
+
+        assert returncode == 1
+        # When suppressed, the failure is logged at debug rather than error level
+        mock_logger.error.assert_not_called()
+        mock_logger.debug.assert_any_call("Failed command failed with return code 1")
 
 
 @pytest.mark.asyncio

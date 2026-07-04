@@ -3,6 +3,7 @@ from typing import Optional
 from multiprocessing import Process
 import json
 import asyncio
+import os
 import sys
 from helpers.commands import azure_acr_login_command, azure_login_command, build_porter_command, build_porter_command_for_outputs, apply_porter_credentials_sets_command, run_command_helper
 from shared.config import get_config
@@ -178,70 +179,106 @@ async def invoke_porter_action(msg_body: dict, sb_client: ServiceBusClient, conf
 
     # Build and run porter command (flagging if its a built-in action or custom so we can adapt porter command appropriately)
     is_custom_action = action not in ["install", "upgrade", "uninstall"]
-    porter_command = await build_porter_command(config, msg_body, is_custom_action)
 
-    logger.debug("Starting to run porter execution command...")
-    returncode, _, err = await run_porter(porter_command, config)
-    logger.debug("Finished running porter execution command.")
+    # Track any parameter sets we apply so they can be cleaned up (from Porter's store and
+    # the local temp file) regardless of how the action completes.
+    parameter_sets_to_cleanup = []
 
-    action_completed_without_error = False
+    try:
+        porter_command, parameter_set_name, parameter_set_file = await build_porter_command(config, msg_body, is_custom_action)
+        parameter_sets_to_cleanup.append((parameter_set_name, parameter_set_file))
 
-    if returncode == 0:
-        action_completed_without_error = True
+        logger.debug("Starting to run porter execution command...")
+        returncode, _, err = await run_porter(porter_command, config)
+        logger.debug("Finished running porter execution command.")
 
-    # Handle command output
-    if returncode != 0 and err is not None:
-        # Construct a readable representation of the command(s)
-        command_representation = ""
-        for cmd in porter_command:
-            command_representation += " ".join(cmd) + "; "
-        command_representation = command_representation.rstrip("; ")
-
-        error_message = "Error message: " + " ".join(err.split('\n')) + "; Command executed: " + command_representation
         action_completed_without_error = False
 
-        if "upgrade" == action and ("could not find installation" in err or "The installation cannot be upgraded, because it is not installed." in err):
-            logger.warning("Upgrade failed, attempting install...")
-            msg_body['action'] = "install"
-            porter_command = await build_porter_command(config, msg_body, False)
-            returncode, _, err = await run_porter(porter_command, config)
-            if returncode == 0:
-                action_completed_without_error = True
-
-        if "uninstall" == action and "could not find installation" in err:
-            logger.warning("The installation doesn't exist. Treating as a successful action to allow the flow to proceed.")
+        if returncode == 0:
             action_completed_without_error = True
-            error_message = f"A success despite of underlying error. {error_message}"
 
-        if action_completed_without_error:
-            status_for_sb_message = statuses.pass_status_string_for[action]
-        else:
-            status_for_sb_message = statuses.failed_status_string_for[action]
+        # Handle command output
+        if returncode != 0 and err is not None:
+            # Construct a readable representation of the command(s)
+            command_representation = ""
+            for cmd in porter_command:
+                command_representation += " ".join(cmd) + "; "
+            command_representation = command_representation.rstrip("; ")
 
-        resource_request_message = service_bus_message_generator(msg_body, status_for_sb_message, error_message)
-
-        # Post message on sb queue to notify receivers of action failure
-        logger.info(f"{installation_id}: Porter action failed with error = {error_message}")
-
-    else:
-        # Get the outputs
-        get_porter_outputs_successful, outputs = await get_porter_outputs(msg_body, config)
-
-        if get_porter_outputs_successful:
-            status_for_sb_message = statuses.pass_status_string_for[action]
-            status_message = f"{action} action completed successfully."
-        else:
+            error_message = "Error message: " + " ".join(err.split('\n')) + "; Command executed: " + command_representation
             action_completed_without_error = False
-            status_for_sb_message = statuses.failed_status_string_for[action]
-            status_message = f"{action} action completed successfully, but failed to get outputs."
 
-        resource_request_message = service_bus_message_generator(msg_body, status_for_sb_message, status_message, outputs)
+            if "upgrade" == action and ("could not find installation" in err or "The installation cannot be upgraded, because it is not installed." in err):
+                logger.warning("Upgrade failed, attempting install...")
+                msg_body['action'] = "install"
+                porter_command, parameter_set_name, parameter_set_file = await build_porter_command(config, msg_body, False)
+                parameter_sets_to_cleanup.append((parameter_set_name, parameter_set_file))
+                returncode, _, err = await run_porter(porter_command, config)
+                if returncode == 0:
+                    action_completed_without_error = True
 
-    await sb_sender.send_messages(ServiceBusMessage(body=resource_request_message, correlation_id=msg_body["id"], session_id=msg_body["operationId"]))
-    logger.info(f"Sent status message for {installation_id}: {status_for_sb_message}")
+            if "uninstall" == action and "could not find installation" in err:
+                logger.warning("The installation doesn't exist. Treating as a successful action to allow the flow to proceed.")
+                action_completed_without_error = True
+                error_message = f"A success despite of underlying error. {error_message}"
 
-    # return true as want to continue processing the message
-    return action_completed_without_error
+            if action_completed_without_error:
+                status_for_sb_message = statuses.pass_status_string_for[action]
+            else:
+                status_for_sb_message = statuses.failed_status_string_for[action]
+
+            resource_request_message = service_bus_message_generator(msg_body, status_for_sb_message, error_message)
+
+            # Post message on sb queue to notify receivers of action failure
+            logger.info(f"{installation_id}: Porter action failed with error = {error_message}")
+
+        else:
+            # Get the outputs
+            get_porter_outputs_successful, outputs = await get_porter_outputs(msg_body, config)
+
+            if get_porter_outputs_successful:
+                status_for_sb_message = statuses.pass_status_string_for[action]
+                status_message = f"{action} action completed successfully."
+            else:
+                action_completed_without_error = False
+                status_for_sb_message = statuses.failed_status_string_for[action]
+                status_message = f"{action} action completed successfully, but failed to get outputs."
+
+            resource_request_message = service_bus_message_generator(msg_body, status_for_sb_message, status_message, outputs)
+
+        await sb_sender.send_messages(ServiceBusMessage(body=resource_request_message, correlation_id=msg_body["id"], session_id=msg_body["operationId"]))
+        logger.info(f"Sent status message for {installation_id}: {status_for_sb_message}")
+
+        # return true as want to continue processing the message
+        return action_completed_without_error
+    finally:
+        for name, file in parameter_sets_to_cleanup:
+            await _cleanup_param_set(name, file, config)
+
+
+async def _cleanup_param_set(parameter_set_name: str, parameter_set_file: str, config: dict):
+    """Best-effort cleanup of a Porter parameter set.
+
+    Removes the parameter set from Porter's local store and deletes the local temp file.
+    The delete is best-effort: when ``run_porter`` returns early (e.g. Azure/ACR login or
+    credential-set failure) the parameter set was never applied, so the delete predictably
+    fails - error logging is suppressed to avoid misleading logs.
+    """
+    try:
+        await run_command_helper(
+            ["porter", "parameters", "delete", parameter_set_name],
+            config,
+            f"Delete porter parameter set {parameter_set_name}",
+            suppress_error_logging=True
+        )
+    except Exception:
+        logger.debug(f"Best-effort delete of porter parameter set {parameter_set_name} failed", exc_info=True)
+    finally:
+        try:
+            if parameter_set_file and os.path.exists(parameter_set_file):
+                os.remove(parameter_set_file)
+        except OSError:
+            logger.debug(f"Failed to remove parameter set file {parameter_set_file}", exc_info=True)
 
 
 async def get_porter_outputs(msg_body: dict, config: dict):

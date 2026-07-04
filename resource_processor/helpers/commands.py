@@ -2,12 +2,15 @@ import asyncio
 import json
 import base64
 import logging
+import os
+import tempfile
+import uuid
 from urllib.parse import urlparse
 
 from shared.logging import logger, shell_output_logger
 
 
-async def run_command_helper(cmd_parts: list, config: dict, description: str):
+async def run_command_helper(cmd_parts: list, config: dict, description: str, suppress_error_logging: bool = False):
     logger.debug(f"Executing {description}")
 
     proc = await asyncio.create_subprocess_exec(
@@ -28,10 +31,15 @@ async def run_command_helper(cmd_parts: list, config: dict, description: str):
 
     if stderr:
         stderr_text = stderr.decode()
-        shell_output_logger(stderr_text, '[stderr]', logging.WARN)
+        # When the command is expected to fail on some paths (e.g. best-effort cleanup),
+        # avoid emitting misleading warning/error logs.
+        shell_output_logger(stderr_text, '[stderr]', logging.DEBUG if suppress_error_logging else logging.WARN)
 
     if proc.returncode != 0:
-        logger.error(f"{description} failed with return code {proc.returncode}")
+        if suppress_error_logging:
+            logger.debug(f"{description} failed with return code {proc.returncode}")
+        else:
+            logger.error(f"{description} failed with return code {proc.returncode}")
     else:
         logger.debug(f"{description} completed successfully")
 
@@ -117,9 +125,15 @@ async def build_porter_command(config, msg_body, custom_action=False):
                     val_base64_bytes = base64.b64encode(val_bytes)
                     parameter_value = val_base64_bytes.decode("ascii")
 
-                porter_parameters.extend(["--param", f"{parameter_name}={parameter_value}"])
+                porter_parameters.append({"name": parameter_name, "source": {"value": str(parameter_value)}})
 
     installation_id = msg_body['id']
+
+    # Parameters are written to a Porter parameter set (rather than passed as individual
+    # --param arguments) to avoid an "argument list too long" (E2BIG) error when a bundle
+    # has many/large parameters. A per-run unique name avoids collisions between concurrent runs.
+    parameter_set_name = f"tre-params-{installation_id}-{uuid.uuid4().hex[:8]}"
+    parameter_set_file = _write_parameter_set_file(parameter_set_name, porter_parameters)
 
     command = ["porter"]
     if custom_action:
@@ -131,7 +145,7 @@ async def build_porter_command(config, msg_body, custom_action=False):
         "--reference",
         f"{config['registry_server']}/{msg_body['name']}:v{msg_body['version']}"
     ])
-    command.extend(porter_parameters)
+    command.extend(["--parameter-set", parameter_set_name])
     command.append("--force")
     command.extend(["--credential-set", "arm_auth"])
     command.extend(["--credential-set", "aad_auth"])
@@ -139,7 +153,41 @@ async def build_porter_command(config, msg_body, custom_action=False):
     if msg_body['action'] == 'upgrade':
         command.append("--force-upgrade")
 
-    return [command]
+    # Apply the parameter set to Porter's local store before running the action, then
+    # reference it by name in the action command.
+    apply_parameter_set_command = ["porter", "parameters", "apply", parameter_set_file]
+
+    return ([apply_parameter_set_command, command], parameter_set_name, parameter_set_file)
+
+
+def _write_parameter_set_file(parameter_set_name: str, parameters: list) -> str:
+    """Write a Porter parameter set to a securely-created temporary file.
+
+    The file may contain secrets, so it is created with 0o600 permissions using an
+    atomic (O_CREAT|O_EXCL) operation to avoid a world-readable file / TOCTOU exposure.
+    Returns the path to the created file; the caller is responsible for deleting it.
+    """
+    parameter_set = {
+        "schemaType": "ParameterSet",
+        "schemaVersion": "1.1.0",
+        "namespace": "",
+        "name": parameter_set_name,
+        "parameters": parameters
+    }
+
+    # tempfile.mkstemp creates the file atomically with 0o600 permissions.
+    file_descriptor, path = tempfile.mkstemp(prefix=f"{parameter_set_name}-", suffix=".json")
+    try:
+        os.chmod(path, 0o600)
+        with os.fdopen(file_descriptor, "w") as parameter_set_file:
+            json.dump(parameter_set, parameter_set_file)
+    except Exception:
+        # Ensure we don't leave a partial/orphaned file behind on failure.
+        if os.path.exists(path):
+            os.remove(path)
+        raise
+
+    return path
 
 
 async def build_porter_command_for_outputs(msg_body):
