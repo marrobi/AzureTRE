@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 from azure.identity import DefaultAzureCredential
@@ -25,7 +25,7 @@ def get_access_token(api_client_id: str) -> str:
     return credential.get_token(scope).token
 
 
-def _month_bounds(reference: date):
+def _month_bounds(reference: date) -> Tuple[date, date]:
     """Return (first_day_of_month, first_day_of_next_month) for the month containing reference."""
     first = reference.replace(day=1)
     if first.month == 12:
@@ -70,11 +70,10 @@ def refresh_current_month() -> dict:
 def refresh_previous_months(look_back_months: int = 1) -> None:
     """Sweep recently-closed months so they are finalised in the collection."""
     today = datetime.now(timezone.utc).date()
-    current_first, _ = _month_bounds(today)
-    for i in range(1, look_back_months + 1):
-        # step back i months from the first of the current month
-        month_end = current_first - timedelta(days=1)
-        for _ in range(i - 1):
-            month_end = month_end.replace(day=1) - timedelta(days=1)
+    # Start from the last day of the month before the current one and step back a month at a time.
+    month_end = _month_bounds(today)[0] - timedelta(days=1)
+    for _ in range(look_back_months):
         month_first, next_first = _month_bounds(month_end)
         refresh_period(month_first, next_first - timedelta(days=1), granularity="Daily")
+        # move to the last day of the preceding month
+        month_end = month_first - timedelta(days=1)

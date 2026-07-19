@@ -31,12 +31,12 @@ def validate_report_period(from_date: Optional[datetime], to_date: Optional[date
         # valid option, month to date report
         return
 
-    if to_date is None or from_date >= to_date:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=strings.API_GET_COSTS_TO_DATE_NEED_TO_BE_LATER_THEN_FROM_DATE)
     if from_date is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=strings.API_GET_COSTS_FROM_DATE_NEED_TO_BE_BEFORE_TO_DATE)
+    if to_date is None or from_date >= to_date:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=strings.API_GET_COSTS_TO_DATE_NEED_TO_BE_LATER_THEN_FROM_DATE)
 
 
 class CostsQueryParams:
