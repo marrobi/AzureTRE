@@ -67,8 +67,8 @@ resource "azurerm_virtual_network" "core" {
   }
 
   subnet {
-    name                              = "ProcessorSubnet"
-    address_prefixes                  = [local.processor_subnet_address_prefix]
+    name                              = "AirlockProcessorSubnet"
+    address_prefixes                  = [local.airlock_processor_subnet_address_prefix]
     private_endpoint_network_policies = "Disabled"
     security_group                    = azurerm_network_security_group.default_rules.id
     route_table_id                    = azurerm_route_table.rt.id
@@ -158,10 +158,10 @@ resource "azurerm_ip_group" "webapp" {
 }
 
 resource "azurerm_ip_group" "processor" {
-  name                = "ipg-processor"
+  name                = "ipg-airlock-processor"
   location            = var.location
   resource_group_name = var.resource_group_name
-  cidrs               = [local.processor_subnet_address_prefix]
+  cidrs               = [local.airlock_processor_subnet_address_prefix]
   tags                = local.tre_core_tags
   lifecycle { ignore_changes = [tags] }
 }

@@ -12,7 +12,7 @@ ENHANCEMENTS:
 * Exclude recovery service vaults from e2e tests ([#4920](https://github.com/microsoft/AzureTRE/issues/4920))
 * Rename the airlock App Service Plan to a shared core processing plan (`plan-processing-<tre_id>`) so it can host multiple processing Function apps (Airlock Processor and a future Cost Processor), and document the cost data collection architecture ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Add a Cost Processor Function app that authenticates to the TRE API with a managed identity (authorised by its client id, requiring no additional Microsoft Graph permissions on the deployment identity) to durably collect daily cost data into an API-owned Cosmos collection, enabling multi-year cost reports without repeatedly querying Azure Cost Management ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
-* Replace the dedicated `CostProcessorSubnet` with a generic shared `ProcessorSubnet` (renamed from `AirlockProcessorSubnet`) that hosts both the Airlock Processor and Cost Processor Function apps, conserving core VNet address space ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
+* Host the Cost Processor Function app on the existing `AirlockProcessorSubnet` (and its `ipg-airlock-processor` IP group) instead of adding a dedicated `CostProcessorSubnet`, conserving core VNet address space without renaming or recreating the subnet so existing base workspaces are unaffected ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**

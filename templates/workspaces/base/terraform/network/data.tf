@@ -49,7 +49,7 @@ data "azurerm_subnet" "airlockprocessor" {
   provider             = azurerm.core
   resource_group_name  = local.core_resource_group_name
   virtual_network_name = local.core_vnet
-  name                 = "ProcessorSubnet"
+  name                 = "AirlockProcessorSubnet"
 }
 
 data "azurerm_firewall" "firewall" {

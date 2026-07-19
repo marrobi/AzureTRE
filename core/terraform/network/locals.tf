@@ -11,7 +11,7 @@ locals {
   shared_services_subnet_address_prefix = local.core_services_vnet_subnets[4] # .0 - .254
 
   # .2
-  processor_subnet_address_prefix             = local.core_services_vnet_subnets[5] # .0 - .63
+  airlock_processor_subnet_address_prefix     = local.core_services_vnet_subnets[5] # .0 - .63
   airlock_storage_subnet_address_prefix       = local.core_services_vnet_subnets[6] # .64 - .127
   airlock_events_subnet_address_prefix        = local.core_services_vnet_subnets[7] # .128 - .191
   airlock_notifications_subnet_address_prefix = local.core_services_vnet_subnets[8] # .192 - .254
