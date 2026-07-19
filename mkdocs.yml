@@ -160,7 +160,6 @@ nav:
 
           - Developing Workspace Templates: # Docs aimed at developers creating workspace templates
               - Authoring Workspace Templates: tre-workspace-authors/authoring-workspace-templates.md
-              - Locking and Enforcing Template Parameters: tre-workspace-authors/locking-template-parameters.md
               - Firewall Rules: tre-workspace-authors/firewall-rules.md
               - Pipeline Templates:
                   - Overview: tre-templates/pipeline-templates/overview.md

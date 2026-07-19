@@ -132,7 +132,7 @@ In your install and uninstall pipelines you also need to include a workspace upg
 
 ## Restricting which workspace service templates can be deployed
 
-A workspace template can restrict which workspace service templates (and versions) a Workspace Owner is allowed to deploy into workspaces created from it. This is enforced by the API on both **create** and **update** of a workspace service, so tightening the restrictions later also prevents further non-compliant deployments or upgrades.
+A workspace template can restrict which workspace service templates (and versions) a Workspace Owner is allowed to deploy into workspaces created from it. This is enforced by the API when a workspace service is **created** or **upgraded** (a template version change), so tightening the restrictions later also prevents further non-compliant deployments or upgrades. Disabling and deleting an existing workspace service are never blocked, so a non-compliant service can still be removed.
 
 The restriction is driven by two optional workspace properties. To make them available to a TRE Admin at deployment time, declare them in your workspace template's `template_schema.json`. They are **not** part of the base workspace template, so add them only to templates where you want this behaviour.
 
@@ -175,14 +175,14 @@ The following `template_schema.json` fragment restricts the workspace to only th
 }
 ```
 
-### Enforcing at deployment (fixed) vs. allowing later changes
+### Fixing restrictions at deployment vs. allowing later changes
 
-A property is settable at create time regardless of `updateable`; the `updateable` flag only controls whether it can be changed later via an update. There is therefore no need for a separate "enforce" flag:
+A property is settable at create time regardless of `updateable`; the `updateable` flag only controls whether it can be changed later via an update:
 
 * To let a TRE Admin set the restrictions when creating the workspace and then **lock** them, mark the properties as `"updateable": false`. They are fixed at deployment and cannot be widened afterwards.
 * To allow the restrictions to be adjusted after deployment, mark the properties as `"updateable": true`.
 
-If a workspace service that is already deployed no longer satisfies a newly tightened constraint, subsequent create or update (including version upgrade) requests for that template are rejected with an HTTP 403 until they comply.
+If a workspace service that is already deployed no longer satisfies a newly tightened constraint, a subsequent version upgrade for that template is rejected with an HTTP 403 until it complies. Disabling and deleting a non-compliant workspace service are still allowed, so it can be removed.
 
 ## User resource bundle manifests
 

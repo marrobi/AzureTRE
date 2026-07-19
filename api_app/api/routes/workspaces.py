@@ -340,10 +340,11 @@ async def create_workspace_service(response: Response, workspace_service_input: 
 
 @workspace_services_workspace_router.patch("/workspaces/{workspace_id}/workspace-services/{service_id}", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_UPDATE_WORKSPACE_SERVICE, dependencies=[Depends(get_current_workspace_owner_or_researcher_user), Depends(get_workspace_by_id_from_path)])
 async def patch_workspace_service(resource_patch: ResourcePatch, response: Response, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_service=Depends(get_workspace_service_by_id_from_path), workspace=Depends(get_workspace_by_id_from_path), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), etag: str = Header(...), force_version_update: bool = False) -> OperationInResponse:
-    # Enforce any per-workspace template/version restrictions on update too. The effective target version
-    # is the one requested in the patch (an upgrade) or, if unchanged, the currently deployed version.
-    target_version = resource_patch.templateVersion or workspace_service.templateVersion
-    validate_workspace_service_template_allowed(workspace, workspace_service.templateName, target_version)
+    # Enforce any per-workspace template/version restrictions only when an upgrade (template version change)
+    # is requested. Disablement, deletion and other property patches are intentionally not blocked, so a
+    # workspace service that no longer complies with a tightened restriction can still be disabled and removed.
+    if resource_patch.templateVersion is not None:
+        validate_workspace_service_template_allowed(workspace, workspace_service.templateName, resource_patch.templateVersion)
 
     try:
         is_disablement = resource_patch.isEnabled is not None and not resource_patch.isEnabled
