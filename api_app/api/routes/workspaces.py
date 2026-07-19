@@ -241,6 +241,13 @@ async def retrieve_workspace_service_by_id(workspace_service=Depends(get_workspa
 @workspace_services_workspace_router.post("/workspaces/{workspace_id}/workspace-services", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_CREATE_WORKSPACE_SERVICE, dependencies=[Depends(get_current_workspace_owner_user)])
 async def create_workspace_service(response: Response, workspace_service_input: WorkspaceServiceInCreate, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_repo=Depends(get_repository(WorkspaceRepository)), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), workspace=Depends(get_deployed_workspace_by_id_from_path)) -> OperationInResponse:
 
+    # A TRE Admin can restrict which workspace service templates may be deployed into a workspace by setting the
+    # "allowed_workspace_service_templates" property on the workspace. If the property is absent or empty, all
+    # workspace service templates are allowed (backwards compatible behaviour).
+    allowed_templates = workspace.properties.get("allowed_workspace_service_templates")
+    if allowed_templates and workspace_service_input.templateName not in allowed_templates:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=strings.WORKSPACE_SERVICE_TEMPLATE_NOT_ALLOWED_IN_WORKSPACE)
+
     try:
         workspace_service, resource_template = await workspace_service_repo.create_workspace_service_item(workspace_service_input, workspace.id, user.roles)
     except (ValidationError, ValueError) as e:

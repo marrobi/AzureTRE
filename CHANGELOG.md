@@ -9,6 +9,7 @@ ENHANCEMENTS:
 * Add Windows Server 2025 image support to Guacamole. ([#4890](https://github.com/microsoft/AzureTRE/issues/4890))
 * Add support for setting resource processor VMSS SKU via environment variables ([#4936](https://github.com/microsoft/AzureTRE/issues/4936))
 * Exclude recovery service vaults from e2e tests ([#4920](https://github.com/microsoft/AzureTRE/issues/4920))
+* Allow a TRE Admin to restrict which workspace service templates can be deployed into a workspace via the `allowed_workspace_service_templates` workspace property ([#4315](https://github.com/microsoft/AzureTRE/issues/4315))
 
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**

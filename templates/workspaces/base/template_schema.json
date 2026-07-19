@@ -95,6 +95,15 @@
       "description": "Check this box if you want to deploy the workspace to another subscription.",
       "default": false,
       "updateable": false
+    },
+    "allowed_workspace_service_templates": {
+      "type": "array",
+      "title": "Allowed workspace service templates",
+      "description": "Restrict which workspace service templates can be deployed into this workspace by listing their template names (e.g. tre-service-guacamole). Leave empty to allow all workspace service templates.",
+      "items": {
+        "type": "string"
+      },
+      "updateable": true
     }
   },
   "allOf": [
