@@ -1,5 +1,7 @@
 import asyncio
+from typing import Optional
 
+import semantic_version
 from fastapi import APIRouter, Depends, HTTPException, Header, Path, status, Request, Response
 from pydantic import UUID4
 
@@ -238,8 +240,47 @@ async def retrieve_workspace_service_by_id(workspace_service=Depends(get_workspa
     return WorkspaceServiceInResponse(workspaceService=workspace_service)
 
 
+def validate_workspace_service_template_allowed(workspace, template_name: str, template_version: Optional[str] = None):
+    """Enforce the optional per-workspace `allowed_workspace_service_templates` (name allow-list) and
+    `allowed_workspace_service_template_versions` (per-template semantic version constraint) restrictions.
+
+    An absent or empty allow-list/constraint means anything is allowed (backwards compatible).
+    """
+    allowed_templates = workspace.properties.get("allowed_workspace_service_templates")
+    if allowed_templates and template_name not in allowed_templates:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=strings.WORKSPACE_SERVICE_TEMPLATE_NOT_ALLOWED_IN_WORKSPACE)
+
+    if template_version is None:
+        return
+
+    allowed_versions = workspace.properties.get("allowed_workspace_service_template_versions")
+    if not allowed_versions:
+        return
+
+    version_constraint = allowed_versions.get(template_name)
+    if not version_constraint:
+        return
+
+    try:
+        constraint = semantic_version.SimpleSpec(version_constraint)
+    except ValueError:
+        logger.error(f"Invalid version constraint '{version_constraint}' configured for template '{template_name}' on workspace '{workspace.id}'")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=strings.WORKSPACE_SERVICE_TEMPLATE_VERSION_CONSTRAINT_INVALID)
+
+    try:
+        version = semantic_version.Version(template_version)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=strings.WORKSPACE_SERVICE_TEMPLATE_VERSION_NOT_ALLOWED_IN_WORKSPACE)
+
+    if version not in constraint:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=strings.WORKSPACE_SERVICE_TEMPLATE_VERSION_NOT_ALLOWED_IN_WORKSPACE)
+
+
 @workspace_services_workspace_router.post("/workspaces/{workspace_id}/workspace-services", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_CREATE_WORKSPACE_SERVICE, dependencies=[Depends(get_current_workspace_owner_user)])
 async def create_workspace_service(response: Response, workspace_service_input: WorkspaceServiceInCreate, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_repo=Depends(get_repository(WorkspaceRepository)), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), workspace=Depends(get_deployed_workspace_by_id_from_path)) -> OperationInResponse:
+
+    # Validate the template name up front (fail fast); the version is validated after creation resolves it.
+    validate_workspace_service_template_allowed(workspace, workspace_service_input.templateName)
 
     try:
         workspace_service, resource_template = await workspace_service_repo.create_workspace_service_item(workspace_service_input, workspace.id, user.roles)
@@ -249,6 +290,9 @@ async def create_workspace_service(response: Response, workspace_service_input: 
     except UserNotAuthorizedToUseTemplate as e:
         logger.exception("User not authorized to use template")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+
+    # The concrete template version is now resolved, so validate any version constraint before persisting.
+    validate_workspace_service_template_allowed(workspace, workspace_service_input.templateName, workspace_service.templateVersion)
 
     # Get the workspace subscription id (if set)
     if workspace.properties.get("workspace_subscription_id"):
@@ -284,7 +328,12 @@ async def create_workspace_service(response: Response, workspace_service_input: 
 
 
 @workspace_services_workspace_router.patch("/workspaces/{workspace_id}/workspace-services/{service_id}", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_UPDATE_WORKSPACE_SERVICE, dependencies=[Depends(get_current_workspace_owner_or_researcher_user), Depends(get_workspace_by_id_from_path)])
-async def patch_workspace_service(resource_patch: ResourcePatch, response: Response, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_service=Depends(get_workspace_service_by_id_from_path), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), etag: str = Header(...), force_version_update: bool = False) -> OperationInResponse:
+async def patch_workspace_service(resource_patch: ResourcePatch, response: Response, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_service=Depends(get_workspace_service_by_id_from_path), workspace=Depends(get_workspace_by_id_from_path), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), etag: str = Header(...), force_version_update: bool = False) -> OperationInResponse:
+    # Only enforce restrictions on an upgrade (version change); disablement/deletion of a non-compliant
+    # service must stay possible so it can be removed.
+    if resource_patch.templateVersion is not None:
+        validate_workspace_service_template_allowed(workspace, workspace_service.templateName, resource_patch.templateVersion)
+
     try:
         is_disablement = resource_patch.isEnabled is not None and not resource_patch.isEnabled
         if is_disablement:

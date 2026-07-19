@@ -734,6 +734,103 @@ class TestWorkspaceServiceRoutesThatRequireOwnerRights:
         assert response.json()["operation"]["resourceId"] == SERVICE_ID
 
     # [POST] /workspaces/{workspace_id}/workspace-services
+    @patch("api.routes.workspaces.ResourceTemplateRepository.get_template_by_name_and_version")
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.resource_helpers.send_resource_request_message", return_value=sample_resource_operation(resource_id=SERVICE_ID, operation_id=OPERATION_ID))
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.save_item")
+    @patch("api.routes.workspaces.OperationRepository.resource_has_deployed_operation", return_value=True)
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.create_workspace_service_item", return_value=[sample_workspace_service(), sample_resource_template()])
+    async def test_post_workspace_services_creates_workspace_service_when_template_is_in_allowed_list(self, _, __, ___, ____, get_workspace_mock, resource_template_repo, app, client, workspace_service_input, basic_workspace_service_template):
+        workspace = sample_workspace()
+        workspace.properties["allowed_workspace_service_templates"] = [workspace_service_input["templateName"]]
+        get_workspace_mock.return_value = workspace
+
+        resource_template_repo.return_value = basic_workspace_service_template
+        response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID), json=workspace_service_input)
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert response.json()["operation"]["resourceId"] == SERVICE_ID
+
+    # [POST] /workspaces/{workspace_id}/workspace-services
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.workspaces.OperationRepository.resource_has_deployed_operation", return_value=True)
+    async def test_post_workspace_services_returns_403_when_template_not_in_allowed_list(self, _, get_workspace_mock, app, client, workspace_service_input):
+        workspace = sample_workspace()
+        workspace.properties["allowed_workspace_service_templates"] = ["some-other-template"]
+        get_workspace_mock.return_value = workspace
+
+        response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID), json=workspace_service_input)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.text == strings.WORKSPACE_SERVICE_TEMPLATE_NOT_ALLOWED_IN_WORKSPACE
+
+    # [POST] /workspaces/{workspace_id}/workspace-services
+    @patch("api.routes.workspaces.ResourceTemplateRepository.get_template_by_name_and_version")
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.resource_helpers.send_resource_request_message", return_value=sample_resource_operation(resource_id=SERVICE_ID, operation_id=OPERATION_ID))
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.save_item")
+    @patch("api.routes.workspaces.OperationRepository.resource_has_deployed_operation", return_value=True)
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.create_workspace_service_item", return_value=[sample_workspace_service(), sample_resource_template()])
+    async def test_post_workspace_services_creates_workspace_service_when_allowed_list_is_empty(self, _, __, ___, ____, get_workspace_mock, resource_template_repo, app, client, workspace_service_input, basic_workspace_service_template):
+        workspace = sample_workspace()
+        workspace.properties["allowed_workspace_service_templates"] = []
+        get_workspace_mock.return_value = workspace
+
+        resource_template_repo.return_value = basic_workspace_service_template
+        response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID), json=workspace_service_input)
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert response.json()["operation"]["resourceId"] == SERVICE_ID
+
+    # [POST] /workspaces/{workspace_id}/workspace-services
+    @patch("api.routes.workspaces.ResourceTemplateRepository.get_template_by_name_and_version")
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.resource_helpers.send_resource_request_message", return_value=sample_resource_operation(resource_id=SERVICE_ID, operation_id=OPERATION_ID))
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.save_item")
+    @patch("api.routes.workspaces.OperationRepository.resource_has_deployed_operation", return_value=True)
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.create_workspace_service_item", return_value=[sample_workspace_service(), sample_resource_template()])
+    async def test_post_workspace_services_creates_workspace_service_when_version_satisfies_constraint(self, _, __, ___, ____, get_workspace_mock, resource_template_repo, app, client, workspace_service_input, basic_workspace_service_template):
+        workspace = sample_workspace()
+        # sample_workspace_service() resolves to templateVersion 0.1.0
+        workspace.properties["allowed_workspace_service_template_versions"] = {workspace_service_input["templateName"]: ">=0.1.0"}
+        get_workspace_mock.return_value = workspace
+
+        resource_template_repo.return_value = basic_workspace_service_template
+        response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID), json=workspace_service_input)
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert response.json()["operation"]["resourceId"] == SERVICE_ID
+
+    # [POST] /workspaces/{workspace_id}/workspace-services
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.workspaces.OperationRepository.resource_has_deployed_operation", return_value=True)
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.create_workspace_service_item", return_value=[sample_workspace_service(), sample_resource_template()])
+    async def test_post_workspace_services_returns_403_when_version_not_allowed(self, _, __, get_workspace_mock, app, client, workspace_service_input):
+        workspace = sample_workspace()
+        # sample_workspace_service() resolves to templateVersion 0.1.0, which does not satisfy >=1.0.0
+        workspace.properties["allowed_workspace_service_template_versions"] = {workspace_service_input["templateName"]: ">=1.0.0"}
+        get_workspace_mock.return_value = workspace
+
+        response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID), json=workspace_service_input)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.text == strings.WORKSPACE_SERVICE_TEMPLATE_VERSION_NOT_ALLOWED_IN_WORKSPACE
+
+    # [POST] /workspaces/{workspace_id}/workspace-services
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.workspaces.OperationRepository.resource_has_deployed_operation", return_value=True)
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.create_workspace_service_item", return_value=[sample_workspace_service(), sample_resource_template()])
+    async def test_post_workspace_services_returns_500_when_version_constraint_invalid(self, _, __, get_workspace_mock, app, client, workspace_service_input):
+        workspace = sample_workspace()
+        workspace.properties["allowed_workspace_service_template_versions"] = {workspace_service_input["templateName"]: "not-a-valid-spec"}
+        get_workspace_mock.return_value = workspace
+
+        response = await client.post(app.url_path_for(strings.API_CREATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID), json=workspace_service_input)
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.text == strings.WORKSPACE_SERVICE_TEMPLATE_VERSION_CONSTRAINT_INVALID
+
+    # [POST] /workspaces/{workspace_id}/workspace-services
     @patch("api.routes.workspaces.ResourceHistoryRepository.save_item", return_value=AsyncMock())
     @patch("api.routes.workspaces.save_and_deploy_resource", return_value=sample_resource_operation(resource_id=SERVICE_ID, operation_id=OPERATION_ID))
     @patch("api.routes.workspaces.WorkspaceRepository.get_timestamp", return_value=FAKE_UPDATE_TIMESTAMP)
@@ -1239,6 +1336,77 @@ class TestWorkspaceServiceRoutesThatRequireOwnerRights:
 
         response = await client.patch(app.url_path_for(strings.API_UPDATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID, service_id=SERVICE_ID), json=workspace_service_patch, headers={"etag": etag})
         update_item_mock.assert_called_once_with(modified_workspace_service, etag)
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+
+    # [PATCH] /workspaces/{workspace_id}/services/{service_id}
+    @patch("api.dependencies.workspaces.WorkspaceServiceRepository.get_workspace_service_by_id", return_value=sample_workspace_service())
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    async def test_patch_workspace_service_returns_403_when_version_not_allowed(self, get_workspace_mock, _, app, client):
+        auth_info_user_in_workspace_owner_role = {'sp_id': 'ab123', 'roles': {'WorkspaceOwner': 'ab124', 'WorkspaceResearcher': 'ab125'}}
+        workspace = sample_deployed_workspace(WORKSPACE_ID, auth_info_user_in_workspace_owner_role)
+        # sample_workspace_service() is at templateVersion 0.1.0; an upgrade to 2.0.0 is not allowed by the constraint
+        workspace.properties["allowed_workspace_service_template_versions"] = {"tre-workspace-base": ">=0.1.0,<1.0.0"}
+        get_workspace_mock.return_value = workspace
+
+        response = await client.patch(app.url_path_for(strings.API_UPDATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID, service_id=SERVICE_ID), json={"templateVersion": "2.0.0"}, headers={"etag": "some-etag-value"})
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.text == strings.WORKSPACE_SERVICE_TEMPLATE_VERSION_NOT_ALLOWED_IN_WORKSPACE
+
+    # [PATCH] /workspaces/{workspace_id}/services/{service_id}
+    @patch("api.dependencies.workspaces.WorkspaceServiceRepository.get_workspace_service_by_id", return_value=sample_workspace_service())
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    async def test_patch_workspace_service_returns_403_when_template_not_in_allowed_list_on_upgrade(self, get_workspace_mock, _, app, client):
+        auth_info_user_in_workspace_owner_role = {'sp_id': 'ab123', 'roles': {'WorkspaceOwner': 'ab124', 'WorkspaceResearcher': 'ab125'}}
+        workspace = sample_deployed_workspace(WORKSPACE_ID, auth_info_user_in_workspace_owner_role)
+        # The deployed service uses "tre-workspace-base", which is not in the allowed list
+        workspace.properties["allowed_workspace_service_templates"] = ["some-other-template"]
+        get_workspace_mock.return_value = workspace
+
+        response = await client.patch(app.url_path_for(strings.API_UPDATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID, service_id=SERVICE_ID), json={"templateVersion": "0.2.0"}, headers={"etag": "some-etag-value"})
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.text == strings.WORKSPACE_SERVICE_TEMPLATE_NOT_ALLOWED_IN_WORKSPACE
+
+    # [PATCH] /workspaces/{workspace_id}/services/{service_id}
+    @patch("api.routes.resource_helpers.ResourceRepository.get_resource_dependency_list", return_value=[sample_workspace_service().__dict__])
+    @patch("api.routes.workspaces.ResourceHistoryRepository.save_item", return_value=AsyncMock())
+    @patch("api.routes.workspaces.send_resource_request_message", return_value=sample_resource_operation(resource_id=WORKSPACE_ID, operation_id=OPERATION_ID))
+    @patch("api.routes.workspaces.ResourceTemplateRepository.get_template_by_name_and_version", return_value=sample_resource_template())
+    @patch("api.dependencies.workspaces.WorkspaceServiceRepository.get_workspace_service_by_id", return_value=sample_workspace_service())
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.update_item_with_etag", return_value=sample_workspace_service())
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.get_timestamp", return_value=FAKE_UPDATE_TIMESTAMP)
+    async def test_patch_workspace_service_upgrade_allowed_when_version_satisfies_constraint(self, _, __, get_workspace_mock, ___, ____, _____, ______, _______, app, client):
+        auth_info_user_in_workspace_owner_role = {'sp_id': 'ab123', 'roles': {'WorkspaceOwner': 'ab124', 'WorkspaceResearcher': 'ab125'}}
+        workspace = sample_deployed_workspace(WORKSPACE_ID, auth_info_user_in_workspace_owner_role)
+        workspace.properties["allowed_workspace_service_template_versions"] = {"tre-workspace-base": ">=0.1.0,<1.0.0"}
+        get_workspace_mock.return_value = workspace
+
+        response = await client.patch(app.url_path_for(strings.API_UPDATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID, service_id=SERVICE_ID), json={"templateVersion": "0.2.0"}, headers={"etag": "some-etag-value"})
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+
+    # [PATCH] /workspaces/{workspace_id}/services/{service_id}
+    @patch("api.routes.resource_helpers.ResourceRepository.get_resource_dependency_list", return_value=[sample_workspace_service().__dict__])
+    @patch("api.routes.workspaces.ResourceHistoryRepository.save_item", return_value=AsyncMock())
+    @patch("api.routes.workspaces.send_resource_request_message", return_value=sample_resource_operation(resource_id=WORKSPACE_ID, operation_id=OPERATION_ID))
+    @patch("api.routes.workspaces.ResourceTemplateRepository.get_template_by_name_and_version", return_value=None)
+    @patch("api.dependencies.workspaces.WorkspaceServiceRepository.get_workspace_service_by_id", return_value=sample_workspace_service())
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id")
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.update_item_with_etag", return_value=sample_workspace_service())
+    @patch("api.routes.workspaces.WorkspaceServiceRepository.get_timestamp", return_value=FAKE_UPDATE_TIMESTAMP)
+    async def test_patch_workspace_service_disablement_not_blocked_when_service_no_longer_compliant(self, _, __, get_workspace_mock, ___, ____, _____, ______, _______, app, client):
+        auth_info_user_in_workspace_owner_role = {'sp_id': 'ab123', 'roles': {'WorkspaceOwner': 'ab124', 'WorkspaceResearcher': 'ab125'}}
+        workspace = sample_deployed_workspace(WORKSPACE_ID, auth_info_user_in_workspace_owner_role)
+        # The deployed service (tre-workspace-base @ 0.1.0) no longer complies with the tightened restrictions,
+        # but disabling it (a prerequisite for deletion) must still be allowed.
+        workspace.properties["allowed_workspace_service_templates"] = ["some-other-template"]
+        workspace.properties["allowed_workspace_service_template_versions"] = {"tre-workspace-base": ">=2.0.0"}
+        get_workspace_mock.return_value = workspace
+
+        response = await client.patch(app.url_path_for(strings.API_UPDATE_WORKSPACE_SERVICE, workspace_id=WORKSPACE_ID, service_id=SERVICE_ID), json={"isEnabled": False}, headers={"etag": "some-etag-value"})
 
         assert response.status_code == status.HTTP_202_ACCEPTED
 
