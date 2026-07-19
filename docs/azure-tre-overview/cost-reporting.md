@@ -127,7 +127,7 @@ GET /api/workspaces/{workspace_id}/costs
 
 * Cost and usage data is typically available in Cost Management within 8-24 hours.
 
-* Azure Cost Management only supports custom time periods of up to one year per query. To generate reports spanning more than a year, the TRE Cost API automatically splits the requested period into consecutive sub-periods of up to one year and merges the results. Note that only the last 13 months of data is available from Cost Management (see below), so older sub-periods will return no data.
+* Azure Cost Management only supports custom time periods of up to one year per query. To generate reports spanning more than a year, the TRE Cost API automatically splits the requested period into consecutive sub-periods of up to one year and merges the results. Each queried sub-period is cached for a short period, so overlapping reports (for example extending a report's end date) reuse already retrieved sub-periods instead of re-querying Cost Management. Note that only the last 13 months of data is available from Cost Management (see below), so older sub-periods will return no data.
 
 * Tags aren't applied to historical data, template authors need to make sure all relevant [Azure resources of a TRE resource are tagged as instructed](#azure-resources-tagging).
 

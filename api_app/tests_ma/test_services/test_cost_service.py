@@ -463,6 +463,108 @@ async def test_query_tre_costs_over_multiple_years_splits_queries_and_merges_res
     assert cost_report.workspaces[0].costs[0].cost == 10.0 * len(expected_periods)
 
 
+def __single_workspace_cost_query_result(*args, **kwargs):
+    query_result = QueryResult()
+    query_result.rows = [
+        [10.0, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
+    ]
+    query_result.columns = [
+        QueryColumn(name="PreTaxCost", type="Number"),
+        QueryColumn(name="ResourceGroup", type="String"),
+        QueryColumn(name="Tag", type="String"),
+        QueryColumn(name="Currency", type="String")]
+    return query_result
+
+
+@pytest.mark.asyncio
+@patch('services.cost_service.CostManagementClient')
+async def test_cost_result_cache_stores_and_expires_items(client_mock):
+    cost_service = CostService()
+    result = __single_workspace_cost_query_result()
+
+    cost_service.cache_result("key", result, timedelta(hours=1))
+    assert cost_service.get_cached_result("key") is result
+
+    # an expired item is not returned and is evicted from the cache
+    cost_service.cache_result("expired", result, timedelta(seconds=-1))
+    assert cost_service.get_cached_result("expired") is None
+    assert "expired" not in cost_service.cache
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+# CostService is lru_cached which creates a wrapper method
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_serves_repeated_requests_from_cache(get_resource_groups_by_tag_mock, client_mock,
+                                                                   shared_service_repo_mock, workspace_repo_mock):
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+
+    client_mock.return_value.query.usage.side_effect = __single_workspace_cost_query_result
+
+    from_date = datetime(2022, 1, 1)
+    to_date = datetime(2024, 6, 1)
+
+    cost_service = CostService()
+    expected_periods = cost_service.split_query_period(from_date, to_date)
+    # use a multi year range so per-period caching is exercised
+    assert len(expected_periods) > 1
+
+    first_report = await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, from_date, to_date, workspace_repo_mock, shared_service_repo_mock)
+    calls_after_first = client_mock.return_value.query.usage.call_count
+    assert calls_after_first == len(expected_periods)
+
+    second_report = await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, from_date, to_date, workspace_repo_mock, shared_service_repo_mock)
+
+    # a repeated request within the cache TTL issues no further Cost Management queries
+    assert client_mock.return_value.query.usage.call_count == calls_after_first
+    # merging must not mutate cached period results, so totals stay identical across calls
+    assert first_report.workspaces[0].costs[0].cost == 10.0 * len(expected_periods)
+    assert second_report.workspaces[0].costs[0].cost == first_report.workspaces[0].costs[0].cost
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+# CostService is lru_cached which creates a wrapper method
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_reuses_cached_periods_for_overlapping_ranges(get_resource_groups_by_tag_mock, client_mock,
+                                                                            shared_service_repo_mock, workspace_repo_mock):
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+
+    client_mock.return_value.query.usage.side_effect = __single_workspace_cost_query_result
+
+    from_date = datetime(2022, 1, 1)
+    short_to_date = datetime(2023, 6, 1)
+    long_to_date = datetime(2024, 6, 1)
+
+    cost_service = CostService()
+    short_periods = cost_service.split_query_period(from_date, short_to_date)
+    long_periods = cost_service.split_query_period(from_date, long_to_date)
+    # the two ranges must share at least one leading period for the cache to be reused
+    assert any(period in long_periods for period in short_periods)
+
+    await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, from_date, short_to_date, workspace_repo_mock, shared_service_repo_mock)
+    calls_after_short = client_mock.return_value.query.usage.call_count
+    assert calls_after_short == len(short_periods)
+
+    await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, from_date, long_to_date, workspace_repo_mock, shared_service_repo_mock)
+
+    # only the periods that were not already cached from the first (overlapping) request are queried
+    new_periods = [period for period in long_periods if period not in short_periods]
+    assert client_mock.return_value.query.usage.call_count == calls_after_short + len(new_periods)
+
+
 def __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock):
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[
         Workspace(id='19b7ce24-aa35-438c-adf6-37e6762911a6', templateName='tre-workspace-base',

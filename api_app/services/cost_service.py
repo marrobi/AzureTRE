@@ -92,6 +92,8 @@ class CostService:
     # Azure Cost Management Query API does not accept custom time periods longer than one year,
     # so longer report periods have to be split into several queries and merged together.
     MAX_QUERY_PERIOD: timedelta = timedelta(days=364)
+    # How long a queried cost period is kept in the in-memory cache before it is queried again.
+    CACHE_TTL: timedelta = timedelta(hours=2)
 
     def __init__(self) -> None:
         self.scope = "/subscriptions/{}".format(config.SUBSCRIPTION_ID)
@@ -167,12 +169,7 @@ class CostService:
         for subscription_id in subscription_ids:
             resource_groups_dict[subscription_id] = self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id)
 
-            cache_key = f"{CostService.TRE_ID_TAG}_{tre_id}_granularity{granularity}_from_date{from_date}_to_date{to_date}_subscription{subscription_id}_rgs{'_'.join(list(resource_groups_dict[subscription_id].keys()))}"
-            query_result = self.get_cached_result(cache_key)
-
-            if query_result is None:
-                query_result = self.query_costs(CostService.TRE_ID_TAG, tre_id, granularity, from_date, to_date, list(resource_groups_dict[subscription_id].keys()), subscription_id)
-                self.cache_result(cache_key, query_result, timedelta(hours=2))
+            query_result = self.query_costs(CostService.TRE_ID_TAG, tre_id, granularity, from_date, to_date, list(resource_groups_dict[subscription_id].keys()), subscription_id)
 
             #  append the result to the summarized result
             summarized_result.extend(self.summarize_untagged(query_result, granularity, resource_groups_dict[subscription_id]))
@@ -227,12 +224,7 @@ class CostService:
             except EntityDoesNotExist:
                 raise WorkspaceDoesNotExist(f"workspace_id [{workspace_id}] does not exist")
 
-        cache_key = f"{CostService.TRE_WORKSPACE_ID_TAG}_{workspace_id}_granularity{granularity}_from_date{from_date}_to_date{to_date}_rgs{'_'.join(list(resource_groups_dict.keys()))}"
-        query_result = self.get_cached_result(cache_key)
-
-        if query_result is None:
-            query_result = self.query_costs(CostService.TRE_WORKSPACE_ID_TAG, workspace_id, granularity, from_date, to_date, list(resource_groups_dict.keys()), subscription_id)
-            self.cache_result(cache_key, query_result, timedelta(hours=2))
+        query_result = self.query_costs(CostService.TRE_WORKSPACE_ID_TAG, workspace_id, granularity, from_date, to_date, list(resource_groups_dict.keys()), subscription_id)
 
         summarized_result = self.summarize_untagged(query_result, granularity, resource_groups_dict)
         query_result_dict = self.__query_result_to_dict(summarized_result, granularity)
@@ -397,6 +389,14 @@ class CostService:
             period_start = period_end + timedelta(days=1)
         return periods
 
+    def build_query_cache_key(self, tag_name: str, tag_value: str, granularity: GranularityEnum,
+                              from_date: Optional[datetime], to_date: Optional[datetime],
+                              resource_groups: list, scope: str) -> str:
+        """Builds a unique cache key for a single (already split) query period."""
+        return (f"{tag_name}_{tag_value}_granularity{granularity}"
+                f"_from_date{from_date}_to_date{to_date}"
+                f"_scope{scope}_rgs{'_'.join(resource_groups)}")
+
     def query_costs(self, tag_name: str, tag_value: str,
                     granularity: GranularityEnum, from_date: Optional[datetime],
                     to_date: Optional[datetime],
@@ -407,11 +407,18 @@ class CostService:
 
         merged_result: Optional[QueryResult] = None
         for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
-            period_result = self.query_costs_period(
+            cache_key = self.build_query_cache_key(
                 tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
 
+            period_result = self.get_cached_result(cache_key)
+            if period_result is None:
+                period_result = self.query_costs_period(
+                    tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
+                self.cache_result(cache_key, period_result, CostService.CACHE_TTL)
+
             if merged_result is None:
-                merged_result = period_result
+                # start from a fresh QueryResult so cached period results are never mutated while merging
+                merged_result = QueryResult(columns=period_result.columns, rows=list(period_result.rows))
             else:
                 if period_result.columns and not merged_result.columns:
                     merged_result.columns = period_result.columns
