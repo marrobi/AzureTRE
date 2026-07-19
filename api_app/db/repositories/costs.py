@@ -10,13 +10,7 @@ from models.domain.costs import CostItemType, GranularityEnum, PersistedCostQuer
 
 
 class CostsRepository(BaseRepository):
-    """Repository for the durable, API-owned cost collection.
-
-    The TRE API is the sole writer of this collection. Each document represents a
-    single (already split) Cost Management query period so that the read path can
-    resolve a report period from the collection first, falling back to a live query
-    only when a period has not yet been collected.
-    """
+    """Repository for the durable, API-owned cost collection (one document per split query period)."""
 
     @classmethod
     async def create(cls):
@@ -33,8 +27,7 @@ class CostsRepository(BaseRepository):
 
     @staticmethod
     def build_partition_key(tre_id: str, granularity: GranularityEnum, from_date: Optional[str]) -> str:
-        """Partition by tre_id + year-month so per-month reads stay within a single partition
-        and the (hot) current month is separated from (cold) finalised months."""
+        """Partition by tre_id + year-month so per-month reads stay within a single partition."""
         month = from_date[:7] if from_date else "month-to-date"
         return f"{tre_id}/{granularity}/{month}"
 

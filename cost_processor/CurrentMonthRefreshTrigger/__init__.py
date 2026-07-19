@@ -6,12 +6,7 @@ from shared_code import api_client
 
 
 def main(timer: func.TimerRequest) -> None:
-    """Refresh the current (still-settling) month's cost data on a frequent cadence.
-
-    Azure Cost Management data lags actual usage by roughly 24-48 hours and continues to be
-    re-rated for a day or two, so the current month is the only segment that needs frequent
-    refreshing; completed months are collected once and then served from the collection.
-    """
+    """Refresh the still-settling current month frequently (Cost Management lags ~24-48h)."""
     if timer.past_due:
         logging.info("The current-month cost refresh timer is past due.")
 

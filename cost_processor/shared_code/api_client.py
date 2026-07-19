@@ -6,9 +6,8 @@ from typing import Optional
 import requests
 from azure.identity import DefaultAzureCredential
 
-# The refresh endpoint is authenticated with the Cost Processor managed identity. We request a
-# token for the API's own audience; the API authorises the call by matching the token's client id
-# against the managed identity's client id, so no Microsoft Graph app role assignment is required.
+# Authenticate to the refresh endpoint with the Cost Processor managed identity: request a
+# token for the API's own audience; the API authorises by matching the token's client id.
 DEFAULT_HTTP_TIMEOUT = 60
 
 
@@ -60,17 +59,16 @@ def refresh_period(from_date: Optional[date], to_date: Optional[date], granulari
 
 
 def refresh_current_month() -> dict:
-    """Refresh the still-settling current month (month-to-date)."""
-    first, _ = _month_bounds(datetime.now(timezone.utc).date())
-    return refresh_period(first, None, granularity="Daily")
+    """Refresh the still-settling current month (month-to-date).
+
+    Sends no dates so the API uses its month-to-date timeframe; a start date with no end
+    date is rejected by the endpoint's period validation.
+    """
+    return refresh_period(None, None, granularity="Daily")
 
 
 def refresh_previous_months(look_back_months: int = 1) -> None:
-    """Sweep the recently-closed months so they are finalised in the collection.
-
-    Older completed months are immutable and marked final by the API, so this only needs to
-    cover the window during which the just-closed month is still being re-rated by Azure.
-    """
+    """Sweep recently-closed months so they are finalised in the collection."""
     today = datetime.now(timezone.utc).date()
     current_first, _ = _month_bounds(today)
     for i in range(1, look_back_months + 1):

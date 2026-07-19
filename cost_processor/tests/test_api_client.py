@@ -35,7 +35,7 @@ def test_refresh_period_calls_internal_endpoint_with_bearer_token(get_token_mock
 })
 @patch("shared_code.api_client.requests.post")
 @patch("shared_code.api_client.get_access_token", return_value="a-token")
-def test_refresh_current_month_omits_to_date(get_token_mock, post_mock):
+def test_refresh_current_month_sends_no_dates(get_token_mock, post_mock):
     response = MagicMock()
     response.content = b""
     response.status_code = 202
@@ -44,8 +44,9 @@ def test_refresh_current_month_omits_to_date(get_token_mock, post_mock):
     api_client.refresh_current_month()
 
     _, kwargs = post_mock.call_args
+    assert "from_date" not in kwargs["params"]
     assert "to_date" not in kwargs["params"]
-    assert kwargs["params"]["from_date"].endswith("-01")
+    assert kwargs["params"]["granularity"] == "Daily"
 
 
 def test_get_access_token_requests_api_audience_scope():

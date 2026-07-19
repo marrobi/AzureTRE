@@ -8,10 +8,8 @@ locals {
   cost_processor_function_sa_name  = lower(replace("stcostp${var.tre_id}", "-", ""))
 }
 
-# Managed identity used by the Cost Processor to authenticate to the TRE API.
-# The API authorises the internal cost refresh endpoint by matching this identity's client id
-# against the caller's app-only token, so no Microsoft Graph app role assignment is required
-# (which would otherwise need Graph permissions on the deployment identity).
+# Managed identity the Cost Processor uses to call the TRE API; the internal refresh endpoint
+# authorises it by matching this identity's client id (no Graph app role assignment required).
 resource "azurerm_user_assigned_identity" "cost_processor_id" {
   resource_group_name = azurerm_resource_group.core.name
   location            = azurerm_resource_group.core.location
@@ -19,6 +17,13 @@ resource "azurerm_user_assigned_identity" "cost_processor_id" {
   tags                = local.tre_core_tags
 
   lifecycle { ignore_changes = [tags] }
+}
+
+# Allow the identity to pull the Cost Processor container image.
+resource "azurerm_role_assignment" "cost_processor_acrpull" {
+  scope                = data.azurerm_container_registry.mgmt_acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.cost_processor_id.principal_id
 }
 
 resource "azurerm_storage_account" "sa_cost_processor_func_app" {
@@ -61,6 +66,14 @@ resource "azurerm_storage_account" "sa_cost_processor_func_app" {
   }
 
   lifecycle { ignore_changes = [infrastructure_encryption_enabled, tags] }
+}
+
+# Allow the function host to use its storage account via managed identity.
+resource "azurerm_role_assignment" "cost_processor_function_host_storage" {
+  for_each             = toset(["Storage Account Contributor", "Storage Blob Data Owner", "Storage Queue Data Contributor"])
+  scope                = azurerm_storage_account.sa_cost_processor_func_app.id
+  role_definition_name = each.value
+  principal_id         = azurerm_user_assigned_identity.cost_processor_id.principal_id
 }
 
 resource "azurerm_linux_function_app" "cost_processor_function_app" {

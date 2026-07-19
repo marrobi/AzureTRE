@@ -1,8 +1,4 @@
-# Shared App Service Plan for the TRE core "processing" Function apps.
-#
-# This plan hosts more than one appropriately-named Function app (for example the
-# Airlock Processor and the Cost Processor), so it is intentionally named after its
-# role ("processing") rather than after any single app that runs on it.
+# Shared App Service Plan for the TRE core "processing" Function apps (Airlock and Cost Processor).
 resource "azurerm_service_plan" "processing" {
   name                = "plan-processing-${var.tre_id}"
   resource_group_name = azurerm_resource_group.core.name

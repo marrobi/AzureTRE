@@ -7,11 +7,7 @@ from shared_code import api_client
 
 
 def main(timer: func.TimerRequest) -> None:
-    """Daily sweep of recently-closed month(s) until Azure has finished re-rating them.
-
-    The look-back window is configurable; once a month is complete the API marks it final and
-    it is never re-queried, so multi-year reports are served almost entirely from the collection.
-    """
+    """Daily sweep of recently-closed month(s) until Azure finishes re-rating them."""
     if timer.past_due:
         logging.info("The previous-month cost refresh timer is past due.")
 

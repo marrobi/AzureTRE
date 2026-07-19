@@ -90,10 +90,8 @@ class CostService:
     TRE_UNTAGGED: str = ""
     RATE_LIMIT_RETRY_AFTER_HEADER_KEY: str = "x-ms-ratelimit-microsoft.costmanagement-entity-retry-after"
     SERVICE_UNAVAILABLE_RETRY_AFTER_HEADER_KEY: str = "Retry-After"
-    # Azure Cost Management Query API does not accept custom time periods longer than one year,
-    # so longer report periods have to be split into several queries and merged together.
+    # Cost Management rejects custom periods longer than a year, so longer reports are split.
     MAX_QUERY_PERIOD: timedelta = timedelta(days=364)
-    # How long a queried cost period is kept in the in-memory cache before it is queried again.
     CACHE_TTL: timedelta = timedelta(hours=2)
 
     def __init__(self) -> None:
@@ -367,18 +365,7 @@ class CostService:
         return cost_rows
 
     def split_query_period(self, from_date: Optional[datetime], to_date: Optional[datetime]) -> List[Tuple[Optional[datetime], Optional[datetime]]]:
-        """Splits a custom report period into a list of (from, to) periods no longer than one year each.
-
-        Azure Cost Management only supports custom time periods of up to one year per query, so reports
-        that span more than a year (see https://github.com/microsoft/AzureTRE/issues/2350) are broken up
-        into consecutive, non-overlapping sub-periods that are queried individually and merged.
-
-        Args:
-            from_date (Optional[datetime]): start of the report period, or None for month to date.
-            to_date (Optional[datetime]): end of the report period, or None for month to date.
-        Returns:
-            list: list of (from_date, to_date) tuples to query individually.
-        """
+        """Split a report period into consecutive sub-periods of at most a year (see #2350)."""
         # month to date report - no custom period, single query
         if from_date is None or to_date is None:
             return [(from_date, to_date)]
@@ -388,14 +375,13 @@ class CostService:
         while period_start <= to_date:
             period_end = min(period_start + CostService.MAX_QUERY_PERIOD, to_date)
             periods.append((period_start, period_end))
-            # start the next period on the following day to avoid overlapping (double counted) days
+            # next period starts the following day to avoid double-counting
             period_start = period_end + timedelta(days=1)
         return periods
 
     def build_query_cache_key(self, tag_name: str, tag_value: str, granularity: GranularityEnum,
                               from_date: Optional[datetime], to_date: Optional[datetime],
                               resource_groups: list, scope: str) -> str:
-        """Builds a unique cache key for a single (already split) query period."""
         return (f"{tag_name}_{tag_value}_granularity{granularity}"
                 f"_from_date{from_date}_to_date{to_date}"
                 f"_scope{scope}_rgs{'_'.join(resource_groups)}")
@@ -414,17 +400,17 @@ class CostService:
             cache_key = self.build_query_cache_key(
                 tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
 
-            # 1) in-memory cache (fastest)
+            # 1) in-memory cache
             period_result = self.get_cached_result(cache_key)
 
-            # 2) durable cost collection (cache-first read-through)
+            # 2) durable cost collection (finalised periods only)
             if period_result is None and costs_repo is not None:
                 period_result = await self.__get_period_from_collection(
                     costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date, scope)
                 if period_result is not None:
                     self.cache_result(cache_key, period_result, CostService.CACHE_TTL)
 
-            # 3) live Cost Management query (and persist so subsequent reads avoid Cost Management)
+            # 3) live Cost Management query, then persist
             if period_result is None:
                 period_result = self.query_costs_period(
                     tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
@@ -436,7 +422,7 @@ class CostService:
                         final=self.__is_period_final(period_to_date))
 
             if merged_result is None:
-                # start from a fresh QueryResult so cached period results are never mutated while merging
+                # fresh QueryResult so cached period results are never mutated while merging
                 merged_result = QueryResult(columns=period_result.columns, rows=list(period_result.rows))
             else:
                 if period_result.columns and not merged_result.columns:
@@ -451,11 +437,8 @@ class CostService:
 
     @staticmethod
     def __is_period_final(period_to_date: Optional[datetime]) -> bool:
-        """A period is final (immutable) once it ends before the start of the current month.
-
-        Data for the current month is still settling, so month-to-date (no end date) and
-        any period ending within the current month are never marked final.
-        """
+        """A period is final once it ends before the start of the current month; the current
+        month is still settling so month-to-date (no end date) is never final."""
         if period_to_date is None:
             return False
         today = datetime.now().date()
@@ -474,9 +457,8 @@ class CostService:
             self.__serialize_date(from_date), self.__serialize_date(to_date))
         if persisted is None:
             return None
-        # Only serve finalised (immutable) periods from the durable collection. Still-settling
-        # periods (the current month / month-to-date) are re-queried live so reports never return
-        # stale figures; the in-memory cache still bounds how often that live query runs.
+        # Only finalised periods are served from the collection; the still-settling current
+        # month is always re-queried live.
         if not persisted.final:
             return None
         columns = [QueryColumn(name=c["name"], type=c["type"]) for c in persisted.columns]
@@ -502,11 +484,9 @@ class CostService:
     async def refresh_costs(self, tre_id: str, granularity: GranularityEnum, from_date: Optional[datetime],
                             to_date: Optional[datetime], workspace_repo: WorkspaceRepository,
                             costs_repo: CostsRepository) -> int:
-        """Query Cost Management for the given period and persist each (split) sub-period into
-        the durable cost collection. Returns the number of sub-periods collected.
+        """Query Cost Management and persist each sub-period; returns the number collected.
 
-        This is the only path that writes collected cost rows; it is invoked by the internal,
-        managed-identity-authenticated refresh endpoint used by the Cost Processor.
+        The only path that writes cost rows, invoked by the internal refresh endpoint.
         """
         subscription_ids = {config.SUBSCRIPTION_ID}
         subscription_ids.update(await self.__get_workspace_subscription_ids(workspace_repo))

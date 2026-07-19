@@ -58,8 +58,6 @@ get_current_workspace_owner_or_researcher_user_or_airlock_manager_or_tre_admin =
 get_current_workspace_owner_or_tre_admin = AzureADAuthorization(require_one_of_roles=["TREAdmin", "WorkspaceOwner"])
 
 
-# Used to authenticate the background Cost Processor to the internal cost refresh endpoint.
-# The processor uses its managed identity to obtain an app-only token for the TRE API; the
-# endpoint authorises it by matching the token's client id, so no Microsoft Graph app role
-# assignment is required.
+# Authenticates the background Cost Processor to the internal refresh endpoint by its
+# managed identity client id (no Graph app role assignment required).
 get_current_cost_processor = AzureADAuthorization(require_client_id=config.COST_PROCESSOR_CLIENT_ID)

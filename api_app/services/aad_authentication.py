@@ -54,15 +54,14 @@ class AzureADAuthorization(AccessService):
             auto_error=auto_error
         )
         self.require_one_of_roles = require_one_of_roles
-        # When set, the caller is authorised as a service identity (app-only token) whose
-        # client id must match this value, instead of by TRE role membership.
+        # When set, authorise an app-only token by matching its client id instead of by role.
         self.require_client_id = require_client_id
 
     async def __call__(self, request: Request) -> User:
 
         token: str = await super(AzureADAuthorization, self).__call__(request)
 
-        # Service-to-service (app-only) authorisation by managed identity client id.
+        # Service-to-service (app-only) authorisation by client id.
         if self.require_client_id is not None:
             return self._validate_service_identity(token)
 
@@ -156,13 +155,9 @@ class AzureADAuthorization(AccessService):
                     roles=decoded_token.get('roles', []))
 
     def _validate_service_identity(self, token: str) -> User:
-        """Authorise an app-only (service) token by its client id.
+        """Authorise an app-only token by its client id (e.g. the Cost Processor managed identity).
 
-        Used for internal service-to-service calls (for example the Cost Processor's managed
-        identity calling the internal cost refresh endpoint). The token is validated against the
-        TRE API app registration and must be an app-only token whose client id matches the
-        configured value. This avoids requiring a Microsoft Graph app role assignment for the
-        calling identity, which would need Graph permissions on the deployment identity.
+        Avoids needing a Graph app role assignment for the calling identity.
         """
         # Deny by default when no service client id has been configured.
         if not self.require_client_id:
