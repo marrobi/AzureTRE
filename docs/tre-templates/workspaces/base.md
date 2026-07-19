@@ -22,6 +22,12 @@ When deploying a workspace the following properties need to be configured.
 | `client_id` | Valid client ID of the Workspace App Registration. | The OpenID client ID which should be submitted to the OpenID service when necessary. This value is typically provided to you by the OpenID service when OpenID credentials are generated for your application. |
 | `client_secret` | Valid client secret. | |
 
+### Optional Properties
+
+| Property | Options | Description |
+| -------- | ------- | ----------- |
+| `allowed_workspace_service_templates` | Array of workspace service template names (e.g. `tre-service-guacamole`). | Restricts which workspace service templates can be deployed into the workspace. When omitted or empty, all workspace service templates are allowed. A TRE Admin can set this property when creating the workspace, or update it later, to control which services a Workspace Owner is permitted to deploy. |
+
 ## Azure Trusted Services
 *Azure Trusted Services* are allowed to connect to both the key vault and storage account provsioned within the workspace. If this is undesirable additonal resources without this setting configured can be deployed.
 
