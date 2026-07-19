@@ -127,6 +127,7 @@ source "${DIR}/update_resource_access.sh"
 # Generate GUIDS
 userRoleId=$(cat /proc/sys/kernel/random/uuid)
 adminRoleId=$(cat /proc/sys/kernel/random/uuid)
+costProcessorRoleId=$(cat /proc/sys/kernel/random/uuid)
 userImpersonationScopeId=$(cat /proc/sys/kernel/random/uuid)
 appObjectId=""
 
@@ -136,9 +137,11 @@ if [[ -n ${existingApp} ]]; then
     appObjectId=$(echo "${existingApp}" | jq -r '.id')
     userRoleId=$(echo "$existingApp" | jq -r '.appRoles[] | select(.value == "TREUser").id')
     adminRoleId=$(echo "$existingApp" | jq -r '.appRoles[] | select(.value == "TREAdmin").id')
+    costProcessorRoleId=$(echo "$existingApp" | jq -r '.appRoles[] | select(.value == "TRECostProcessor").id')
     userImpersonationScopeId=$(echo "$existingApp" | jq -r '.api.oauth2PermissionScopes[] | select(.value == "user_impersonation").id')
     if [[ -z "${userRoleId}" ]]; then userRoleId=$(cat /proc/sys/kernel/random/uuid); fi
     if [[ -z "${adminRoleId}" ]]; then adminRoleId=$(cat /proc/sys/kernel/random/uuid); fi
+    if [[ -z "${costProcessorRoleId}" ]]; then costProcessorRoleId=$(cat /proc/sys/kernel/random/uuid); fi
     if [[ -z "${userImpersonationScopeId}" ]]; then userImpersonationScopeId=$(cat /proc/sys/kernel/random/uuid); fi
 fi
 
@@ -188,6 +191,15 @@ appDefinition=$(jq -c . << JSON
         "isEnabled": true,
         "origin": "Application",
         "value": "TREAdmin"
+    },
+    {
+        "id": "${costProcessorRoleId}",
+        "allowedMemberTypes": [ "Application" ],
+        "description": "Allows the Cost Processor to refresh collected cost data in the ${appName}.",
+        "displayName": "TRE Cost Processor",
+        "isEnabled": true,
+        "origin": "Application",
+        "value": "TRECostProcessor"
     }
   ],
   "signInAudience": "AzureADMyOrg",

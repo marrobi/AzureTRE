@@ -1,0 +1,12 @@
+{
+  "scriptFile": "__init__.py",
+  "entryPoint": "main",
+  "bindings": [
+    {
+      "name": "timer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "%COST_PROCESSOR_CURRENT_MONTH_SCHEDULE%"
+    }
+  ]
+}
