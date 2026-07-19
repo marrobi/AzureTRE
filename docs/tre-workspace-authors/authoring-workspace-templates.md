@@ -130,6 +130,60 @@ In your install and uninstall pipelines you also need to include a workspace upg
       }
 ```
 
+## Restricting which workspace service templates can be deployed
+
+A workspace template can restrict which workspace service templates (and versions) a Workspace Owner is allowed to deploy into workspaces created from it. This is enforced by the API on both **create** and **update** of a workspace service, so tightening the restrictions later also prevents further non-compliant deployments or upgrades.
+
+The restriction is driven by two optional workspace properties. To make them available to a TRE Admin at deployment time, declare them in your workspace template's `template_schema.json`. They are **not** part of the base workspace template, so add them only to templates where you want this behaviour.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `allowed_workspace_service_templates` | array of strings | The workspace service template names allowed in the workspace (e.g. `tre-service-guacamole`). When omitted or empty, **all** workspace service templates are allowed (backwards compatible). |
+| `allowed_workspace_service_template_versions` | object (map of template name → version constraint) | Optional per-template [semantic version](https://python-semanticversion.readthedocs.io/en/latest/reference.html#semantic_version.SimpleSpec) constraint. A template with no entry is unconstrained. |
+
+Version constraints use operators such as `==` (equal), `!=`, `>`, `>=`, `<`, `<=`, and can be combined with a comma to form a range (e.g. `>=1.4.0,<2.0.0`).
+
+### Example: allow only Guacamole and Azure ML
+
+The following `template_schema.json` fragment restricts the workspace to only the Guacamole and Azure ML workspace services, and additionally requires Guacamole to be at least `1.4.0` and Azure ML to be a `1.x` release:
+
+```json
+{
+  "properties": {
+    "allowed_workspace_service_templates": {
+      "type": "array",
+      "title": "Allowed workspace service templates",
+      "description": "Restrict which workspace service templates can be deployed into this workspace. Leave empty to allow all.",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "tre-service-guacamole",
+        "tre-service-azureml"
+      ]
+    },
+    "allowed_workspace_service_template_versions": {
+      "type": "object",
+      "title": "Allowed workspace service template versions",
+      "description": "Optional per-template semantic version constraint (e.g. '>=1.4.0', '>=1.0.0,<2.0.0', '==1.2.3').",
+      "default": {
+        "tre-service-guacamole": ">=1.4.0",
+        "tre-service-azureml": ">=1.0.0,<2.0.0"
+      }
+    }
+  }
+}
+```
+
+### Enforcing at deployment (fixed) vs. allowing later changes
+
+A property is settable at create time regardless of `updateable`; the `updateable` flag only controls whether it can be changed later via an update. There is therefore no need for a separate "enforce" flag:
+
+* To let a TRE Admin set the restrictions when creating the workspace and then **lock** them, mark the properties as `"updateable": false`. They are fixed at deployment and cannot be widened afterwards.
+* To allow the restrictions to be adjusted after deployment, mark the properties as `"updateable": true`.
+
+If a workspace service that is already deployed no longer satisfies a newly tightened constraint, subsequent create or update (including version upgrade) requests for that template are rejected with an HTTP 403 until they comply.
+
 ## User resource bundle manifests
 
 User Resource bundles are generated in the same way as workspace bundles and workspace services bundles.
