@@ -241,19 +241,10 @@ async def retrieve_workspace_service_by_id(workspace_service=Depends(get_workspa
 
 
 def validate_workspace_service_template_allowed(workspace, template_name: str, template_version: Optional[str] = None):
-    """Enforce the optional per-workspace restrictions on which workspace service templates (and versions)
-    may be deployed into a workspace.
+    """Enforce the optional per-workspace `allowed_workspace_service_templates` (name allow-list) and
+    `allowed_workspace_service_template_versions` (per-template semantic version constraint) restrictions.
 
-    A TRE Admin can set two optional properties on a workspace:
-      - "allowed_workspace_service_templates": a list of workspace service template names. When present and
-        non-empty, only the listed templates may be deployed. Absent or empty means all templates are allowed
-        (backwards compatible behaviour).
-      - "allowed_workspace_service_template_versions": a map of template name -> semantic version constraint
-        (e.g. ">=1.4.0", ">=1.0.0,<2.0.0", "==1.2.3"). When a constraint is present for the requested template,
-        the resolved template version must satisfy it. Templates without an entry are unconstrained.
-
-    The checks are applied on both create and update, so tightening the constraints on a workspace prevents
-    further create/update operations that would violate them.
+    An absent or empty allow-list/constraint means anything is allowed (backwards compatible).
     """
     allowed_templates = workspace.properties.get("allowed_workspace_service_templates")
     if allowed_templates and template_name not in allowed_templates:
@@ -288,10 +279,7 @@ def validate_workspace_service_template_allowed(workspace, template_name: str, t
 @workspace_services_workspace_router.post("/workspaces/{workspace_id}/workspace-services", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_CREATE_WORKSPACE_SERVICE, dependencies=[Depends(get_current_workspace_owner_user)])
 async def create_workspace_service(response: Response, workspace_service_input: WorkspaceServiceInCreate, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_repo=Depends(get_repository(WorkspaceRepository)), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), workspace=Depends(get_deployed_workspace_by_id_from_path)) -> OperationInResponse:
 
-    # A TRE Admin can restrict which workspace service templates (and versions) may be deployed into a
-    # workspace. This is validated in two stages: validate only the template name up front here so we fail
-    # fast without touching the database; the version constraint is validated after the item is created
-    # (below), once the concrete template version has been resolved.
+    # Validate the template name up front (fail fast); the version is validated after creation resolves it.
     validate_workspace_service_template_allowed(workspace, workspace_service_input.templateName)
 
     try:
@@ -303,8 +291,7 @@ async def create_workspace_service(response: Response, workspace_service_input: 
         logger.exception("User not authorized to use template")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
 
-    # The concrete template version is only resolved once the item is created, so validate any version
-    # constraint now (before the resource is persisted or deployed). The template name is unchanged by creation.
+    # The concrete template version is now resolved, so validate any version constraint before persisting.
     validate_workspace_service_template_allowed(workspace, workspace_service_input.templateName, workspace_service.templateVersion)
 
     # Get the workspace subscription id (if set)
@@ -342,9 +329,8 @@ async def create_workspace_service(response: Response, workspace_service_input: 
 
 @workspace_services_workspace_router.patch("/workspaces/{workspace_id}/workspace-services/{service_id}", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_UPDATE_WORKSPACE_SERVICE, dependencies=[Depends(get_current_workspace_owner_or_researcher_user), Depends(get_workspace_by_id_from_path)])
 async def patch_workspace_service(resource_patch: ResourcePatch, response: Response, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_service=Depends(get_workspace_service_by_id_from_path), workspace=Depends(get_workspace_by_id_from_path), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), etag: str = Header(...), force_version_update: bool = False) -> OperationInResponse:
-    # Enforce any per-workspace template/version restrictions only when an upgrade (template version change)
-    # is requested. Disablement, deletion and other property patches are intentionally not blocked, so a
-    # workspace service that no longer complies with a tightened restriction can still be disabled and removed.
+    # Only enforce restrictions on an upgrade (version change); disablement/deletion of a non-compliant
+    # service must stay possible so it can be removed.
     if resource_patch.templateVersion is not None:
         validate_workspace_service_template_allowed(workspace, workspace_service.templateName, resource_patch.templateVersion)
 
