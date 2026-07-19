@@ -368,15 +368,65 @@ class CostService:
 
         return cost_rows
 
+    # Azure Cost Management Query API does not accept custom time periods longer than one year,
+    # so longer report periods have to be split into several queries and merged together.
+    MAX_QUERY_PERIOD: timedelta = timedelta(days=364)
+
+    def split_query_period(self, from_date: Optional[datetime], to_date: Optional[datetime]) -> list:
+        """Splits a custom report period into a list of (from, to) periods no longer than one year each.
+
+        Azure Cost Management only supports custom time periods of up to one year per query, so reports
+        that span more than a year (see https://github.com/microsoft/AzureTRE/issues/2350) are broken up
+        into consecutive, non-overlapping sub-periods that are queried individually and merged.
+
+        Args:
+            from_date (Optional[datetime]): start of the report period, or None for month to date.
+            to_date (Optional[datetime]): end of the report period, or None for month to date.
+        Returns:
+            list: list of (from_date, to_date) tuples to query individually.
+        """
+        # month to date report - no custom period, single query
+        if from_date is None or to_date is None:
+            return [(from_date, to_date)]
+
+        periods = []
+        period_start = from_date
+        while period_start <= to_date:
+            period_end = min(period_start + CostService.MAX_QUERY_PERIOD, to_date)
+            periods.append((period_start, period_end))
+            # start the next period on the following day to avoid overlapping (double counted) days
+            period_start = period_end + timedelta(days=1)
+        return periods
+
     def query_costs(self, tag_name: str, tag_value: str,
                     granularity: GranularityEnum, from_date: Optional[datetime],
                     to_date: Optional[datetime],
                     resource_groups: list,
                     subscription_id: Optional[str] = None) -> QueryResult:
 
+        scope = "/subscriptions/{}".format(subscription_id) if subscription_id else self.scope
+
+        merged_result: Optional[QueryResult] = None
+        for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
+            period_result = self.query_costs_period(
+                tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
+
+            if merged_result is None:
+                merged_result = period_result
+            else:
+                if period_result.columns and not merged_result.columns:
+                    merged_result.columns = period_result.columns
+                merged_result.rows.extend(period_result.rows)
+
+        return merged_result
+
+    def query_costs_period(self, tag_name: str, tag_value: str,
+                           granularity: GranularityEnum, from_date: Optional[datetime],
+                           to_date: Optional[datetime],
+                           resource_groups: list, scope: str) -> QueryResult:
+
         query_definition = self.build_query_definition(granularity, from_date, to_date, tag_name, tag_value, resource_groups)
 
-        scope = "/subscriptions/{}".format(subscription_id) if subscription_id else self.scope
         logger.debug(f"Querying cost management API with scope: {scope} and query definition: {query_definition}")
 
         try:

@@ -50,7 +50,7 @@ GET /api/costs
 
 | Parameter name | Type | Description | Default Value |
 | --- | --- | --- | --- |
-| from, to | datetime | Custom time period, up to 1 year timeframe, iso-8601 format | Month to date period |
+| from, to | datetime | Custom time period, iso-8601 format. Periods longer than a year are supported and split into multiple Cost Management queries. | Month to date period |
 | granularity | Enum (Daily, None) | The granularity of rows in the query. | None |
 
 **Output**
@@ -94,7 +94,7 @@ GET /api/workspaces/{workspace_id}/costs
 
 | Parameter name | Type | Description | Default Value |
 | --- | --- | --- | --- |
-| from, to | datetime | Custom time period, up to 1 year timeframe, iso-8601 format | Month to date period |
+| from, to | datetime | Custom time period, iso-8601 format. Periods longer than a year are supported and split into multiple Cost Management queries. | Month to date period |
 | granularity | Enum (Daily, None) | The granularity of rows in the query. | None |
 | workspace_id | Guid | The workspace id to generate report for | Required field for workspace and user resource level apis |
 
@@ -126,6 +126,8 @@ GET /api/workspaces/{workspace_id}/costs
 ## Limitations and notes
 
 * Cost and usage data is typically available in Cost Management within 8-24 hours.
+
+* Azure Cost Management only supports custom time periods of up to one year per query. To generate reports spanning more than a year, the TRE Cost API automatically splits the requested period into consecutive sub-periods of up to one year and merges the results. Note that only the last 13 months of data is available from Cost Management (see below), so older sub-periods will return no data.
 
 * Tags aren't applied to historical data, template authors need to make sure all relevant [Azure resources of a TRE resource are tagged as instructed](#azure-resources-tagging).
 

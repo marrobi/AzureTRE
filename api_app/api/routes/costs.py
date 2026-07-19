@@ -1,5 +1,4 @@
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -35,8 +34,6 @@ def validate_report_period(from_date: Optional[datetime], to_date: Optional[date
     if from_date is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=strings.API_GET_COSTS_FROM_DATE_NEED_TO_BE_BEFORE_TO_DATE)
-    if relativedelta(to_date, from_date).years > 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=strings.API_GET_COSTS_MAX_TIME_PERIOD)
 
 
 class CostsQueryParams:

@@ -365,6 +365,101 @@ async def test_query_tre_costs_with_dates_set_as_none_calls_client_with_custom_d
     assert query_definition.time_period.to == to_date
 
 
+@pytest.mark.parametrize("from_date,to_date", [(None, None), (None, datetime(2022, 1, 1)), (datetime(2022, 1, 1), None)])
+@patch('services.cost_service.CostManagementClient')
+async def test_split_query_period_returns_single_period_for_month_to_date(client_mock, from_date, to_date):
+    cost_service = CostService()
+
+    periods = cost_service.split_query_period(from_date, to_date)
+
+    assert periods == [(from_date, to_date)]
+
+
+@patch('services.cost_service.CostManagementClient')
+async def test_split_query_period_returns_single_period_for_less_than_a_year(client_mock):
+    cost_service = CostService()
+    from_date = datetime(2022, 1, 1)
+    to_date = datetime(2022, 6, 1)
+
+    periods = cost_service.split_query_period(from_date, to_date)
+
+    assert periods == [(from_date, to_date)]
+
+
+@patch('services.cost_service.CostManagementClient')
+async def test_split_query_period_splits_multi_year_range_into_non_overlapping_periods(client_mock):
+    cost_service = CostService()
+    from_date = datetime(2022, 1, 1)
+    to_date = datetime(2025, 1, 1)
+
+    periods = cost_service.split_query_period(from_date, to_date)
+
+    # multi year range must be split into more than one query
+    assert len(periods) > 1
+    # full range is covered
+    assert periods[0][0] == from_date
+    assert periods[-1][1] == to_date
+    for period_from, period_to in periods:
+        # no single query may span a year or more (Azure Cost Management limitation)
+        assert period_to - period_from <= CostService.MAX_QUERY_PERIOD
+    # periods are contiguous and do not overlap
+    for previous, current in zip(periods, periods[1:]):
+        assert current[0] == previous[1] + timedelta(days=1)
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+# CostService is lru_cached which creates a wrapper method
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_over_multiple_years_splits_queries_and_merges_results(get_resource_groups_by_tag_mock,
+                                                                                     client_mock, shared_service_repo_mock,
+                                                                                     workspace_repo_mock):
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+
+    from_date = datetime(2022, 1, 1)
+    to_date = datetime(2024, 6, 1)
+
+    def __single_workspace_cost_result():
+        query_result = QueryResult()
+        query_result.rows = [
+            [10.0, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
+        ]
+        query_result.columns = [
+            QueryColumn(name="PreTaxCost", type="Number"),
+            QueryColumn(name="ResourceGroup", type="String"),
+            QueryColumn(name="Tag", type="String"),
+            QueryColumn(name="Currency", type="String")]
+        return query_result
+
+    cost_service = CostService()
+    expected_periods = cost_service.split_query_period(from_date, to_date)
+    # more than one Azure query is required to cover a multi year period
+    assert len(expected_periods) > 1
+
+    client_mock.return_value.query.usage.side_effect = [__single_workspace_cost_result() for _ in expected_periods]
+
+    cost_report = await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, from_date, to_date, workspace_repo_mock, shared_service_repo_mock)
+
+    # one Cost Management query per split period
+    assert client_mock.return_value.query.usage.call_count == len(expected_periods)
+
+    # each query is issued with the matching split period
+    for call, (period_from_date, period_to_date) in zip(client_mock.return_value.query.usage.call_args_list, expected_periods):
+        query_definition: QueryDefinition = call[0][1]
+        assert query_definition.timeframe == TimeframeType.CUSTOM
+        assert query_definition.time_period.from_property == period_from_date
+        assert query_definition.time_period.to == period_to_date
+
+    # results from every period are merged and summed for the workspace
+    assert cost_report.workspaces[0].id == "19b7ce24-aa35-438c-adf6-37e6762911a6"
+    assert cost_report.workspaces[0].costs[0].cost == 10.0 * len(expected_periods)
+
+
 def __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock):
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[
         Workspace(id='19b7ce24-aa35-438c-adf6-37e6762911a6', templateName='tre-workspace-base',
