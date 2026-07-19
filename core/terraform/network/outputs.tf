@@ -30,12 +30,8 @@ output "resource_processor_subnet_id" {
   value = "${azurerm_virtual_network.core.id}/subnets/ResourceProcessorSubnet"
 }
 
-output "airlock_processor_subnet_id" {
-  value = "${azurerm_virtual_network.core.id}/subnets/AirlockProcessorSubnet"
-}
-
-output "cost_processor_subnet_id" {
-  value = "${azurerm_virtual_network.core.id}/subnets/CostProcessorSubnet"
+output "processor_subnet_id" {
+  value = "${azurerm_virtual_network.core.id}/subnets/ProcessorSubnet"
 }
 
 output "airlock_notification_subnet_id" {
@@ -113,8 +109,8 @@ output "shared_services_ip_group_id" {
   value = azurerm_ip_group.shared.id
 }
 
-output "airlock_processor_ip_group_id" {
-  value = azurerm_ip_group.airlock_processor.id
+output "processor_ip_group_id" {
+  value = azurerm_ip_group.processor.id
 }
 
 output "web_app_ip_group_id" {

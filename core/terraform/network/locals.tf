@@ -11,7 +11,7 @@ locals {
   shared_services_subnet_address_prefix = local.core_services_vnet_subnets[4] # .0 - .254
 
   # .2
-  airlock_processor_subnet_address_prefix     = local.core_services_vnet_subnets[5] # .0 - .63
+  processor_subnet_address_prefix             = local.core_services_vnet_subnets[5] # .0 - .63
   airlock_storage_subnet_address_prefix       = local.core_services_vnet_subnets[6] # .64 - .127
   airlock_events_subnet_address_prefix        = local.core_services_vnet_subnets[7] # .128 - .191
   airlock_notifications_subnet_address_prefix = local.core_services_vnet_subnets[8] # .192 - .254
@@ -19,7 +19,7 @@ locals {
   # .3
   resource_processor_subnet_address_prefix  = local.core_services_vnet_subnets[9]  # .0 - .63
   firewall_management_subnet_address_prefix = local.core_services_vnet_subnets[10] # .64 - .127
-  cost_processor_subnet_address_prefix      = local.core_services_vnet_subnets[11] # .128 - .191
+  # FREE = local.core_services_vnet_subnets[11] # .128 - .191
   # FREE = local.core_services_vnet_subnets[12] # .192 - .254
 
   tre_core_tags = {

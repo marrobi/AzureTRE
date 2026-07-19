@@ -81,7 +81,7 @@ resource "azurerm_linux_function_app" "cost_processor_function_app" {
   resource_group_name                            = azurerm_resource_group.core.name
   location                                       = azurerm_resource_group.core.location
   https_only                                     = true
-  virtual_network_subnet_id                      = module.network.cost_processor_subnet_id
+  virtual_network_subnet_id                      = module.network.processor_subnet_id
   service_plan_id                                = azurerm_service_plan.processing.id
   ftp_publish_basic_authentication_enabled       = false
   webdeploy_publish_basic_authentication_enabled = false

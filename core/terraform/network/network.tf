@@ -67,8 +67,8 @@ resource "azurerm_virtual_network" "core" {
   }
 
   subnet {
-    name                              = "AirlockProcessorSubnet"
-    address_prefixes                  = [local.airlock_processor_subnet_address_prefix]
+    name                              = "ProcessorSubnet"
+    address_prefixes                  = [local.processor_subnet_address_prefix]
     private_endpoint_network_policies = "Disabled"
     security_group                    = azurerm_network_security_group.default_rules.id
     route_table_id                    = azurerm_route_table.rt.id
@@ -128,26 +128,6 @@ resource "azurerm_virtual_network" "core" {
     address_prefixes                = [local.firewall_management_subnet_address_prefix]
     default_outbound_access_enabled = false
   }
-
-  subnet {
-    name                              = "CostProcessorSubnet"
-    address_prefixes                  = [local.cost_processor_subnet_address_prefix]
-    private_endpoint_network_policies = "Disabled"
-    security_group                    = azurerm_network_security_group.default_rules.id
-    route_table_id                    = azurerm_route_table.rt.id
-    default_outbound_access_enabled   = false
-
-    delegation {
-      name = "delegation"
-
-      service_delegation {
-        name    = "Microsoft.Web/serverFarms"
-        actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-      }
-    }
-
-    service_endpoints = ["Microsoft.Storage"]
-  }
 }
 
 resource "azurerm_ip_group" "resource_processor" {
@@ -177,11 +157,11 @@ resource "azurerm_ip_group" "webapp" {
   lifecycle { ignore_changes = [tags] }
 }
 
-resource "azurerm_ip_group" "airlock_processor" {
-  name                = "ipg-airlock-processor"
+resource "azurerm_ip_group" "processor" {
+  name                = "ipg-processor"
   location            = var.location
   resource_group_name = var.resource_group_name
-  cidrs               = [local.airlock_processor_subnet_address_prefix]
+  cidrs               = [local.processor_subnet_address_prefix]
   tags                = local.tre_core_tags
   lifecycle { ignore_changes = [tags] }
 }

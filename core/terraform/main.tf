@@ -113,7 +113,7 @@ module "firewall" {
   resource_processor_ip_group_id = module.network.resource_processor_ip_group_id
   shared_services_ip_group_id    = module.network.shared_services_ip_group_id
   web_app_ip_group_id            = module.network.web_app_ip_group_id
-  airlock_processor_ip_group_id  = module.network.airlock_processor_ip_group_id
+  processor_ip_group_id          = module.network.processor_ip_group_id
 }
 
 module "appgateway" {
@@ -154,7 +154,7 @@ module "airlock_resources" {
   acr_id                                = data.azurerm_container_registry.acr.id
   api_principal_id                      = azurerm_user_assigned_identity.id.principal_id
   service_plan_id                       = azurerm_service_plan.processing.id
-  airlock_processor_subnet_id           = module.network.airlock_processor_subnet_id
+  airlock_processor_subnet_id           = module.network.processor_subnet_id
   airlock_servicebus                    = azurerm_servicebus_namespace.sb
   airlock_servicebus_fqdn               = azurerm_servicebus_namespace.sb.endpoint
   applicationinsights_connection_string = module.azure_monitor.app_insights_connection_string
