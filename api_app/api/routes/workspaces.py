@@ -289,7 +289,9 @@ def validate_workspace_service_template_allowed(workspace, template_name: str, t
 async def create_workspace_service(response: Response, workspace_service_input: WorkspaceServiceInCreate, user=Depends(get_current_workspace_owner_user), workspace_service_repo=Depends(get_repository(WorkspaceServiceRepository)), workspace_repo=Depends(get_repository(WorkspaceRepository)), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), workspace=Depends(get_deployed_workspace_by_id_from_path)) -> OperationInResponse:
 
     # A TRE Admin can restrict which workspace service templates (and versions) may be deployed into a
-    # workspace. Validate the requested template name up front so we fail fast without touching the database.
+    # workspace. This is validated in two stages: validate only the template name up front here so we fail
+    # fast without touching the database; the version constraint is validated after the item is created
+    # (below), once the concrete template version has been resolved.
     validate_workspace_service_template_allowed(workspace, workspace_service_input.templateName)
 
     try:
