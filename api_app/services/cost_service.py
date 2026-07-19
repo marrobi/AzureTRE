@@ -474,6 +474,11 @@ class CostService:
             self.__serialize_date(from_date), self.__serialize_date(to_date))
         if persisted is None:
             return None
+        # Only serve finalised (immutable) periods from the durable collection. Still-settling
+        # periods (the current month / month-to-date) are re-queried live so reports never return
+        # stale figures; the in-memory cache still bounds how often that live query runs.
+        if not persisted.final:
+            return None
         columns = [QueryColumn(name=c["name"], type=c["type"]) for c in persisted.columns]
         return QueryResult(columns=columns, rows=[list(r) for r in persisted.rows])
 

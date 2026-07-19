@@ -133,7 +133,7 @@ async def refresh_costs(
         costs_repo=Depends(get_repository(CostsRepository))) -> JSONResponse:
     """Query Azure Cost Management for the given period and persist the results into the
     durable cost collection. Authenticated with the Cost Processor managed identity
-    (TRECostProcessor role); the TRE API is the sole writer of the cost collection.
+    (authorised by its client id); the TRE API is the sole writer of the cost collection.
     """
     validate_report_period(params.from_date, params.to_date)
     try:

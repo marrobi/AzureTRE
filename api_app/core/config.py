@@ -68,6 +68,11 @@ AAD_TENANT_ID: str = config("AAD_TENANT_ID", default="")
 
 API_AUDIENCE: str = config("API_AUDIENCE", default=API_CLIENT_ID)
 
+# Client id of the Cost Processor managed identity. The internal cost refresh endpoint is
+# authorised by matching this against the caller's app-only token, so no Microsoft Graph app
+# role assignment is required (which would need Graph permissions on the deployment identity).
+COST_PROCESSOR_CLIENT_ID: str = config("COST_PROCESSOR_CLIENT_ID", default="")
+
 AIRLOCK_SAS_TOKEN_EXPIRY_PERIOD_IN_HOURS: int = config("AIRLOCK_SAS_TOKEN_EXPIRY_PERIOD_IN_HOURS", default=1)
 ENABLE_AIRLOCK_EMAIL_CHECK: bool = config("ENABLE_AIRLOCK_EMAIL_CHECK", cast=bool, default=False)
 

@@ -1,6 +1,8 @@
 import pytest
 from mock import call, patch
 
+from fastapi import HTTPException, status
+
 from models.domain.authentication import User, RoleAssignment
 from models.domain.workspace_users import AssignmentType, Role
 from models.domain.workspace import Workspace, WorkspaceRole
@@ -842,3 +844,45 @@ def test_compare_versions_greater_than():
 def test_compare_versions_less_than():
     result = compare_versions("1.0.0", "1.1.0")
     assert result < 0
+
+
+def test_validate_service_identity_accepts_matching_app_only_token():
+    access_service = AzureADAuthorization(require_client_id="cost-processor-client-id")
+    decoded = {"azp": "cost-processor-client-id", "oid": "sp-object-id"}
+    with patch("services.aad_authentication.AzureADAuthorization._decode_token", return_value=decoded):
+        user = access_service._validate_service_identity("token")
+    assert user.id == "sp-object-id"
+
+
+def test_validate_service_identity_accepts_appid_claim_for_v1_token():
+    access_service = AzureADAuthorization(require_client_id="cost-processor-client-id")
+    decoded = {"appid": "cost-processor-client-id", "oid": "sp-object-id"}
+    with patch("services.aad_authentication.AzureADAuthorization._decode_token", return_value=decoded):
+        user = access_service._validate_service_identity("token")
+    assert user.id == "sp-object-id"
+
+
+def test_validate_service_identity_rejects_wrong_client_id():
+    access_service = AzureADAuthorization(require_client_id="cost-processor-client-id")
+    decoded = {"azp": "some-other-app", "oid": "sp-object-id"}
+    with patch("services.aad_authentication.AzureADAuthorization._decode_token", return_value=decoded):
+        with pytest.raises(HTTPException) as ex:
+            access_service._validate_service_identity("token")
+    assert ex.value.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_validate_service_identity_rejects_delegated_user_token():
+    access_service = AzureADAuthorization(require_client_id="cost-processor-client-id")
+    # a delegated user token carries an scp claim and must be rejected even if azp matches
+    decoded = {"azp": "cost-processor-client-id", "oid": "user-object-id", "scp": "user_impersonation"}
+    with patch("services.aad_authentication.AzureADAuthorization._decode_token", return_value=decoded):
+        with pytest.raises(HTTPException) as ex:
+            access_service._validate_service_identity("token")
+    assert ex.value.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_validate_service_identity_denies_when_no_client_id_configured():
+    access_service = AzureADAuthorization(require_client_id="")
+    with pytest.raises(HTTPException) as ex:
+        access_service._validate_service_identity("token")
+    assert ex.value.status_code == status.HTTP_403_FORBIDDEN

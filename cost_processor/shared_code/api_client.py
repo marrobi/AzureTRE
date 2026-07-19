@@ -6,9 +6,9 @@ from typing import Optional
 import requests
 from azure.identity import DefaultAzureCredential
 
-# The refresh endpoint is authenticated with the Cost Processor managed identity, which holds
-# the TRECostProcessor application role on the TRE API app registration. We request a token for
-# the API's own audience so the resulting token carries that role in its `roles` claim.
+# The refresh endpoint is authenticated with the Cost Processor managed identity. We request a
+# token for the API's own audience; the API authorises the call by matching the token's client id
+# against the managed identity's client id, so no Microsoft Graph app role assignment is required.
 DEFAULT_HTTP_TIMEOUT = 60
 
 

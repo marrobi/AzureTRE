@@ -9,6 +9,9 @@ locals {
 }
 
 # Managed identity used by the Cost Processor to authenticate to the TRE API.
+# The API authorises the internal cost refresh endpoint by matching this identity's client id
+# against the caller's app-only token, so no Microsoft Graph app role assignment is required
+# (which would otherwise need Graph permissions on the deployment identity).
 resource "azurerm_user_assigned_identity" "cost_processor_id" {
   resource_group_name = azurerm_resource_group.core.name
   location            = azurerm_resource_group.core.location
@@ -16,18 +19,6 @@ resource "azurerm_user_assigned_identity" "cost_processor_id" {
   tags                = local.tre_core_tags
 
   lifecycle { ignore_changes = [tags] }
-}
-
-# Grant the Cost Processor managed identity the TRECostProcessor application role on the API app
-# registration so its tokens carry the role required by the internal cost refresh endpoint.
-data "azuread_service_principal" "api" {
-  client_id = var.api_client_id
-}
-
-resource "azuread_app_role_assignment" "cost_processor_api" {
-  app_role_id         = data.azuread_service_principal.api.app_role_ids["TRECostProcessor"]
-  principal_object_id = azurerm_user_assigned_identity.cost_processor_id.principal_id
-  resource_object_id  = data.azuread_service_principal.api.object_id
 }
 
 resource "azurerm_storage_account" "sa_cost_processor_func_app" {

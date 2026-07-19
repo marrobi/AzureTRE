@@ -975,6 +975,41 @@ async def test_query_tre_costs_reads_from_collection_without_calling_cost_manage
 
 @pytest.mark.asyncio
 @patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_ignores_non_final_collection_period_and_queries_live(
+        get_resource_groups_by_tag_mock, client_mock, shared_service_repo_mock, workspace_repo_mock):
+    # A still-settling (non-final) period must not be served from the durable collection - it is
+    # re-queried live so reports never return stale figures.
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+
+    from models.domain.costs import PersistedCostQueryResult
+    persisted = PersistedCostQueryResult(
+        id="x", partitionKey="guy22/None/month-to-date", tre_id="guy22",
+        scope="/subscriptions/sub1", tag_name="tre_id", tag_value="guy22", granularity=GranularityEnum.none,
+        columns=[{"name": "PreTaxCost", "type": "Number"}, {"name": "ResourceGroup", "type": "String"},
+                 {"name": "Tag", "type": "String"}, {"name": "Currency", "type": "String"}],
+        rows=[[999.9, 'rg-guy22', '"tre_core_service_id":"guy22"', 'USD']],
+        final=False, collected_at="2022-05-01T00:00:00+00:00")
+    costs_repo, _ = __get_costs_repo_mock(persisted=persisted)
+
+    cost_service = CostService()
+    cost_report = await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, datetime.now(), datetime.now(),
+        workspace_repo_mock, shared_service_repo_mock, costs_repo)
+
+    # the stale (non-final) collection value is ignored; a live query is made and its result used
+    client_mock.return_value.query.usage.assert_called()
+    costs_repo.save_cost_query_result.assert_awaited()
+    assert cost_report.core_services[0].cost == 37.6
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
 @patch('services.cost_service.CostManagementClient')
 @patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
 async def test_refresh_costs_persists_each_period(

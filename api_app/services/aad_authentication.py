@@ -41,10 +41,11 @@ class AzureADAuthorization(AccessService):
     require_one_of_roles = None
     aad_instance = config.AAD_AUTHORITY_URL
 
-    TRE_CORE_ROLES = ['TREAdmin', 'TREUser', 'TREAirlockAutomation', 'TRECostProcessor']
+    TRE_CORE_ROLES = ['TREAdmin', 'TREUser', 'TREAirlockAutomation']
     WORKSPACE_ROLES_DICT = {'WorkspaceOwner': 'app_role_id_workspace_owner', 'WorkspaceResearcher': 'app_role_id_workspace_researcher', 'AirlockManager': 'app_role_id_workspace_airlock_manager'}
 
-    def __init__(self, auto_error: bool = True, require_one_of_roles: Optional[list] = None):
+    def __init__(self, auto_error: bool = True, require_one_of_roles: Optional[list] = None,
+                 require_client_id: Optional[str] = None):
         super(AzureADAuthorization, self).__init__(
             authorizationUrl=f"{self.aad_instance}/{config.AAD_TENANT_ID}/oauth2/v2.0/authorize",
             tokenUrl=f"{self.aad_instance}/{config.AAD_TENANT_ID}/oauth2/v2.0/token",
@@ -53,10 +54,17 @@ class AzureADAuthorization(AccessService):
             auto_error=auto_error
         )
         self.require_one_of_roles = require_one_of_roles
+        # When set, the caller is authorised as a service identity (app-only token) whose
+        # client id must match this value, instead of by TRE role membership.
+        self.require_client_id = require_client_id
 
     async def __call__(self, request: Request) -> User:
 
         token: str = await super(AzureADAuthorization, self).__call__(request)
+
+        # Service-to-service (app-only) authorisation by managed identity client id.
+        if self.require_client_id is not None:
+            return self._validate_service_identity(token)
 
         decoded_token = None
 
@@ -146,6 +154,42 @@ class AzureADAuthorization(AccessService):
                     name=decoded_token.get('name', ''),
                     email=decoded_token.get('email', ''),
                     roles=decoded_token.get('roles', []))
+
+    def _validate_service_identity(self, token: str) -> User:
+        """Authorise an app-only (service) token by its client id.
+
+        Used for internal service-to-service calls (for example the Cost Processor's managed
+        identity calling the internal cost refresh endpoint). The token is validated against the
+        TRE API app registration and must be an app-only token whose client id matches the
+        configured value. This avoids requiring a Microsoft Graph app role assignment for the
+        calling identity, which would need Graph permissions on the deployment identity.
+        """
+        # Deny by default when no service client id has been configured.
+        if not self.require_client_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=strings.ACCESS_USER_DOES_NOT_HAVE_REQUIRED_ROLE, headers={"WWW-Authenticate": "Bearer"})
+
+        try:
+            decoded_token = self._decode_token(token, config.API_AUDIENCE)
+        except jwt.exceptions.InvalidSignatureError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.INVALID_SIGNATURE)
+        except jwt.exceptions.ExpiredSignatureError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.EXPIRED_SIGNATURE)
+        except jwt.exceptions.InvalidTokenError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.INVALID_TOKEN)
+        except Exception as e:
+            logger.debug(e)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.AUTH_UNABLE_TO_VALIDATE_TOKEN)
+
+        # Reject delegated (user) tokens - only accept app-only tokens for service auth.
+        if decoded_token.get('scp'):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=strings.ACCESS_USER_DOES_NOT_HAVE_REQUIRED_ROLE, headers={"WWW-Authenticate": "Bearer"})
+
+        # v2 tokens carry the caller's client id in 'azp'; v1 tokens use 'appid'.
+        token_client_id = decoded_token.get('azp') or decoded_token.get('appid')
+        if not token_client_id or token_client_id != self.require_client_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=strings.ACCESS_USER_DOES_NOT_HAVE_REQUIRED_ROLE, headers={"WWW-Authenticate": "Bearer"})
+
+        return User(id=decoded_token.get('oid', token_client_id), name='cost-processor', email='', roles=[])
 
     def _decode_token(self, token: str, ws_app_reg_id: str) -> dict:
         key_id = self._get_key_id(token)

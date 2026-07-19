@@ -21,10 +21,6 @@ terraform {
       source  = "Azure/azapi"
       version = "= 2.8.0"
     }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "= 3.3.0"
-    }
     # tflint-ignore: terraform_unused_required_providers
     cloudinit = {
       source  = "hashicorp/cloudinit"
@@ -36,10 +32,6 @@ terraform {
 }
 
 provider "azapi" {
-  use_msi = var.arm_use_msi
-}
-
-provider "azuread" {
   use_msi = var.arm_use_msi
 }
 

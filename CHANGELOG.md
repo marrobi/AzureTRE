@@ -11,7 +11,7 @@ ENHANCEMENTS:
 * Add support for setting resource processor VMSS SKU via environment variables ([#4936](https://github.com/microsoft/AzureTRE/issues/4936))
 * Exclude recovery service vaults from e2e tests ([#4920](https://github.com/microsoft/AzureTRE/issues/4920))
 * Rename the airlock App Service Plan to a shared core processing plan (`plan-processing-<tre_id>`) so it can host multiple processing Function apps (Airlock Processor and a future Cost Processor), and document the cost data collection architecture ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
-* Add a Cost Processor Function app that authenticates to the TRE API with a managed identity (`TRECostProcessor` app role) to durably collect daily cost data into an API-owned Cosmos collection, enabling multi-year cost reports without repeatedly querying Azure Cost Management ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
+* Add a Cost Processor Function app that authenticates to the TRE API with a managed identity (authorised by its client id, requiring no additional Microsoft Graph permissions on the deployment identity) to durably collect daily cost data into an API-owned Cosmos collection, enabling multi-year cost reports without repeatedly querying Azure Cost Management ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**

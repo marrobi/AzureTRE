@@ -46,7 +46,7 @@ To address both, TRE **collects and persists** cost data in a dedicated Cosmos D
 | --- | --- |
 | **Cost Processor** (Azure Function app) | Runs on a schedule (timer triggers), queries Azure Cost Management, and writes the results into the cost collection via the TRE API. It does **not** write to Cosmos directly. |
 | **Cost collection** (Cosmos DB) | Durable store of collected cost rows (daily granularity) plus, in future, budgets and manual adjustments. The TRE API is the only writer. |
-| **TRE API** (`/costs`, `/workspaces/{id}/costs`) | Serves cost reports **cache-first** from the cost collection. It only calls Cost Management directly as a cold-start fallback when a requested period has not yet been collected. |
+| **TRE API** (`/costs`, `/workspaces/{id}/costs`) | Serves cost reports **cache-first** from the cost collection for **finalised** (completed-month) periods. The still-settling current month is always resolved with a live Cost Management query, and any not-yet-collected finalised period is fetched live once and then persisted. |
 
 Keeping the API as the sole writer to Cosmos means all validation and business rules live in one place. This matters for planned features such as manually **marking up or amending** cost data and tracking spend against **soft/hard budgets**, which must go through the same validated API surface.
 

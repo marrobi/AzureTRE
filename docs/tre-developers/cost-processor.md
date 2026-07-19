@@ -64,13 +64,19 @@ depend on this single-writer discipline to keep the collection consistent.
 ### Managed identity authentication
 
 The Cost Processor authenticates to the API with a user-assigned managed
-identity. During core deployment Terraform creates the identity and assigns it
-the `TRECostProcessor` application role on the API app registration (via the
-`azuread` provider), so tokens it requests for the API's audience carry that role
-in their `roles` claim. The internal refresh endpoint validates this role, the
-same mechanism used for the Airlock automation identity. Assigning the app role
-requires the deployment identity to have Microsoft Graph
-`AppRoleAssignment.ReadWrite.All` (and `Application.Read.All`) permission.
+identity. During core deployment Terraform creates the identity, and the API is
+told the identity's **client id** (via an app setting). The processor uses the
+identity to request an app-only token for the API's own audience, and the
+internal refresh endpoint authorises the call by matching the token's client id
+against that configured value.
+
+This deliberately does **not** use a Microsoft Graph *application role
+assignment*. Assigning an app role requires `AppRoleAssignment.ReadWrite.All`
+Graph permission, and in many tenants the automated deployment identity is not
+(and cannot be) granted Graph write permissions — app registrations are staged
+separately by an Entra administrator. Authorising by client id keeps all Graph
+operations out of the core Terraform deployment: **no additional Graph
+permissions are required to deploy the Cost Processor.**
 
 ## Refresh cadence and latency
 
@@ -96,10 +102,13 @@ window are exposed as app settings.
 ## Read path
 
 `GET /api/costs` and `GET /api/workspaces/{id}/costs` resolve each (split)
-sub-period from the cost collection first. Only if a requested period has not yet
-been collected does the API fall back to a single live Cost Management query and
-persist the result, so the endpoints remain correct on a cold start while
-avoiding Cost Management on the common path.
+sub-period from the cost collection first, but **only finalised** (immutable,
+completed-month) periods are served from it. Still-settling periods — the current
+month / month-to-date — are always resolved with a live Cost Management query
+(bounded by the short in-memory cache) so reports never return stale current-month
+figures. If a requested finalised period has not yet been collected, the API
+falls back to a single live query and persists the result, so the endpoints
+remain correct on a cold start while avoiding Cost Management on the common path.
 
 ## Out of scope / future work
 
