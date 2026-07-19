@@ -1026,3 +1026,133 @@ async def test_refresh_costs_persists_each_period(
 
     assert collected >= 1
     costs_repo.save_cost_query_result.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_refresh_costs_marks_completed_month_as_final(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    # a month that ended before the start of the current month is complete and immutable
+    completed_month_end = datetime.now().replace(day=1) - timedelta(days=1)
+    completed_month_start = completed_month_end.replace(day=1)
+
+    cost_service = CostService()
+    await cost_service.refresh_costs(
+        "guy22", GranularityEnum.daily, completed_month_start, completed_month_end,
+        workspace_repo_mock, costs_repo)
+
+    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is True
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_refresh_costs_month_to_date_is_not_final(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    cost_service = CostService()
+    # no dates => month-to-date, still settling, must never be marked final
+    collected = await cost_service.refresh_costs(
+        "guy22", GranularityEnum.daily, None, None, workspace_repo_mock, costs_repo)
+
+    assert collected == 1
+    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is False
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_refresh_costs_multi_year_persists_one_document_per_split_period(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    from_date = datetime(2022, 1, 1)
+    to_date = datetime(2025, 1, 1)
+
+    cost_service = CostService()
+    expected_periods = cost_service.split_query_period(from_date, to_date)
+    assert len(expected_periods) > 1
+
+    collected = await cost_service.refresh_costs(
+        "guy22", GranularityEnum.daily, from_date, to_date, workspace_repo_mock, costs_repo)
+
+    assert collected == len(expected_periods)
+    assert costs_repo.save_cost_query_result.await_count == len(expected_periods)
+
+
+@patch('services.cost_service.CostManagementClient')
+async def test_is_period_final_true_only_for_completed_months(client_mock):
+    cost_service = CostService()
+    start_of_month = datetime.now().replace(day=1)
+
+    # month-to-date (no end date) is never final
+    assert cost_service._CostService__is_period_final(None) is False
+    # a day within the current month is not final
+    assert cost_service._CostService__is_period_final(start_of_month) is False
+    # a future period is not final
+    assert cost_service._CostService__is_period_final(start_of_month + timedelta(days=40)) is False
+    # the last day of the previous month is final
+    assert cost_service._CostService__is_period_final(start_of_month - timedelta(days=1)) is True
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_persists_completed_period_as_final(
+        get_resource_groups_by_tag_mock, client_mock, shared_service_repo_mock, workspace_repo_mock):
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    completed_month_end = datetime.now().replace(day=1) - timedelta(days=1)
+    completed_month_start = completed_month_end.replace(day=1)
+
+    cost_service = CostService()
+    await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, completed_month_start, completed_month_end,
+        workspace_repo_mock, shared_service_repo_mock, costs_repo)
+
+    # a completed period queried live is written back to the collection as final
+    costs_repo.save_cost_query_result.assert_awaited()
+    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is True
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_without_repo_still_queries_live(
+        get_resource_groups_by_tag_mock, client_mock, shared_service_repo_mock, workspace_repo_mock):
+    # costs_repo is optional; omitting it must not break the live query path
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+
+    cost_service = CostService()
+    cost_report = await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, None, None, workspace_repo_mock, shared_service_repo_mock)
+
+    client_mock.return_value.query.usage.assert_called()
+    assert cost_report.core_services[0].cost == 37.6
