@@ -907,3 +907,87 @@ async def test_subscription_id_skips_workspaces_without_id(get_resource_groups_b
 
     called_sub_ids = set(call.args[2] for call in get_resource_groups_by_tag_mock.call_args_list)
     assert called_sub_ids == {"default-sub-id"}
+
+
+def __get_costs_repo_mock(persisted=None):
+    from db.repositories.costs import CostsRepository
+    from models.domain.costs import PersistedCostQueryResult
+    costs_repo = AsyncMock(spec=CostsRepository)
+    costs_repo.get_cost_query_result.return_value = persisted
+    costs_repo.save_cost_query_result.return_value = None
+    return costs_repo, PersistedCostQueryResult
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_persists_live_result_to_collection(
+        get_resource_groups_by_tag_mock, client_mock, shared_service_repo_mock, workspace_repo_mock):
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    cost_service = CostService()
+    await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, datetime.now(), datetime.now(),
+        workspace_repo_mock, shared_service_repo_mock, costs_repo)
+
+    # collection was consulted and then populated on the miss
+    costs_repo.get_cost_query_result.assert_awaited()
+    costs_repo.save_cost_query_result.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_reads_from_collection_without_calling_cost_management(
+        get_resource_groups_by_tag_mock, client_mock, shared_service_repo_mock, workspace_repo_mock):
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+
+    from models.domain.costs import PersistedCostQueryResult
+    persisted = PersistedCostQueryResult(
+        id="x", partitionKey="guy22/None/month-to-date", tre_id="guy22",
+        scope="/subscriptions/sub1", tag_name="tre_id", tag_value="guy22", granularity=GranularityEnum.none,
+        columns=[{"name": "PreTaxCost", "type": "Number"}, {"name": "ResourceGroup", "type": "String"},
+                 {"name": "Tag", "type": "String"}, {"name": "Currency", "type": "String"}],
+        rows=[[37.6, 'rg-guy22', '"tre_core_service_id":"guy22"', 'USD']],
+        final=True, collected_at="2022-05-01T00:00:00+00:00")
+    costs_repo, _ = __get_costs_repo_mock(persisted=persisted)
+
+    cost_service = CostService()
+    cost_report = await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, datetime.now(), datetime.now(),
+        workspace_repo_mock, shared_service_repo_mock, costs_repo)
+
+    # served from the collection; no live query, no write
+    client_mock.return_value.query.usage.assert_not_called()
+    costs_repo.save_cost_query_result.assert_not_awaited()
+    assert cost_report.core_services[0].cost == 37.6
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_refresh_costs_persists_each_period(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    cost_service = CostService()
+    collected = await cost_service.refresh_costs(
+        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
+        workspace_repo_mock, costs_repo)
+
+    assert collected >= 1
+    costs_repo.save_cost_query_result.assert_awaited()

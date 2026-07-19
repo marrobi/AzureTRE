@@ -96,6 +96,41 @@ class CostRow(BaseModel):
     date: Optional[date]
 
 
+class CostItemType(StrEnum):
+    """Discriminates item types stored in the durable cost collection.
+
+    The collection is designed to also hold budgets and manual cost adjustments in
+    future; the item-type field keeps those separate from collected cost rows.
+    """
+    cost_query_result = "cost-query-result"
+
+
+class PersistedCostQueryResult(BaseModel):
+    """A single (already split) Cost Management query period persisted in the
+    durable cost collection.
+
+    The TRE API is the sole writer of this collection. Documents are keyed by a
+    deterministic id derived from the query parameters so repeated refreshes of the
+    same period overwrite rather than duplicate. ``final`` marks periods that belong
+    to completed (immutable) months and therefore never need re-querying.
+    """
+    id: str
+    partitionKey: str
+    itemType: CostItemType = CostItemType.cost_query_result
+    tre_id: str
+    scope: str
+    tag_name: str
+    tag_value: str
+    granularity: GranularityEnum
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    resource_groups: List[str] = []
+    columns: List[dict] = []
+    rows: List[list] = []
+    final: bool = False
+    collected_at: str
+
+
 class CostItem(BaseModel):
     id: str
     name: str

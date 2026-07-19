@@ -6,13 +6,14 @@ import pandas as pd
 
 from azure.mgmt.costmanagement import CostManagementClient
 from azure.mgmt.costmanagement.models import QueryGrouping, QueryAggregation, QueryDataset, QueryDefinition, \
-    TimeframeType, ExportType, QueryTimePeriod, QueryFilter, QueryComparisonExpression, QueryResult
+    TimeframeType, ExportType, QueryTimePeriod, QueryFilter, QueryComparisonExpression, QueryResult, QueryColumn
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 
 from azure.mgmt.resource import ResourceManagementClient
 
 from core import config, credentials
 from db.errors import EntityDoesNotExist
+from db.repositories.costs import CostsRepository
 from db.repositories.shared_services import SharedServiceRepository
 from db.repositories.user_resources import UserResourceRepository
 from db.repositories.workspace_services import WorkspaceServiceRepository
@@ -156,7 +157,8 @@ class CostService:
 
     async def query_tre_costs(self, tre_id, granularity: GranularityEnum, from_date: datetime, to_date: datetime,
                               workspace_repo: WorkspaceRepository,
-                              shared_services_repo: SharedServiceRepository) -> CostReport:
+                              shared_services_repo: SharedServiceRepository,
+                              costs_repo: Optional[CostsRepository] = None) -> CostReport:
 
         subscription_ids = {config.SUBSCRIPTION_ID}
 
@@ -169,7 +171,7 @@ class CostService:
         for subscription_id in subscription_ids:
             resource_groups_dict[subscription_id] = self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id)
 
-            query_result = self.query_costs(CostService.TRE_ID_TAG, tre_id, granularity, from_date, to_date, list(resource_groups_dict[subscription_id].keys()), subscription_id)
+            query_result = await self.query_costs(CostService.TRE_ID_TAG, tre_id, granularity, from_date, to_date, list(resource_groups_dict[subscription_id].keys()), subscription_id, costs_repo)
 
             #  append the result to the summarized result
             summarized_result.extend(self.summarize_untagged(query_result, granularity, resource_groups_dict[subscription_id]))
@@ -207,7 +209,8 @@ class CostService:
                                         to_date: Optional[datetime],
                                         workspace_repo: WorkspaceRepository,
                                         workspace_services_repo: WorkspaceServiceRepository,
-                                        user_resource_repo) -> WorkspaceCostReport:
+                                        user_resource_repo,
+                                        costs_repo: Optional[CostsRepository] = None) -> WorkspaceCostReport:
 
         resource_groups_dict = self.get_resource_groups_by_tag(self.TRE_WORKSPACE_ID_TAG, workspace_id)
 
@@ -224,7 +227,7 @@ class CostService:
             except EntityDoesNotExist:
                 raise WorkspaceDoesNotExist(f"workspace_id [{workspace_id}] does not exist")
 
-        query_result = self.query_costs(CostService.TRE_WORKSPACE_ID_TAG, workspace_id, granularity, from_date, to_date, list(resource_groups_dict.keys()), subscription_id)
+        query_result = await self.query_costs(CostService.TRE_WORKSPACE_ID_TAG, workspace_id, granularity, from_date, to_date, list(resource_groups_dict.keys()), subscription_id, costs_repo)
 
         summarized_result = self.summarize_untagged(query_result, granularity, resource_groups_dict)
         query_result_dict = self.__query_result_to_dict(summarized_result, granularity)
@@ -397,11 +400,12 @@ class CostService:
                 f"_from_date{from_date}_to_date{to_date}"
                 f"_scope{scope}_rgs{'_'.join(resource_groups)}")
 
-    def query_costs(self, tag_name: str, tag_value: str,
-                    granularity: GranularityEnum, from_date: Optional[datetime],
-                    to_date: Optional[datetime],
-                    resource_groups: list,
-                    subscription_id: Optional[str] = None) -> QueryResult:
+    async def query_costs(self, tag_name: str, tag_value: str,
+                          granularity: GranularityEnum, from_date: Optional[datetime],
+                          to_date: Optional[datetime],
+                          resource_groups: list,
+                          subscription_id: Optional[str] = None,
+                          costs_repo: Optional[CostsRepository] = None) -> QueryResult:
 
         scope = "/subscriptions/{}".format(subscription_id) if subscription_id else self.scope
 
@@ -410,11 +414,26 @@ class CostService:
             cache_key = self.build_query_cache_key(
                 tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
 
+            # 1) in-memory cache (fastest)
             period_result = self.get_cached_result(cache_key)
+
+            # 2) durable cost collection (cache-first read-through)
+            if period_result is None and costs_repo is not None:
+                period_result = await self.__get_period_from_collection(
+                    costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date, scope)
+                if period_result is not None:
+                    self.cache_result(cache_key, period_result, CostService.CACHE_TTL)
+
+            # 3) live Cost Management query (and persist so subsequent reads avoid Cost Management)
             if period_result is None:
                 period_result = self.query_costs_period(
                     tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
                 self.cache_result(cache_key, period_result, CostService.CACHE_TTL)
+                if costs_repo is not None:
+                    await self.__persist_period(
+                        costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date,
+                        resource_groups, scope, period_result,
+                        final=self.__is_period_final(period_to_date))
 
             if merged_result is None:
                 # start from a fresh QueryResult so cached period results are never mutated while merging
@@ -425,6 +444,80 @@ class CostService:
                 merged_result.rows.extend(period_result.rows)
 
         return merged_result
+
+    @staticmethod
+    def __serialize_date(value: Optional[datetime]) -> Optional[str]:
+        return value.date().isoformat() if value is not None else None
+
+    @staticmethod
+    def __is_period_final(period_to_date: Optional[datetime]) -> bool:
+        """A period is final (immutable) once it ends before the start of the current month.
+
+        Data for the current month is still settling, so month-to-date (no end date) and
+        any period ending within the current month are never marked final.
+        """
+        if period_to_date is None:
+            return False
+        today = datetime.now().date()
+        start_of_month = today.replace(day=1)
+        return period_to_date.date() < start_of_month
+
+    @staticmethod
+    def __serialize_columns(columns) -> List[dict]:
+        return [{"name": c.name, "type": c.type} for c in (columns or [])]
+
+    async def __get_period_from_collection(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
+                                           granularity: GranularityEnum, from_date: Optional[datetime],
+                                           to_date: Optional[datetime], scope: str) -> Optional[QueryResult]:
+        persisted = await costs_repo.get_cost_query_result(
+            config.TRE_ID, scope, tag_name, tag_value, granularity,
+            self.__serialize_date(from_date), self.__serialize_date(to_date))
+        if persisted is None:
+            return None
+        columns = [QueryColumn(name=c["name"], type=c["type"]) for c in persisted.columns]
+        return QueryResult(columns=columns, rows=[list(r) for r in persisted.rows])
+
+    async def __persist_period(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
+                               granularity: GranularityEnum, from_date: Optional[datetime],
+                               to_date: Optional[datetime], resource_groups: list, scope: str,
+                               period_result: QueryResult, final: bool) -> None:
+        await costs_repo.save_cost_query_result(
+            tre_id=config.TRE_ID,
+            scope=scope,
+            tag_name=tag_name,
+            tag_value=tag_value,
+            granularity=granularity,
+            from_date=self.__serialize_date(from_date),
+            to_date=self.__serialize_date(to_date),
+            resource_groups=list(resource_groups),
+            columns=self.__serialize_columns(period_result.columns),
+            rows=[list(r) for r in (period_result.rows or [])],
+            final=final)
+
+    async def refresh_costs(self, tre_id: str, granularity: GranularityEnum, from_date: Optional[datetime],
+                            to_date: Optional[datetime], workspace_repo: WorkspaceRepository,
+                            costs_repo: CostsRepository) -> int:
+        """Query Cost Management for the given period and persist each (split) sub-period into
+        the durable cost collection. Returns the number of sub-periods collected.
+
+        This is the only path that writes collected cost rows; it is invoked by the internal,
+        managed-identity-authenticated refresh endpoint used by the Cost Processor.
+        """
+        subscription_ids = {config.SUBSCRIPTION_ID}
+        subscription_ids.update(await self.__get_workspace_subscription_ids(workspace_repo))
+
+        collected = 0
+        for subscription_id in subscription_ids:
+            resource_groups = list(self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id).keys())
+            scope = "/subscriptions/{}".format(subscription_id)
+            for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
+                period_result = self.query_costs_period(
+                    self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date, resource_groups, scope)
+                await self.__persist_period(
+                    costs_repo, self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date,
+                    resource_groups, scope, period_result, final=self.__is_period_final(period_to_date))
+                collected += 1
+        return collected
 
     def query_costs_period(self, tag_name: str, tag_value: str,
                            granularity: GranularityEnum, from_date: Optional[datetime],

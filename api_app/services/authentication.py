@@ -55,3 +55,8 @@ get_current_workspace_owner_or_researcher_user_or_airlock_manager_or_tre_admin =
 
 
 get_current_workspace_owner_or_tre_admin = AzureADAuthorization(require_one_of_roles=["TREAdmin", "WorkspaceOwner"])
+
+
+# Used to authenticate the background Cost Processor to the internal cost refresh endpoint
+# using its managed identity (which holds the TRECostProcessor application role).
+get_current_cost_processor = AzureADAuthorization(require_one_of_roles=['TRECostProcessor'])
