@@ -30,6 +30,12 @@ The following diagram shows the Azure components deployed as part of a typical T
 
 For a full breakdown of Azure Resources see [Azure TRE Resources Breakdown](tre-resources-breakdown.md)
 
+## Cost Reporting and Collection
+
+TRE collects and persists Azure Cost Management data into a dedicated Cosmos DB cost collection so that cost reports can be served quickly (avoiding Cost Management rate limits on the request path) and cost history can be retained beyond the 13 months that Cost Management keeps.
+A **Cost Processor** Function app periodically queries Cost Management and writes results through the TRE API, which remains the sole writer to the collection.
+The Cost Processor shares the core **processing** App Service Plan (`plan-processing-<tre_id>`) with the **Airlock Processor**. See [Cost Reporting](cost-reporting.md) for details.
+
 ## Composition Service
 
 The Composition Service is responsible for managing and mutating Workspaces and Workspace Services. It consists of multiple components:

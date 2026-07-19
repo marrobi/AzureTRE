@@ -31,6 +31,45 @@ The Azure TRE user interface displays cost labels on resource cards to provide q
 - Cost data is typically available within 8-24 hours from Azure Cost Management
 - If cost data is not yet available, a clock icon is displayed with a tooltip
 
+## Cost data persistence and collection
+
+Azure Cost Management is the source of truth for consumption costs, but it has two properties that make querying it directly on every API request problematic:
+
+- **Rate limiting** – the Cost Management Query API throttles frequent callers (HTTP 429). A burst of TRE Admins or Workspace Owners opening cost reports can exhaust the quota and cause errors and delays.
+- **Limited history** – only the last 13 months of data is available from the Query API, so it cannot answer questions such as "what did this workspace cost over the last three years?".
+
+To address both, TRE **collects and persists** cost data in a dedicated Cosmos DB collection rather than treating Cost Management as a live backend for every request. This is a *cost collection*, not a short-lived cache: once a period has been retrieved it is retained, so history accumulates well beyond the 13 months that Cost Management itself retains.
+
+### Components
+
+| Component | Responsibility |
+| --- | --- |
+| **Cost Processor** (Azure Function app) | Runs on a schedule (timer triggers), queries Azure Cost Management, and writes the results into the cost collection via the TRE API. It does **not** write to Cosmos directly. |
+| **Cost collection** (Cosmos DB) | Durable store of collected cost rows (daily granularity) plus, in future, budgets and manual adjustments. The TRE API is the only writer. |
+| **TRE API** (`/costs`, `/workspaces/{id}/costs`) | Serves cost reports **cache-first** from the cost collection. It only calls Cost Management directly as a cold-start fallback when a requested period has not yet been collected. |
+
+Keeping the API as the sole writer to Cosmos means all validation and business rules live in one place. This matters for planned features such as manually **marking up or amending** cost data and tracking spend against **soft/hard budgets**, which must go through the same validated API surface.
+
+### Refresh cadence and reporting latency
+
+The Cost Processor uses a **latency-aware**, tiered schedule rather than polling aggressively. This is deliberate: Azure Cost Management only re-processes cost data on a roughly daily cycle, and usage for a given day continues to be re-rated for a day or two after it first appears. Consequently:
+
+- Cost figures **lag actual usage by approximately 24–48 hours**, and this latency is set by Azure – it **cannot** be reduced by querying more frequently.
+- Polling more often than the data changes returns identical numbers and only increases the risk of throttling.
+
+| Data segment | Volatility | Refresh cadence |
+| --- | --- | --- |
+| Current month (incl. last few days) | Still settling | Every ~6 hours (timer) |
+| Just-closed previous month (first few days of the new month) | Settling | Daily sweep until finalised |
+| Older, completed months | Immutable | Collected once, then retained indefinitely |
+
+Because completed months are immutable, the vast majority of a multi-year report is served entirely from the collection; only the current month is ever re-queried, and only by the background Cost Processor rather than by user requests. The schedules and the prior-month look-back window are configurable via app settings.
+
+> **Note:** Because Cost Management is structurally 24–48 hours behind, cost reporting is **not** a suitable near-real-time control for catching an expensive resource (for example a high-cost VM) shortly after it starts. Use Azure Budgets/alerts, showing the resource's price per hour at provisioning time, and auto-shutdown for that purpose. These are tracked as separate work.
+
+### Hosting
+
+The Cost Processor Function app runs on the shared **core processing** App Service Plan (`plan-processing-<tre_id>`). This plan is named after its role rather than a single app because it hosts more than one appropriately-named Function app – currently the **Airlock Processor** and the **Cost Processor** – avoiding the cost of a dedicated plan for the light, periodic cost-collection workload.
 
 ## Get overall cost report
 
@@ -127,7 +166,9 @@ GET /api/workspaces/{workspace_id}/costs
 
 * Cost and usage data is typically available in Cost Management within 8-24 hours.
 
-* Azure Cost Management only supports custom time periods of up to one year per query. To generate reports spanning more than a year, the TRE Cost API automatically splits the requested period into consecutive sub-periods of up to one year and merges the results. Each queried sub-period is cached for a short period, so overlapping reports (for example extending a report's end date) reuse already retrieved sub-periods instead of re-querying Cost Management. Note that only the last 13 months of data is available from Cost Management (see below), so older sub-periods will return no data.
+* Azure Cost Management only supports custom time periods of up to one year per query. To generate reports spanning more than a year, the TRE Cost API automatically splits the requested period into consecutive sub-periods of up to one year and merges the results.
+Each queried sub-period is stored in the durable [cost collection](#cost-data-persistence-and-collection) and retained, so overlapping or repeated reports reuse already collected sub-periods instead of re-querying Cost Management.
+Note that Cost Management itself only returns the last 13 months of data (see below), so sub-periods older than that are populated by the Cost Processor as they are collected over time rather than back-filled from Cost Management.
 
 * Tags aren't applied to historical data, template authors need to make sure all relevant [Azure resources of a TRE resource are tagged as instructed](#azure-resources-tagging).
 
