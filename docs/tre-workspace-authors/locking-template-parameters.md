@@ -95,7 +95,7 @@ If you want the person deploying the resource to **choose** a value at create ti
 
 * `const` — the author fixes the value; the deployer can never change it.
 * `updateable: false` — the deployer picks the value at create time; it is then locked.
-* `updateable: true` (or omitted as truthy where relevant) — the deployer can change the value later.
+* `updateable: true` — the deployer can change the value later. If `updateable` is omitted it defaults to `false`, so the value is settable at create time and then locked (equivalent to `updateable: false`).
 
 ## Summary
 
