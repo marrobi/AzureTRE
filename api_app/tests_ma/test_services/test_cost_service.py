@@ -365,6 +365,7 @@ async def test_query_tre_costs_with_dates_set_as_none_calls_client_with_custom_d
     assert query_definition.time_period.to == to_date
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("from_date,to_date", [(None, None), (None, datetime(2022, 1, 1)), (datetime(2022, 1, 1), None)])
 @patch('services.cost_service.CostManagementClient')
 async def test_split_query_period_returns_single_period_for_month_to_date(client_mock, from_date, to_date):
@@ -375,6 +376,7 @@ async def test_split_query_period_returns_single_period_for_month_to_date(client
     assert periods == [(from_date, to_date)]
 
 
+@pytest.mark.asyncio
 @patch('services.cost_service.CostManagementClient')
 async def test_split_query_period_returns_single_period_for_less_than_a_year(client_mock):
     cost_service = CostService()
@@ -386,6 +388,7 @@ async def test_split_query_period_returns_single_period_for_less_than_a_year(cli
     assert periods == [(from_date, to_date)]
 
 
+@pytest.mark.asyncio
 @patch('services.cost_service.CostManagementClient')
 async def test_split_query_period_splits_multi_year_range_into_non_overlapping_periods(client_mock):
     cost_service = CostService()

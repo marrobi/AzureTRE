@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from enum import Enum
 from functools import lru_cache
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 import pandas as pd
 
 from azure.mgmt.costmanagement import CostManagementClient
@@ -89,6 +89,9 @@ class CostService:
     TRE_UNTAGGED: str = ""
     RATE_LIMIT_RETRY_AFTER_HEADER_KEY: str = "x-ms-ratelimit-microsoft.costmanagement-entity-retry-after"
     SERVICE_UNAVAILABLE_RETRY_AFTER_HEADER_KEY: str = "Retry-After"
+    # Azure Cost Management Query API does not accept custom time periods longer than one year,
+    # so longer report periods have to be split into several queries and merged together.
+    MAX_QUERY_PERIOD: timedelta = timedelta(days=364)
 
     def __init__(self) -> None:
         self.scope = "/subscriptions/{}".format(config.SUBSCRIPTION_ID)
@@ -368,11 +371,7 @@ class CostService:
 
         return cost_rows
 
-    # Azure Cost Management Query API does not accept custom time periods longer than one year,
-    # so longer report periods have to be split into several queries and merged together.
-    MAX_QUERY_PERIOD: timedelta = timedelta(days=364)
-
-    def split_query_period(self, from_date: Optional[datetime], to_date: Optional[datetime]) -> list:
+    def split_query_period(self, from_date: Optional[datetime], to_date: Optional[datetime]) -> List[Tuple[Optional[datetime], Optional[datetime]]]:
         """Splits a custom report period into a list of (from, to) periods no longer than one year each.
 
         Azure Cost Management only supports custom time periods of up to one year per query, so reports
