@@ -37,6 +37,30 @@ variable "api_image_repository" {
   default     = "microsoft/azuretre/api"
 }
 
+variable "cost_processor_image_repository" {
+  type        = string
+  description = "Repository for Cost processor image"
+  default     = "microsoft/azuretre/cost-processor"
+}
+
+variable "cost_processor_current_month_schedule" {
+  type        = string
+  description = "NCRONTAB schedule for refreshing the current (month-to-date) cost data"
+  default     = "0 0 */6 * * *"
+}
+
+variable "cost_processor_previous_month_schedule" {
+  type        = string
+  description = "NCRONTAB schedule for finalising recently-closed month(s) of cost data"
+  default     = "0 30 2 * * *"
+}
+
+variable "cost_processor_previous_months_look_back" {
+  type        = number
+  description = "How many recently-closed months the cost processor re-queries until Azure finishes re-rating them"
+  default     = 1
+}
+
 variable "core_app_service_plan_sku" {
   type    = string
   default = "P1v3"

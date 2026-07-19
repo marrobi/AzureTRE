@@ -61,6 +61,17 @@ the API keeps validation and business rules in one place. Planned features such
 as marking up/amending cost data and tracking spend against soft/hard budgets
 depend on this single-writer discipline to keep the collection consistent.
 
+### Managed identity authentication
+
+The Cost Processor authenticates to the API with a user-assigned managed
+identity. During core deployment Terraform creates the identity and assigns it
+the `TRECostProcessor` application role on the API app registration (via the
+`azuread` provider), so tokens it requests for the API's audience carry that role
+in their `roles` claim. The internal refresh endpoint validates this role, the
+same mechanism used for the Airlock automation identity. Assigning the app role
+requires the deployment identity to have Microsoft Graph
+`AppRoleAssignment.ReadWrite.All` (and `Application.Read.All`) permission.
+
 ## Refresh cadence and latency
 
 Cost Management data settles slowly: usage typically appears 8–24 hours after
@@ -92,8 +103,10 @@ avoiding Cost Management on the common path.
 
 ## Out of scope / future work
 
-- Implementation of the Cost Processor Function app, the cost collection and its
-  repository, the internal refresh endpoint, and the API read-through.
+The Cost Processor Function app, the cost collection and its repository, the
+internal managed-identity refresh endpoint, and the API read-through are
+implemented. Remaining future work:
+
 - Budgets (soft/hard) and spend tracking, and manual cost mark-up/adjustments.
 - Near-real-time expensive-resource controls (Azure Budgets/alerts, per-hour price
   display at provisioning, auto-shutdown) — cost reporting is too slow for this.

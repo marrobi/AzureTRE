@@ -34,6 +34,10 @@ output "airlock_processor_subnet_id" {
   value = "${azurerm_virtual_network.core.id}/subnets/AirlockProcessorSubnet"
 }
 
+output "cost_processor_subnet_id" {
+  value = "${azurerm_virtual_network.core.id}/subnets/CostProcessorSubnet"
+}
+
 output "airlock_notification_subnet_id" {
   value = "${azurerm_virtual_network.core.id}/subnets/AirlockNotifiactionSubnet"
 }
