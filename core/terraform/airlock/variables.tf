@@ -39,9 +39,9 @@ variable "acr_id" {
   description = "ACR ID"
 }
 
-variable "airlock_app_service_plan_sku" {
-  type    = string
-  default = "P1v3"
+variable "service_plan_id" {
+  type        = string
+  description = "Resource ID of the shared core processing App Service Plan that hosts the airlock processor function app."
 }
 
 variable "airlock_processor_subnet_id" {

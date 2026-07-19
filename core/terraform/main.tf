@@ -153,7 +153,7 @@ module "airlock_resources" {
   docker_registry_server                = local.docker_registry_server
   acr_id                                = data.azurerm_container_registry.acr.id
   api_principal_id                      = azurerm_user_assigned_identity.id.principal_id
-  airlock_app_service_plan_sku          = var.core_app_service_plan_sku
+  service_plan_id                       = azurerm_service_plan.processing.id
   airlock_processor_subnet_id           = module.network.airlock_processor_subnet_id
   airlock_servicebus                    = azurerm_servicebus_namespace.sb
   airlock_servicebus_fqdn               = azurerm_servicebus_namespace.sb.endpoint
