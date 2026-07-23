@@ -8,6 +8,7 @@ import uuid
 
 class GranularityEnum(StrEnum):
     daily = "Daily"
+    monthly = "Monthly"
     none = "None"
 
 

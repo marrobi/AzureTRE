@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional, Tuple
 
@@ -9,6 +10,22 @@ from azure.identity import DefaultAzureCredential
 # Authenticate to the refresh endpoint with the Cost Processor managed identity: request a
 # token for the API's own audience; the API authorises by matching the token's client id.
 DEFAULT_HTTP_TIMEOUT = 60
+
+# How many times a single month is retried while the API/Cost Management is throttling (429)
+# before the backfill run gives up and fails (to be resumed on its next schedule).
+BACKFILL_THROTTLE_MAX_RETRIES = 6
+
+# Stop the history walk only after this many *consecutive* empty months, so a single idle
+# (zero-cost) month mid-history doesn't prematurely end the backfill and leave older data behind.
+BACKFILL_STOP_AFTER_EMPTY_MONTHS = 2
+
+
+class CostRefreshThrottled(Exception):
+    """Raised when the refresh endpoint reports throttling (HTTP 429); carries retry-after seconds."""
+
+    def __init__(self, retry_after: int) -> None:
+        super().__init__(f"cost refresh throttled, retry after {retry_after}s")
+        self.retry_after = retry_after
 
 
 def get_credential() -> DefaultAzureCredential:
@@ -43,9 +60,9 @@ def refresh_period(from_date: Optional[date], to_date: Optional[date], granulari
     token = get_access_token(api_client_id)
     params = {"granularity": granularity}
     if from_date is not None:
-        params["from_date"] = from_date.isoformat()
+        params["from_date"] = from_date.isoformat() + "T00:00:00Z"
     if to_date is not None:
-        params["to_date"] = to_date.isoformat()
+        params["to_date"] = to_date.isoformat() + "T00:00:00Z"
 
     response = requests.post(
         f"{api_url}/api/internal/costs/refresh",
@@ -53,9 +70,20 @@ def refresh_period(from_date: Optional[date], to_date: Optional[date], granulari
         headers={"Authorization": "Bearer " + token},
         timeout=DEFAULT_HTTP_TIMEOUT,
     )
+    if response.status_code == 429:
+        # Cost Management is throttling; surface the retry-after so the caller can wait it out
+        # rather than treating it as a hard failure.
+        raise CostRefreshThrottled(_retry_after_seconds(response))
     response.raise_for_status()
     logging.info("Cost refresh for period %s -> %s returned %s", from_date, to_date, response.status_code)
     return response.json() if response.content else {}
+
+
+def _retry_after_seconds(response, default: int = 60) -> int:
+    try:
+        return int(response.headers.get("Retry-After", default))
+    except (TypeError, ValueError):
+        return default
 
 
 def refresh_current_month() -> dict:
@@ -77,3 +105,62 @@ def refresh_previous_months(look_back_months: int = 1) -> None:
         refresh_period(month_first, next_first - timedelta(days=1), granularity="Daily")
         # move to the last day of the preceding month
         month_end = month_first - timedelta(days=1)
+
+
+def _refresh_month_with_retry(month_first: date, month_last: date,
+                              max_retries: int = BACKFILL_THROTTLE_MAX_RETRIES) -> dict:
+    """Refresh a single month, waiting out throttling (429) up to ``max_retries`` times.
+
+    Only throttling is retried; any other error propagates so the backfill run fails loudly
+    (and resumes on its next schedule) rather than silently skipping - and gapping - a month.
+    """
+    attempt = 0
+    while True:
+        try:
+            return refresh_period(month_first, month_last, granularity="Daily")
+        except CostRefreshThrottled as throttled:
+            attempt += 1
+            if attempt > max_retries:
+                raise
+            logging.warning("Backfill throttled for %s..%s; waiting %ss (retry %s/%s).",
+                            month_first, month_last, throttled.retry_after, attempt, max_retries)
+            time.sleep(throttled.retry_after)
+
+
+def backfill_history(max_months: Optional[int] = None,
+                     stop_after_empty_months: int = BACKFILL_STOP_AFTER_EMPTY_MONTHS) -> dict:
+    """Walk months backwards from the previous month, persisting each, until enough consecutive
+    months have no data to mark the start of history.
+
+    Idempotent: months already finalised in the collection are reused by the API, so re-runs are
+    cheap and resume where a throttled or failed earlier run stopped. The walk stops only after
+    ``stop_after_empty_months`` *consecutive* empty months, so a single idle (zero-cost) month
+    mid-history does not prematurely end it and leave older data un-backfilled. Any error (after
+    retrying throttles) propagates so a failed import surfaces as a failed run instead of silently
+    leaving a gap in the collected history.
+    """
+    today = datetime.now(timezone.utc).date()
+    # The current and previous months are covered by their own timers; start at the previous
+    # month so nothing between it and the start of history can be skipped.
+    month_end = _month_bounds(today)[0] - timedelta(days=1)
+    months_processed = 0
+    months_with_data = 0
+    consecutive_empty = 0
+    while max_months is None or months_processed < max_months:
+        month_first, next_first = _month_bounds(month_end)
+        month_last = next_first - timedelta(days=1)
+        result = _refresh_month_with_retry(month_first, month_last)
+        months_processed += 1
+        if int(result.get("total_rows", 0)) == 0:
+            consecutive_empty += 1
+            if consecutive_empty >= stop_after_empty_months:
+                logging.info("Backfill reached %s consecutive month(s) with no cost data "
+                             "(through %s); stopping.", consecutive_empty, month_first)
+                break
+        else:
+            consecutive_empty = 0
+            months_with_data += 1
+        month_end = month_first - timedelta(days=1)
+    logging.info("Cost history backfill finished: %s month(s) processed, %s with data.",
+                 months_processed, months_with_data)
+    return {"months_processed": months_processed, "months_with_data": months_with_data}

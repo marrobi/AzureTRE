@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+import asyncio
 from enum import Enum
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple, Union
@@ -93,6 +94,13 @@ class CostService:
     # Cost Management rejects custom periods longer than a year, so longer reports are split.
     MAX_QUERY_PERIOD: timedelta = timedelta(days=364)
     CACHE_TTL: timedelta = timedelta(hours=2)
+    # Azure keeps re-rating the most recent days for a short window, so a period is only treated
+    # as final (frozen in the collection and never re-queried) once its last day is at least this
+    # many days in the past - otherwise idempotent refresh could freeze still-settling data.
+    COST_DATA_SETTLING_DAYS: int = 4
+    # Cap how many live Cost Management queries run concurrently: month-aligned splitting can
+    # produce many sub-periods for a long cold range, and Cost Management throttles bursts.
+    LIVE_QUERY_CONCURRENCY: int = 4
 
     def __init__(self) -> None:
         self.scope = "/subscriptions/{}".format(config.SUBSCRIPTION_ID)
@@ -365,7 +373,15 @@ class CostService:
         return cost_rows
 
     def split_query_period(self, from_date: Optional[datetime], to_date: Optional[datetime]) -> List[Tuple[Optional[datetime], Optional[datetime]]]:
-        """Split a report period into consecutive sub-periods of at most a year (see #2350)."""
+        """Split a report period into calendar-month-aligned sub-periods (see #2350).
+
+        Aligning to whole months means read reports share the same period keys as the
+        month-aligned data the Cost Processor persists (the current/previous-month refresh and
+        the history backfill), so once a month is in the collection every report reuses it
+        instead of re-querying Azure. Interior sub-periods are always whole calendar months
+        (stable, reusable keys); the first and last may be partial when the requested range does
+        not start or end on a month boundary. Whole months are also always well within Cost
+        Management's one-year-per-query limit."""
         # month to date report - no custom period, single query
         if from_date is None or to_date is None:
             return [(from_date, to_date)]
@@ -373,11 +389,17 @@ class CostService:
         periods = []
         period_start = from_date
         while period_start <= to_date:
-            period_end = min(period_start + CostService.MAX_QUERY_PERIOD, to_date)
+            # a sub-period never crosses a month boundary, so it lines up with stored month data
+            period_end = min(self.__end_of_month(period_start), to_date)
             periods.append((period_start, period_end))
             # next period starts the following day to avoid double-counting
             period_start = period_end + timedelta(days=1)
         return periods
+
+    @staticmethod
+    def __end_of_month(value: datetime) -> datetime:
+        first_of_next_month = (value.replace(day=1) + timedelta(days=32)).replace(day=1)
+        return first_of_next_month - timedelta(days=1)
 
     def build_query_cache_key(self, tag_name: str, tag_value: str, granularity: GranularityEnum,
                               from_date: Optional[datetime], to_date: Optional[datetime],
@@ -395,10 +417,25 @@ class CostService:
 
         scope = "/subscriptions/{}".format(subscription_id) if subscription_id else self.scope
 
-        merged_result: Optional[QueryResult] = None
-        for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
+        # Monthly reports are derived by aggregating the (cached) Daily data rather than
+        # issuing a separate Cost Management query: this reuses the durable Daily collection,
+        # keeps Monthly and Daily totals reconciled, and avoids extra Azure round-trips (#2350).
+        if granularity == GranularityEnum.monthly:
+            daily_result = await self.query_costs(
+                tag_name, tag_value, GranularityEnum.daily, from_date, to_date,
+                resource_groups, subscription_id, costs_repo)
+            return self.__aggregate_daily_to_monthly(daily_result)
+
+        periods = self.split_query_period(from_date, to_date)
+
+        # First resolve each period from the in-memory cache or the durable collection.
+        # These are cheap; anything still missing needs a live Cost Management query.
+        resolved: List[Optional[QueryResult]] = []
+        cache_keys: List[str] = []
+        for period_from_date, period_to_date in periods:
             cache_key = self.build_query_cache_key(
                 tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
+            cache_keys.append(cache_key)
 
             # 1) in-memory cache
             period_result = self.get_cached_result(cache_key)
@@ -409,18 +446,37 @@ class CostService:
                     costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date, scope)
                 if period_result is not None:
                     self.cache_result(cache_key, period_result, CostService.CACHE_TTL)
+            resolved.append(period_result)
 
-            # 3) live Cost Management query, then persist
-            if period_result is None:
-                period_result = self.query_costs_period(
-                    tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
-                self.cache_result(cache_key, period_result, CostService.CACHE_TTL)
+        # 3) Run the outstanding live Cost Management queries off the event loop and
+        #    concurrently. The SDK client is synchronous, so calling it inline would block
+        #    the event loop for the whole (often tens of seconds) query - long enough for the
+        #    App Gateway health probe to fail and the backend to be marked unhealthy (see #2).
+        #    to_thread keeps the loop responsive; gather also parallelises split sub-periods.
+        live_indexes = [i for i, result in enumerate(resolved) if result is None]
+        if live_indexes:
+            # Bound how many live Cost Management queries run at once: month-aligned splitting can
+            # produce many sub-periods for a long cold range, and Cost Management throttles bursts.
+            semaphore = asyncio.Semaphore(CostService.LIVE_QUERY_CONCURRENCY)
+
+            async def __run_live_query(index: int) -> QueryResult:
+                async with semaphore:
+                    return await asyncio.to_thread(
+                        self.query_costs_period, tag_name, tag_value, granularity,
+                        periods[index][0], periods[index][1], resource_groups, scope)
+
+            live_results = await asyncio.gather(*[__run_live_query(i) for i in live_indexes])
+            for i, period_result in zip(live_indexes, live_results):
+                resolved[i] = period_result
+                self.cache_result(cache_keys[i], period_result, CostService.CACHE_TTL)
                 if costs_repo is not None:
                     await self.__persist_period(
-                        costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date,
+                        costs_repo, tag_name, tag_value, granularity, periods[i][0], periods[i][1],
                         resource_groups, scope, period_result,
-                        final=self.__is_period_final(period_to_date))
+                        final=self.__is_period_final(periods[i][1]))
 
+        merged_result: Optional[QueryResult] = None
+        for period_result in resolved:
             if merged_result is None:
                 # fresh QueryResult so cached period results are never mutated while merging
                 merged_result = QueryResult(columns=period_result.columns, rows=list(period_result.rows))
@@ -431,19 +487,42 @@ class CostService:
 
         return merged_result
 
+    def __aggregate_daily_to_monthly(self, daily_result: QueryResult) -> QueryResult:
+        """Roll a Daily result up to one row per calendar month.
+
+        Monthly reports are derived from the cached Daily data (summing PreTaxCost per
+        month / resource-group / tag / currency, dated to the first of the month) so Monthly
+        and Daily always reconcile and Monthly needs no separate Azure query (#2350).
+        """
+        columns = daily_result.columns
+        if not daily_result.rows:
+            return QueryResult(columns=columns, rows=[])
+
+        column_names = [column.name for column in columns]
+        df = pd.DataFrame.from_records(list(daily_result.rows), columns=column_names)
+        # UsageDate is an integer YYYYMMDD; collapse it to the first of its month (YYYYMM01).
+        df["UsageDate"] = (df["UsageDate"] // 100) * 100 + 1
+        grouped = df.groupby(
+            ["UsageDate", "ResourceGroup", "Tag", "Currency"], as_index=False).agg({"PreTaxCost": "sum"})
+        ordered = grouped[["PreTaxCost", "UsageDate", "ResourceGroup", "Tag", "Currency"]]
+        return QueryResult(columns=columns, rows=ordered.values.tolist())
+
     @staticmethod
     def __serialize_date(value: Optional[datetime]) -> Optional[str]:
         return value.date().isoformat() if value is not None else None
 
     @staticmethod
     def __is_period_final(period_to_date: Optional[datetime]) -> bool:
-        """A period is final once it ends before the start of the current month; the current
-        month is still settling so month-to-date (no end date) is never final."""
+        """A period is final only once Azure has finished re-rating it.
+
+        Month-to-date (no end date) is never final, and a period is only frozen once its last
+        day is at least COST_DATA_SETTLING_DAYS in the past: the most recent days keep changing
+        for a short settling window, and because refresh is idempotent a period frozen too early
+        would keep serving still-incomplete data."""
         if period_to_date is None:
             return False
         today = datetime.now().date()
-        start_of_month = today.replace(day=1)
-        return period_to_date.date() < start_of_month
+        return period_to_date.date() < today - timedelta(days=CostService.COST_DATA_SETTLING_DAYS)
 
     @staticmethod
     def __serialize_columns(columns) -> List[dict]:
@@ -483,26 +562,41 @@ class CostService:
 
     async def refresh_costs(self, tre_id: str, granularity: GranularityEnum, from_date: Optional[datetime],
                             to_date: Optional[datetime], workspace_repo: WorkspaceRepository,
-                            costs_repo: CostsRepository) -> int:
-        """Query Cost Management and persist each sub-period; returns the number collected.
+                            costs_repo: CostsRepository) -> dict:
+        """Query Cost Management and persist each sub-period; returns collection stats.
 
-        The only path that writes cost rows, invoked by the internal refresh endpoint.
+        The only path that writes cost rows, invoked by the internal refresh endpoint. A period
+        already finalised in the collection is reused instead of re-querying Azure, so the
+        endpoint is idempotent and safe to call repeatedly (e.g. by the history backfill).
+        Returns ``{"collected_periods": n, "total_rows": r}``; ``total_rows`` lets the backfill
+        detect when it has walked back past the start of the data (a period with no rows).
         """
         subscription_ids = {config.SUBSCRIPTION_ID}
         subscription_ids.update(await self.__get_workspace_subscription_ids(workspace_repo))
 
         collected = 0
+        total_rows = 0
         for subscription_id in subscription_ids:
             resource_groups = list(self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id).keys())
             scope = "/subscriptions/{}".format(subscription_id)
             for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
-                period_result = self.query_costs_period(
-                    self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date, resource_groups, scope)
-                await self.__persist_period(
-                    costs_repo, self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date,
-                    resource_groups, scope, period_result, final=self.__is_period_final(period_to_date))
+                # Idempotent: a period already finalised in the collection is reused rather than
+                # re-queried, so repeated/backfill refreshes don't hit Cost Management again.
+                period_result = await self.__get_period_from_collection(
+                    costs_repo, self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date, scope)
+                if period_result is None:
+                    # Offload the blocking (synchronous) Cost Management SDK call to a worker
+                    # thread so it doesn't starve the asyncio event loop (which would make the
+                    # health probe fail and the platform return 500 for a long-running refresh).
+                    period_result = await asyncio.to_thread(
+                        self.query_costs_period,
+                        self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date, resource_groups, scope)
+                    await self.__persist_period(
+                        costs_repo, self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date,
+                        resource_groups, scope, period_result, final=self.__is_period_final(period_to_date))
                 collected += 1
-        return collected
+                total_rows += len(period_result.rows or [])
+        return {"collected_periods": collected, "total_rows": total_rows}
 
     def query_costs_period(self, tag_name: str, tag_value: str,
                            granularity: GranularityEnum, from_date: Optional[datetime],
@@ -514,7 +608,7 @@ class CostService:
         logger.debug(f"Querying cost management API with scope: {scope} and query definition: {query_definition}")
 
         try:
-            return self.client.query.usage(scope, query_definition)
+            result = self.client.query.usage(scope, query_definition)
         except ResourceNotFoundError as e:
             # when cost management API returns 404 with an message:
             # Given subscription {subscription_id} doesn't have valid WebDirect/AIRS offer type.
@@ -545,6 +639,8 @@ class CostService:
                     raise e
             else:
                 raise e
+
+        return result
 
     def build_query_definition(self, granularity: GranularityEnum, from_date: Optional[datetime],
                                to_date: Optional[datetime], tag_name: str, tag_value: str, resource_groups: list):
@@ -581,7 +677,9 @@ class CostService:
         query_result_dict = dict()
 
         for row in query_result:
-            tag = row[ResultColumnDaily.Tag.value if granularity == GranularityEnum.daily else ResultColumn.Tag.value]
+            # Daily and Monthly both include a leading date column, so the tag sits one column
+            # further along than in an ungranular (None) result.
+            tag = row[ResultColumn.Tag.value if granularity == GranularityEnum.none else ResultColumnDaily.Tag.value]
 
             if tag in query_result_dict.keys():
                 query_result_dict[tag].append(row)

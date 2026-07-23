@@ -97,17 +97,20 @@ resource "azurerm_linux_function_app" "cost_processor_function_app" {
   }
 
   app_settings = {
-    "TRE_API_URL"                              = "https://${azurerm_linux_web_app.api.default_hostname}"
-    "API_CLIENT_ID"                            = var.api_client_id
-    "MANAGED_IDENTITY_CLIENT_ID"               = azurerm_user_assigned_identity.cost_processor_id.client_id
-    "TRE_ID"                                   = var.tre_id
-    "ARM_ENVIRONMENT"                          = var.arm_environment
-    "COST_PROCESSOR_CURRENT_MONTH_SCHEDULE"    = var.cost_processor_current_month_schedule
-    "COST_PROCESSOR_PREVIOUS_MONTH_SCHEDULE"   = var.cost_processor_previous_month_schedule
-    "COST_PROCESSOR_PREVIOUS_MONTHS_LOOK_BACK" = var.cost_processor_previous_months_look_back
-    "WEBSITES_ENABLE_APP_SERVICE_STORAGE"      = false
-    "WEBSITE_CONTENTOVERVNET"                  = 1
-    "STORAGE_ENDPOINT_SUFFIX"                  = module.terraform_azurerm_environment_configuration.storage_suffix
+    "TRE_API_URL"                                     = "https://${azurerm_linux_web_app.api.default_hostname}"
+    "API_CLIENT_ID"                                   = var.api_client_id
+    "MANAGED_IDENTITY_CLIENT_ID"                      = azurerm_user_assigned_identity.cost_processor_id.client_id
+    "TRE_ID"                                          = var.tre_id
+    "ARM_ENVIRONMENT"                                 = var.arm_environment
+    "COST_PROCESSOR_CURRENT_MONTH_SCHEDULE"           = var.cost_processor_current_month_schedule
+    "COST_PROCESSOR_PREVIOUS_MONTH_SCHEDULE"          = var.cost_processor_previous_month_schedule
+    "COST_PROCESSOR_PREVIOUS_MONTHS_LOOK_BACK"        = var.cost_processor_previous_months_look_back
+    "COST_PROCESSOR_BACKFILL_SCHEDULE"                = var.cost_processor_backfill_schedule
+    "COST_PROCESSOR_BACKFILL_MAX_MONTHS"              = var.cost_processor_backfill_max_months
+    "COST_PROCESSOR_BACKFILL_STOP_AFTER_EMPTY_MONTHS" = var.cost_processor_backfill_stop_after_empty_months
+    "WEBSITES_ENABLE_APP_SERVICE_STORAGE"             = false
+    "WEBSITE_CONTENTOVERVNET"                         = 1
+    "STORAGE_ENDPOINT_SUFFIX"                         = module.terraform_azurerm_environment_configuration.storage_suffix
 
     "AzureWebJobsStorage__clientId"   = azurerm_user_assigned_identity.cost_processor_id.client_id
     "AzureWebJobsStorage__credential" = "managedidentity"

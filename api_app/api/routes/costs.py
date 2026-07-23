@@ -138,7 +138,7 @@ async def refresh_costs(
     try:
         collected = await cost_service.refresh_costs(
             config.TRE_ID, params.granularity, params.from_date, params.to_date, workspace_repo, costs_repo)
-        return JSONResponse(content={"collected_periods": collected}, status_code=status.HTTP_202_ACCEPTED)
+        return JSONResponse(content=collected, status_code=status.HTTP_202_ACCEPTED)
     except SubscriptionNotSupported:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=strings.API_GET_COSTS_SUBSCRIPTION_NOT_SUPPORTED)
     except TooManyRequests as e:

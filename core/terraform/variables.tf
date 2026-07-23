@@ -61,6 +61,24 @@ variable "cost_processor_previous_months_look_back" {
   default     = 1
 }
 
+variable "cost_processor_backfill_schedule" {
+  type        = string
+  description = "NCRONTAB schedule for the cost history backfill that walks back until no data"
+  default     = "0 0 4 * * *"
+}
+
+variable "cost_processor_backfill_max_months" {
+  type        = number
+  description = "Maximum months the backfill walks back per run; 0 walks back until Azure returns a month with no data"
+  default     = 0
+}
+
+variable "cost_processor_backfill_stop_after_empty_months" {
+  type        = number
+  description = "Stop the history backfill after this many consecutive months with no cost data, so a single idle month mid-history does not end the walk early"
+  default     = 2
+}
+
 variable "core_app_service_plan_sku" {
   type    = string
   default = "P1v3"
