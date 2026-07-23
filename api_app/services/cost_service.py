@@ -1,4 +1,4 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, UTC
 import asyncio
 from enum import Enum
 from functools import lru_cache
@@ -91,8 +91,6 @@ class CostService:
     TRE_UNTAGGED: str = ""
     RATE_LIMIT_RETRY_AFTER_HEADER_KEY: str = "x-ms-ratelimit-microsoft.costmanagement-entity-retry-after"
     SERVICE_UNAVAILABLE_RETRY_AFTER_HEADER_KEY: str = "Retry-After"
-    # Cost Management rejects custom periods longer than a year, so longer reports are split.
-    MAX_QUERY_PERIOD: timedelta = timedelta(days=364)
     CACHE_TTL: timedelta = timedelta(hours=2)
     # Azure keeps re-rating the most recent days for a short window, so a period is only treated
     # as final (frozen in the collection and never re-queried) once its last day is at least this
@@ -401,6 +399,10 @@ class CostService:
         first_of_next_month = (value.replace(day=1) + timedelta(days=32)).replace(day=1)
         return first_of_next_month - timedelta(days=1)
 
+    @staticmethod
+    def __end_of_day(value: datetime) -> datetime:
+        return value.replace(hour=23, minute=59, second=59, microsecond=0)
+
     def build_query_cache_key(self, tag_name: str, tag_value: str, granularity: GranularityEnum,
                               from_date: Optional[datetime], to_date: Optional[datetime],
                               resource_groups: list, scope: str) -> str:
@@ -521,7 +523,9 @@ class CostService:
         would keep serving still-incomplete data."""
         if period_to_date is None:
             return False
-        today = datetime.now().date()
+        # Use UTC consistently with the UTC collected_at timestamp so a period near midnight in a
+        # non-UTC deployment is not finalised a day early.
+        today = datetime.now(UTC).date()
         return period_to_date.date() < today - timedelta(days=CostService.COST_DATA_SETTLING_DAYS)
 
     @staticmethod
@@ -565,8 +569,11 @@ class CostService:
                             costs_repo: CostsRepository) -> dict:
         """Query Cost Management and persist each sub-period; returns collection stats.
 
-        The only path that writes cost rows, invoked by the internal refresh endpoint. A period
-        already finalised in the collection is reused instead of re-querying Azure, so the
+        The only path that writes cost rows, invoked by the internal refresh endpoint. Both the
+        TRE-wide (``tre_id``) scope read by the core report and the per-workspace
+        (``tre_workspace_id``) scope read by the workspace report are collected, so both report
+        endpoints can be served from the durable collection instead of live Azure queries. A
+        period already finalised in the collection is reused instead of re-querying Azure, so the
         endpoint is idempotent and safe to call repeatedly (e.g. by the history backfill).
         Returns ``{"collected_periods": n, "total_rows": r}``; ``total_rows`` lets the backfill
         detect when it has walked back past the start of the data (a period with no rows).
@@ -576,27 +583,73 @@ class CostService:
 
         collected = 0
         total_rows = 0
+
+        # 1) TRE-wide scope (core report / whole-TRE breakdown).
         for subscription_id in subscription_ids:
             resource_groups = list(self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id).keys())
             scope = "/subscriptions/{}".format(subscription_id)
-            for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
-                # Idempotent: a period already finalised in the collection is reused rather than
-                # re-queried, so repeated/backfill refreshes don't hit Cost Management again.
-                period_result = await self.__get_period_from_collection(
-                    costs_repo, self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date, scope)
-                if period_result is None:
-                    # Offload the blocking (synchronous) Cost Management SDK call to a worker
-                    # thread so it doesn't starve the asyncio event loop (which would make the
-                    # health probe fail and the platform return 500 for a long-running refresh).
-                    period_result = await asyncio.to_thread(
-                        self.query_costs_period,
-                        self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date, resource_groups, scope)
-                    await self.__persist_period(
-                        costs_repo, self.TRE_ID_TAG, tre_id, granularity, period_from_date, period_to_date,
-                        resource_groups, scope, period_result, final=self.__is_period_final(period_to_date))
-                collected += 1
-                total_rows += len(period_result.rows or [])
+            period_collected, period_rows = await self.__refresh_tag_periods(
+                costs_repo, self.TRE_ID_TAG, tre_id, granularity, from_date, to_date, resource_groups, scope)
+            collected += period_collected
+            total_rows += period_rows
+
+        # 2) Per-workspace scope (workspace report). The workspace report queries the
+        #    tre_workspace_id tag, which is a different collection key, so unless it is collected
+        #    here the workspace endpoint would always fall back to live Azure queries.
+        for workspace in await workspace_repo.get_active_workspaces():
+            resource_groups, scope = self.__resolve_workspace_resource_groups(workspace)
+            if not resource_groups:
+                continue
+            period_collected, period_rows = await self.__refresh_tag_periods(
+                costs_repo, self.TRE_WORKSPACE_ID_TAG, workspace.id, granularity,
+                from_date, to_date, resource_groups, scope)
+            collected += period_collected
+            total_rows += period_rows
+
         return {"collected_periods": collected, "total_rows": total_rows}
+
+    def __resolve_workspace_resource_groups(self, workspace: Resource) -> Tuple[list, str]:
+        """Resolve a workspace's resource groups and Cost Management scope.
+
+        Mirrors ``query_tre_workspace_costs``: resource groups tagged with the workspace id are
+        looked up in the core subscription first and, only if none are found, in the workspace's
+        own subscription. The returned scope matches the one the read path uses so the persisted
+        period keys line up with what the workspace report looks up.
+        """
+        resource_groups_dict = self.get_resource_groups_by_tag(self.TRE_WORKSPACE_ID_TAG, workspace.id)
+        subscription_id = None
+        if not resource_groups_dict:
+            workspace_subscription_id = workspace.properties.get("workspace_subscription_id")
+            if workspace_subscription_id:
+                subscription_id = workspace_subscription_id
+                resource_groups_dict = self.get_resource_groups_by_tag(
+                    self.TRE_WORKSPACE_ID_TAG, workspace.id, subscription_id)
+        scope = "/subscriptions/{}".format(subscription_id) if subscription_id else self.scope
+        return list(resource_groups_dict.keys()), scope
+
+    async def __refresh_tag_periods(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
+                                    granularity: GranularityEnum, from_date: Optional[datetime],
+                                    to_date: Optional[datetime], resource_groups: list, scope: str) -> Tuple[int, int]:
+        collected = 0
+        total_rows = 0
+        for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
+            # Idempotent: a period already finalised in the collection is reused rather than
+            # re-queried, so repeated/backfill refreshes don't hit Cost Management again.
+            period_result = await self.__get_period_from_collection(
+                costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date, scope)
+            if period_result is None:
+                # Offload the blocking (synchronous) Cost Management SDK call to a worker
+                # thread so it doesn't starve the asyncio event loop (which would make the
+                # health probe fail and the platform return 500 for a long-running refresh).
+                period_result = await asyncio.to_thread(
+                    self.query_costs_period,
+                    tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
+                await self.__persist_period(
+                    costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date,
+                    resource_groups, scope, period_result, final=self.__is_period_final(period_to_date))
+            collected += 1
+            total_rows += len(period_result.rows or [])
+        return collected, total_rows
 
     def query_costs_period(self, tag_name: str, tag_value: str,
                            granularity: GranularityEnum, from_date: Optional[datetime],
@@ -667,7 +720,12 @@ class CostService:
                 type=ExportType.actual_cost, timeframe=TimeframeType.MONTH_TO_DATE, dataset=query_dataset)
         else:
             query_time_period: QueryTimePeriod = QueryTimePeriod(
-                from_property=from_date, to=to_date)
+                from_property=from_date,
+                # Cost Management applies the custom period at day granularity and Microsoft's own
+                # examples set `to` to end-of-day; pin it to 23:59:59 so the last day of the range
+                # (e.g. the final day of a month-aligned split, or the last day of a month) is
+                # always included rather than silently dropped.
+                to=self.__end_of_day(to_date))
             query_definition: QueryDefinition = QueryDefinition(
                 type=ExportType.actual_cost, timeframe=TimeframeType.CUSTOM,
                 time_period=query_time_period, dataset=query_dataset)

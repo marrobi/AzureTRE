@@ -19,6 +19,11 @@ BACKFILL_THROTTLE_MAX_RETRIES = 6
 # (zero-cost) month mid-history doesn't prematurely end the backfill and leave older data behind.
 BACKFILL_STOP_AFTER_EMPTY_MONTHS = 2
 
+# Overall wall-clock budget (seconds) for a single backfill run. The Cost Processor runs on a
+# single-worker plan and a month can sleep through repeated throttling (429), so a run is capped
+# to avoid tying the worker up for a long time - it simply resumes on its next scheduled run.
+BACKFILL_MAX_RUNTIME_SECONDS = 1800
+
 
 class CostRefreshThrottled(Exception):
     """Raised when the refresh endpoint reports throttling (HTTP 429); carries retry-after seconds."""
@@ -128,16 +133,20 @@ def _refresh_month_with_retry(month_first: date, month_last: date,
 
 
 def backfill_history(max_months: Optional[int] = None,
-                     stop_after_empty_months: int = BACKFILL_STOP_AFTER_EMPTY_MONTHS) -> dict:
+                     stop_after_empty_months: int = BACKFILL_STOP_AFTER_EMPTY_MONTHS,
+                     max_runtime_seconds: Optional[int] = BACKFILL_MAX_RUNTIME_SECONDS) -> dict:
     """Walk months backwards from the previous month, persisting each, until enough consecutive
     months have no data to mark the start of history.
 
     Idempotent: months already finalised in the collection are reused by the API, so re-runs are
     cheap and resume where a throttled or failed earlier run stopped. The walk stops only after
     ``stop_after_empty_months`` *consecutive* empty months, so a single idle (zero-cost) month
-    mid-history does not prematurely end it and leave older data un-backfilled. Any error (after
-    retrying throttles) propagates so a failed import surfaces as a failed run instead of silently
-    leaving a gap in the collected history.
+    mid-history does not prematurely end it and leave older data un-backfilled. It also stops once
+    ``max_runtime_seconds`` of wall-clock time has elapsed (a positive value; ``None``/``0`` means
+    no limit) so a run cannot tie up the single worker indefinitely when Cost Management is
+    persistently throttling - the remaining months are picked up on the next scheduled run. Any
+    error (after retrying throttles) propagates so a failed import surfaces as a failed run instead
+    of silently leaving a gap in the collected history.
     """
     today = datetime.now(timezone.utc).date()
     # The current and previous months are covered by their own timers; start at the previous
@@ -146,7 +155,13 @@ def backfill_history(max_months: Optional[int] = None,
     months_processed = 0
     months_with_data = 0
     consecutive_empty = 0
+    started_at = time.monotonic()
     while max_months is None or months_processed < max_months:
+        if max_runtime_seconds and (time.monotonic() - started_at) >= max_runtime_seconds:
+            logging.info("Backfill reached its wall-clock budget of %ss after %s month(s); "
+                         "stopping and resuming on the next scheduled run.",
+                         max_runtime_seconds, months_processed)
+            break
         month_first, next_first = _month_bounds(month_end)
         month_last = next_first - timedelta(days=1)
         result = _refresh_month_with_retry(month_first, month_last)

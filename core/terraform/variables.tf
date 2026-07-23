@@ -79,6 +79,12 @@ variable "cost_processor_backfill_stop_after_empty_months" {
   default     = 2
 }
 
+variable "cost_processor_backfill_max_runtime_seconds" {
+  type        = number
+  description = "Wall-clock budget (seconds) for a single backfill run so a throttled run cannot tie up the single Cost Processor worker indefinitely; 0 means no limit. Remaining months are picked up on the next scheduled run"
+  default     = 1800
+}
+
 variable "core_app_service_plan_sku" {
   type    = string
   default = "P1v3"

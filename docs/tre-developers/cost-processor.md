@@ -45,7 +45,7 @@ rather than synchronously per request.
 - **Cost Processor** – a Python Azure Function app with timer triggers. On each
   run it asks the TRE API to refresh a period; it does not talk to Cosmos or hold
   cost business logic itself. It runs on the shared **core processing** App
-  Service Plan (`plan-processing-<tre_id>`), alongside the Airlock Processor.
+  Service Plan (`plan-airlock-<tre_id>`), alongside the Airlock Processor.
 - **TRE API** – owns the cost collection and is its **only** writer. It exposes an
   internal, managed-identity-authenticated refresh endpoint used by the Cost
   Processor, and serves the existing `/costs` endpoints cache-first from the
@@ -90,9 +90,16 @@ The Cost Processor therefore uses a tiered, latency-aware schedule:
 
 | Data segment | Volatility | Cadence |
 | --- | --- | --- |
-| Current month | Still settling | Every ~6 hours |
-| Just-closed previous month | Settling | Daily sweep until finalised |
-| Older, completed months | Immutable | Collected once, then retained |
+| Current month | Still settling | Every ~6 hours (`0 0 */6 * * *`) |
+| Just-closed previous month | Settling | Daily sweep (`0 30 2 * * *`) until finalised |
+| Older, completed months | Immutable | Daily backfill sweep (`0 0 4 * * *`), collected once then retained |
+
+The three timers run on a single-worker plan, so their default schedules are
+staggered (current-month on the hour, previous-month at 02:30, backfill at 04:00)
+to avoid three concurrent Cost Management sweeps competing on the one worker. The
+backfill also has a wall-clock budget (`COST_PROCESSOR_BACKFILL_MAX_RUNTIME_SECONDS`,
+default 30 minutes; `0` disables it) so a run that keeps getting throttled stops
+and resumes on its next schedule rather than tying up the worker indefinitely.
 
 Completed months are marked final and never re-queried, so multi-year reports are
 served almost entirely from the collection; only the current month is refreshed,

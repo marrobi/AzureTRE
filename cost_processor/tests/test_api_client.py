@@ -316,3 +316,39 @@ def test_backfill_history_gives_up_after_persistent_throttling(datetime_mock, re
         api_client.backfill_history()
 
     assert sleep_mock.call_count == api_client.BACKFILL_THROTTLE_MAX_RETRIES
+
+
+@patch("shared_code.api_client.time.monotonic")
+@patch("shared_code.api_client.refresh_period")
+@patch("shared_code.api_client.datetime")
+def test_backfill_history_stops_at_wall_clock_budget(datetime_mock, refresh_period_mock, monotonic_mock):
+    # Even with months still returning data, a run stops once its wall-clock budget is exhausted so
+    # it cannot tie up the single worker; the remaining months resume on the next scheduled run.
+    datetime_mock.now.return_value = datetime(2026, 7, 19, tzinfo=timezone.utc)
+    refresh_period_mock.return_value = {"collected_periods": 1, "total_rows": 5}
+    # started_at=0; first budget check 0 (under budget, June processed); second check 100 (>=100 -> stop)
+    monotonic_mock.side_effect = [0, 0, 100]
+
+    summary = api_client.backfill_history(max_runtime_seconds=100)
+
+    assert refresh_period_mock.call_count == 1
+    assert summary == {"months_processed": 1, "months_with_data": 1}
+
+
+@patch("shared_code.api_client.time.monotonic")
+@patch("shared_code.api_client.refresh_period")
+@patch("shared_code.api_client.datetime")
+def test_backfill_history_no_wall_clock_limit_when_zero(datetime_mock, refresh_period_mock, monotonic_mock):
+    # max_runtime_seconds of None/0 disables the budget, so the walk runs to the normal stop
+    # condition regardless of elapsed time.
+    datetime_mock.now.return_value = datetime(2026, 7, 19, tzinfo=timezone.utc)
+    refresh_period_mock.side_effect = [
+        {"collected_periods": 1, "total_rows": 5},   # June - data
+        {"collected_periods": 1, "total_rows": 0},   # May - no data -> stop
+    ]
+    monotonic_mock.return_value = 10_000
+
+    summary = api_client.backfill_history(stop_after_empty_months=1, max_runtime_seconds=None)
+
+    assert refresh_period_mock.call_count == 2
+    assert summary == {"months_processed": 2, "months_with_data": 1}

@@ -5,14 +5,15 @@
 
 ENHANCEMENTS:
 * Specify default_outbound_access_enabled = false setting for all subnets ([#4757](https://github.com/microsoft/AzureTRE/pull/4757))
-* Support cost reports spanning more than one year by splitting requests into up to one-year Cost Management queries, caching each queried period so overlapping reports are served from cache ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
+* Support cost reports spanning more than one year by splitting each request into calendar-month-aligned Cost Management queries and durably collecting each finalised month, so multi-year and overlapping reports are served from the collection instead of repeatedly querying Azure ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Pin all GitHub Actions workflow steps to full commit SHAs to prevent supply chain attacks plus update to latest releases ([#4886](https://github.com/microsoft/AzureTRE/pull/4886))
 * Add Windows Server 2025 image support to Guacamole. ([#4890](https://github.com/microsoft/AzureTRE/issues/4890))
 * Add support for setting resource processor VMSS SKU via environment variables ([#4936](https://github.com/microsoft/AzureTRE/issues/4936))
 * Exclude recovery service vaults from e2e tests ([#4920](https://github.com/microsoft/AzureTRE/issues/4920))
-* Rename the airlock App Service Plan to a shared core processing plan (`plan-processing-<tre_id>`) so it can host multiple processing Function apps (Airlock Processor and a future Cost Processor), and document the cost data collection architecture ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
+* Promote the airlock App Service Plan to a shared core "processing" plan (Terraform resource `azurerm_service_plan.processing`) so it can also host the Cost Processor Function app. The underlying Azure plan keeps its existing name (`plan-airlock-<tre_id>`) and a Terraform `moved` block migrates the state address, so existing deployments upgrade in place with no Airlock downtime ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Add a Cost Processor Function app that authenticates to the TRE API with a managed identity (authorised by its client id, requiring no additional Microsoft Graph permissions on the deployment identity) to durably collect daily cost data into an API-owned Cosmos collection, enabling multi-year cost reports without repeatedly querying Azure Cost Management ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Host the Cost Processor Function app on the existing `AirlockProcessorSubnet` (and its `ipg-airlock-processor` IP group) instead of adding a dedicated `CostProcessorSubnet`, conserving core VNet address space without renaming or recreating the subnet so existing base workspaces are unaffected ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
+* Collect per-workspace cost periods (`tre_workspace_id`) as well as the TRE-wide scope during cost refresh, and cap each history backfill run with a configurable wall-clock budget so it cannot tie up the single Cost Processor worker ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**

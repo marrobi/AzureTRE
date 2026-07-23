@@ -422,7 +422,27 @@ async def test_query_tre_costs_with_dates_set_as_none_calls_client_with_custom_d
     query_definition: QueryDefinition = client_mock.return_value.query.usage.call_args_list[0][0][1]
     assert query_definition.timeframe == TimeframeType.CUSTOM
     assert query_definition.time_period.from_property == from_date
-    assert query_definition.time_period.to == to_date
+    # `to` is pinned to end-of-day so Cost Management includes the whole final day of the range
+    # rather than dropping it (see cost_service.build_query_definition).
+    assert query_definition.time_period.to == to_date.replace(hour=23, minute=59, second=59, microsecond=0)
+    assert query_definition.time_period.to.date() == to_date.date()
+
+
+@pytest.mark.asyncio
+@patch('services.cost_service.CostManagementClient')
+async def test_build_query_definition_makes_to_date_inclusive_end_of_day(client_mock):
+    # A custom period's `to` must be pinned to end-of-day so Cost Management includes the whole
+    # last day (e.g. the last day of a month-aligned split) rather than dropping it.
+    cost_service = CostService()
+    from_date = datetime(2022, 6, 1)
+    to_date = datetime(2022, 6, 30)
+
+    query_definition = cost_service.build_query_definition(
+        GranularityEnum.daily, from_date, to_date, CostService.TRE_ID_TAG, "guy22", ["rg-guy22"])
+
+    assert query_definition.timeframe == TimeframeType.CUSTOM
+    assert query_definition.time_period.from_property == from_date
+    assert query_definition.time_period.to == datetime(2022, 6, 30, 23, 59, 59)
 
 
 @pytest.mark.asyncio
@@ -487,8 +507,10 @@ async def test_split_query_period_splits_multi_year_range_into_non_overlapping_p
     assert periods[0][0] == from_date
     assert periods[-1][1] == to_date
     for period_from, period_to in periods:
-        # no single query may span a year or more (Azure Cost Management limitation)
-        assert period_to - period_from <= CostService.MAX_QUERY_PERIOD
+        # splitting is month-aligned, so no sub-period ever crosses a calendar month boundary
+        # (well within Cost Management's one-year-per-query limit)
+        assert (period_to - period_from) < timedelta(days=31)
+        assert period_from.month == period_to.month and period_from.year == period_to.year
     # periods are contiguous and do not overlap
     for previous, current in zip(periods, periods[1:]):
         assert current[0] == previous[1] + timedelta(days=1)
@@ -599,13 +621,14 @@ async def test_query_tre_costs_over_multiple_years_splits_queries_and_merges_res
     assert client_mock.return_value.query.usage.call_count == len(expected_periods)
 
     # each split period is queried exactly once (queries may run concurrently, so
-    # compare the set of periods rather than the call order)
+    # compare the set of periods rather than the call order). `to` is normalised to end-of-day
+    # so the whole final day is included, so compare on the (from, to-date) pair.
     queried_periods = set()
     for call in client_mock.return_value.query.usage.call_args_list:
         query_definition: QueryDefinition = call[0][1]
         assert query_definition.timeframe == TimeframeType.CUSTOM
-        queried_periods.add((query_definition.time_period.from_property, query_definition.time_period.to))
-    assert queried_periods == set(expected_periods)
+        queried_periods.add((query_definition.time_period.from_property, query_definition.time_period.to.date()))
+    assert queried_periods == {(period_from, period_to.date()) for period_from, period_to in expected_periods}
 
     # results from every period are merged and summed for the workspace
     assert cost_report.workspaces[0].id == "19b7ce24-aa35-438c-adf6-37e6762911a6"
@@ -1311,7 +1334,8 @@ async def test_refresh_costs_month_to_date_is_not_final(
     collected = await cost_service.refresh_costs(
         "guy22", GranularityEnum.daily, None, None, workspace_repo_mock, costs_repo)
 
-    assert collected["collected_periods"] == 1
+    # one period is collected per scope: the TRE-wide tag plus each of the 2 active workspaces
+    assert collected["collected_periods"] == 3
     assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is False
 
 
@@ -1336,8 +1360,11 @@ async def test_refresh_costs_multi_year_persists_one_document_per_split_period(
     collected = await cost_service.refresh_costs(
         "guy22", GranularityEnum.daily, from_date, to_date, workspace_repo_mock, costs_repo)
 
-    assert collected["collected_periods"] == len(expected_periods)
-    assert costs_repo.save_cost_query_result.await_count == len(expected_periods)
+    # every split period is collected once per scope: the TRE-wide tag plus each of the 2 active
+    # workspaces (so the workspace report can also be served from the collection).
+    expected_scopes = 3
+    assert collected["collected_periods"] == len(expected_periods) * expected_scopes
+    assert costs_repo.save_cost_query_result.await_count == len(expected_periods) * expected_scopes
 
 
 @pytest.mark.asyncio
@@ -1371,9 +1398,10 @@ async def test_refresh_costs_skips_already_final_period(
     # existing final period reused: no Azure query, no re-write
     client_mock.return_value.query.usage.assert_not_called()
     costs_repo.save_cost_query_result.assert_not_awaited()
-    # total_rows still reflects the existing period so the backfill sees the month has data
-    assert result["collected_periods"] == 1
-    assert result["total_rows"] == 2
+    # total_rows still reflects the existing period so the backfill sees the month has data;
+    # one period per scope (TRE-wide tag plus each of the 2 active workspaces).
+    assert result["collected_periods"] == 3
+    assert result["total_rows"] == 2 * 3
 
 
 @pytest.mark.asyncio
@@ -1401,8 +1429,38 @@ async def test_refresh_costs_reports_zero_rows_for_empty_period(
         "guy22", GranularityEnum.daily, datetime(2019, 1, 1), datetime(2019, 1, 31),
         workspace_repo_mock, costs_repo)
 
-    assert result["collected_periods"] == 1
+    # one empty period per scope (TRE-wide tag plus each of the 2 active workspaces)
+    assert result["collected_periods"] == 3
     assert result["total_rows"] == 0
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_refresh_costs_collects_per_workspace_tag(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    # The workspace cost report queries the tre_workspace_id tag, which is a different collection
+    # key from the TRE-wide tre_id tag. refresh_costs must persist both so the workspace endpoint
+    # is served from the collection rather than always falling back to a live Azure query.
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    cost_service = CostService()
+    await cost_service.refresh_costs(
+        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
+        workspace_repo_mock, costs_repo)
+
+    persisted_tags = {
+        (call.kwargs["tag_name"], call.kwargs["tag_value"])
+        for call in costs_repo.save_cost_query_result.await_args_list
+    }
+    # the TRE-wide scope plus one scope per active workspace were all persisted
+    assert ("tre_id", "guy22") in persisted_tags
+    assert ("tre_workspace_id", "19b7ce24-aa35-438c-adf6-37e6762911a6") in persisted_tags
+    assert ("tre_workspace_id", "d680d6b7-d1d9-411c-9101-0793da980c81") in persisted_tags
 
 
 @patch('services.cost_service.CostManagementClient')

@@ -108,6 +108,7 @@ resource "azurerm_linux_function_app" "cost_processor_function_app" {
     "COST_PROCESSOR_BACKFILL_SCHEDULE"                = var.cost_processor_backfill_schedule
     "COST_PROCESSOR_BACKFILL_MAX_MONTHS"              = var.cost_processor_backfill_max_months
     "COST_PROCESSOR_BACKFILL_STOP_AFTER_EMPTY_MONTHS" = var.cost_processor_backfill_stop_after_empty_months
+    "COST_PROCESSOR_BACKFILL_MAX_RUNTIME_SECONDS"     = var.cost_processor_backfill_max_runtime_seconds
     "WEBSITES_ENABLE_APP_SERVICE_STORAGE"             = false
     "WEBSITE_CONTENTOVERVNET"                         = 1
     "STORAGE_ENDPOINT_SUFFIX"                         = module.terraform_azurerm_environment_configuration.storage_suffix

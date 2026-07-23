@@ -69,7 +69,7 @@ Because completed months are immutable, the vast majority of a multi-year report
 
 ### Hosting
 
-The Cost Processor Function app runs on the shared **core processing** App Service Plan (`plan-processing-<tre_id>`). This plan is named after its role rather than a single app because it hosts more than one appropriately-named Function app – currently the **Airlock Processor** and the **Cost Processor** – avoiding the cost of a dedicated plan for the light, periodic cost-collection workload.
+The Cost Processor Function app runs on the shared **core processing** App Service Plan (Terraform resource `azurerm_service_plan.processing`, whose Azure resource keeps its original name `plan-airlock-<tre_id>` to avoid a disruptive rename on upgrade). This plan hosts more than one Function app – currently the **Airlock Processor** and the **Cost Processor** – avoiding the cost of a dedicated plan for the light, periodic cost-collection workload.
 
 ## Get overall cost report
 
@@ -166,8 +166,8 @@ GET /api/workspaces/{workspace_id}/costs
 
 * Cost and usage data is typically available in Cost Management within 8-24 hours.
 
-* Azure Cost Management only supports custom time periods of up to one year per query. To generate reports spanning more than a year, the TRE Cost API automatically splits the requested period into consecutive sub-periods of up to one year and merges the results.
-Each queried sub-period is stored in the durable [cost collection](#cost-data-persistence-and-collection) and retained, so overlapping or repeated reports reuse already collected sub-periods instead of re-querying Cost Management.
+* Azure Cost Management only supports custom time periods of up to one year per query. To generate reports spanning more than a year, the TRE Cost API automatically splits the requested period into consecutive calendar-month-aligned sub-periods (always well within the one-year limit) and merges the results.
+Each queried sub-period is stored in the durable [cost collection](#cost-data-persistence-and-collection) and retained, so overlapping or repeated reports reuse already collected sub-periods instead of re-querying Cost Management. Month-aligned sub-periods share the same keys the Cost Processor persists, so once a month is collected every report reuses it.
 Note that Cost Management itself only returns the last 13 months of data (see below), so sub-periods older than that are populated by the Cost Processor as they are collected over time rather than back-filled from Cost Management.
 
 * Tags aren't applied to historical data, template authors need to make sure all relevant [Azure resources of a TRE resource are tagged as instructed](#azure-resources-tagging).
