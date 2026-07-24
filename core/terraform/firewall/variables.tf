@@ -55,9 +55,9 @@ variable "web_app_ip_group_id" {
   description = "Web App IP Group"
 }
 
-variable "airlock_processor_ip_group_id" {
+variable "processor_ip_group_id" {
   type        = string
-  description = "Airlock Processor IP Group"
+  description = "Processor subnet IP Group (Airlock Processor and Cost Processor Function apps)"
 }
 
 variable "shared_services_ip_group_id" {

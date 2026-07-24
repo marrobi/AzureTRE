@@ -157,7 +157,7 @@ resource "azurerm_ip_group" "webapp" {
   lifecycle { ignore_changes = [tags] }
 }
 
-resource "azurerm_ip_group" "airlock_processor" {
+resource "azurerm_ip_group" "processor" {
   name                = "ipg-airlock-processor"
   location            = var.location
   resource_group_name = var.resource_group_name

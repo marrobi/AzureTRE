@@ -29,7 +29,7 @@ tre-deploy: deploy-core build-and-deploy-ui firewall-install db-migrate show-cor
 
 # Description: Build and push images for API, resource processor and airlock processor.
 # Example: make images
-images: build-and-push-api build-and-push-resource-processor build-and-push-airlock-processor ## 📦 Build and push all images
+images: build-and-push-api build-and-push-resource-processor build-and-push-airlock-processor build-and-push-cost-processor ## 📦 Build and push all images
 
 # Description: Build and push API image
 # Example: make build-and-push-api
@@ -42,6 +42,10 @@ build-and-push-resource-processor: build-resource-processor-vm-porter-image push
 # Description: Build and push Airlock Processor image
 # Example: make build-and-push-airlock-processor
 build-and-push-airlock-processor: build-airlock-processor push-airlock-processor
+
+# Description: Build and push Cost Processor image
+# Example: make build-and-push-cost-processor
+build-and-push-cost-processor: build-cost-processor push-cost-processor
 
 # Description: Display help message on the existing make commands.
 # Example: make help
@@ -105,6 +109,11 @@ build-resource-processor-vm-porter-image:
 build-airlock-processor:
 	$(call build_image,"airlock-processor","${MAKEFILE_DIR}/airlock_processor/_version.py","${MAKEFILE_DIR}/airlock_processor/Dockerfile","${MAKEFILE_DIR}/airlock_processor/")
 
+# Description: Build Cost Processor image using the build_image method.
+# Example: make build-cost-processor
+build-cost-processor:
+	$(call build_image,"cost-processor","${MAKEFILE_DIR}/cost_processor/_version.py","${MAKEFILE_DIR}/cost_processor/Dockerfile","${MAKEFILE_DIR}/cost_processor/")
+
 # A recipe for pushing images. Parameters:
 # 1. Image name suffix
 # 2. Version file path
@@ -133,6 +142,11 @@ push-resource-processor-vm-porter-image:
 # Example: make push-airlock-processor
 push-airlock-processor:
 	$(call push_image,"airlock-processor","${MAKEFILE_DIR}/airlock_processor/_version.py")
+
+# Description: Push Cost Processor image to ACR using the push_image method.
+# Example: make push-cost-processor
+push-cost-processor:
+	$(call push_image,"cost-processor","${MAKEFILE_DIR}/cost_processor/_version.py")
 
 # Description: Deploy the core infrastructure of TRE.
 # This will create the core resource group (named rg-<TRE_ID>) with the necessary resources.

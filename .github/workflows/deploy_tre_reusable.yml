@@ -319,6 +319,7 @@ jobs:
             build-and-push-api,
             build-and-push-resource-processor,
             build-and-push-airlock-processor,
+            build-and-push-cost-processor,
           ]
 
     steps:

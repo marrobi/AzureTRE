@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "",
+    "TRE_ID": "",
+    "TRE_API_URL": "https://api-<tre_id>.<region>.cloudapp.azure.com",
+    "API_CLIENT_ID": "",
+    "MANAGED_IDENTITY_CLIENT_ID": "",
+    "COST_PROCESSOR_CURRENT_MONTH_SCHEDULE": "0 0 */6 * * *",
+    "COST_PROCESSOR_PREVIOUS_MONTH_SCHEDULE": "0 30 2 * * *",
+    "COST_PROCESSOR_PREVIOUS_MONTHS_LOOK_BACK": "1"
+  }
+}

@@ -49,6 +49,7 @@ core_router.include_router(workspaces.workspaces_shared_router, tags=["workspace
 core_router.include_router(migrations.migrations_core_router, tags=["migrations"])
 core_router.include_router(costs.costs_core_router, tags=["costs"])
 core_router.include_router(costs.costs_workspace_router, tags=["costs"])
+core_router.include_router(costs.costs_internal_router, tags=["costs"])
 core_router.include_router(requests.router, tags=["requests"])
 core_router.include_router(workspace_users.workspaces_users_shared_router, tags=["users"])
 

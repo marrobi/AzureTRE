@@ -8,6 +8,7 @@ import uuid
 
 class GranularityEnum(StrEnum):
     daily = "Daily"
+    monthly = "Monthly"
     none = "None"
 
 
@@ -94,6 +95,34 @@ class CostRow(BaseModel):
     cost: float
     currency: str
     date: Optional[date]
+
+
+class CostItemType(StrEnum):
+    """Discriminates item types in the cost collection (budgets/adjustments may be added later)."""
+    cost_query_result = "cost-query-result"
+
+
+class PersistedCostQueryResult(BaseModel):
+    """A single split Cost Management query period persisted in the cost collection.
+
+    Keyed by a deterministic id so repeated refreshes overwrite rather than duplicate;
+    ``final`` marks completed (immutable) months that never need re-querying.
+    """
+    id: str
+    partitionKey: str
+    itemType: CostItemType = CostItemType.cost_query_result
+    tre_id: str
+    scope: str
+    tag_name: str
+    tag_value: str
+    granularity: GranularityEnum
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    resource_groups: List[str] = []
+    columns: List[dict] = []
+    rows: List[list] = []
+    final: bool = False
+    collected_at: str
 
 
 class CostItem(BaseModel):

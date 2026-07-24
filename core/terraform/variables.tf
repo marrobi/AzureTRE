@@ -37,6 +37,54 @@ variable "api_image_repository" {
   default     = "microsoft/azuretre/api"
 }
 
+variable "cost_processor_image_repository" {
+  type        = string
+  description = "Repository for Cost processor image"
+  default     = "microsoft/azuretre/cost-processor"
+}
+
+variable "cost_processor_current_month_schedule" {
+  type        = string
+  description = "NCRONTAB schedule for refreshing the current (month-to-date) cost data"
+  default     = "0 0 */6 * * *"
+}
+
+variable "cost_processor_previous_month_schedule" {
+  type        = string
+  description = "NCRONTAB schedule for finalising recently-closed month(s) of cost data"
+  default     = "0 30 2 * * *"
+}
+
+variable "cost_processor_previous_months_look_back" {
+  type        = number
+  description = "How many recently-closed months the cost processor re-queries until Azure finishes re-rating them"
+  default     = 1
+}
+
+variable "cost_processor_backfill_schedule" {
+  type        = string
+  description = "NCRONTAB schedule for the cost history backfill that walks back until no data"
+  default     = "0 0 4 * * *"
+}
+
+variable "cost_processor_backfill_max_months" {
+  type        = number
+  description = "Maximum months the backfill walks back per run; 0 walks back until Azure returns a month with no data"
+  default     = 0
+}
+
+variable "cost_processor_backfill_stop_after_empty_months" {
+  type        = number
+  description = "Stop the history backfill after this many consecutive months with no cost data, so a single idle month mid-history does not end the walk early"
+  default     = 2
+}
+
+variable "cost_processor_backfill_max_runtime_seconds" {
+  type        = number
+  description = "Wall-clock budget (seconds) for a single backfill run so a throttled run cannot tie up the single Cost Processor worker indefinitely; 0 means no limit. Remaining months are picked up on the next scheduled run"
+  default     = 1800
+}
+
 variable "core_app_service_plan_sku" {
   type    = string
   default = "P1v3"

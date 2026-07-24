@@ -152,7 +152,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "core" {
   }
 
   application_rule_collection {
-    name     = "arc-airlock-processor-subnet"
+    name     = "arc-processor-subnet"
     priority = 304
     action   = "Allow"
 
@@ -165,7 +165,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "core" {
       destination_fqdns = [
         "functionscdn.azureedge.net"
       ]
-      source_ip_groups = [var.airlock_processor_ip_group_id]
+      source_ip_groups = [var.processor_ip_group_id]
     }
   }
 
