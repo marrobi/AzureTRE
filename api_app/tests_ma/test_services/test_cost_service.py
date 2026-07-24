@@ -196,35 +196,63 @@ def __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock):
     }
 
 
-def __get_daily_cost_management_query_result():
+async def test_summarize_untagged_uses_rg_tag_as_fallback_for_untagged_resources():
+    # Resources in a known TRE resource group that carry no individual tag should be
+    # attributed to the resource group's TRE tag (the existing "untagged fallback").
     query_result = QueryResult()
+    query_result.columns = [
+        QueryColumn(name="PreTaxCost", type="Number"),
+        QueryColumn(name="ResourceGroup", type="String"),
+        QueryColumn(name="Tag", type="String"),
+        QueryColumn(name="Currency", type="String")]
     query_result.rows = [
-        [31.6, 20220501, '"tre_core_service_id":"guy22"', 'USD'],
-        [32.6, 20220502, '"tre_core_service_id":"guy22"', 'USD'],
-        [33.6, 20220503, '"tre_core_service_id":"guy22"', 'USD'],
-
-        [44.5, 20220501, '"tre_id":"guy22"', 'USD'],
-        [44.5, 20220502, '"tre_id":"guy22"', 'USD'],
-        [44.5, 20220503, '"tre_id":"guy22"', 'USD'],
-        [12.5, 20220503, '"tre_id":"guy22"', 'ILS'],
-
-        [3.8, 20220501, '"tre_shared_service_id":"848e8eb5-0df6-4d0f-9162-afd9a3fa0631"', 'USD'],
-        [4.8, 20220502, '"tre_shared_service_id":"848e8eb5-0df6-4d0f-9162-afd9a3fa0631"', 'USD'],
-        [5.8, 20220503, '"tre_shared_service_id":"848e8eb5-0df6-4d0f-9162-afd9a3fa0631"', 'USD'],
-
-        [2.8, 20220501, '"tre_shared_service_id":"f16d0324-9027-4448-b69b-2d48d925e6c0"', 'USD'],
-        [3.8, 20220502, '"tre_shared_service_id":"f16d0324-9027-4448-b69b-2d48d925e6c0"', 'USD'],
-        [4.8, 20220503, '"tre_shared_service_id":"f16d0324-9027-4448-b69b-2d48d925e6c0"', 'USD'],
-
-        [1.8, 20220501, '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
-        [2.8, 20220502, '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
-        [3.8, 20220503, '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
-
-        [4.8, 20220501, '"tre_workspace_id":"d680d6b7-d1d9-411c-9101-0793da980c81"', 'USD'],
-        [5.8, 20220502, '"tre_workspace_id":"d680d6b7-d1d9-411c-9101-0793da980c81"', 'USD'],
-        [6.8, 20220503, '"tre_workspace_id":"d680d6b7-d1d9-411c-9101-0793da980c81"', 'USD'],
+        [10.0, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
+        # untagged resource in a known RG — should be attributed to the workspace
+        [5.0, 'rg-guy22-ws-11a6', '', 'USD'],
     ]
-    return query_result
+    resource_groups_dict = {'rg-guy22-ws-11a6': '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"'}
+
+    cost_service = CostService()
+    rows = cost_service.summarize_untagged(query_result, GranularityEnum.none, resource_groups_dict)
+
+    # both rows should be merged under the workspace tag
+    assert len(rows) == 1
+    assert rows[0][0] == 15.0
+    assert rows[0][2] == '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"'
+
+
+async def test_summarize_untagged_logs_warning_and_does_not_raise_for_unknown_rg(caplog):
+    # When a cost result row references a resource group that is NOT in resource_groups_dict
+    # (e.g. a managed/secondary RG created by an Azure service, or stale data from the
+    # Cosmos collection after a workspace was deleted), summarize_untagged must not raise a
+    # KeyError.  Instead it logs a warning and leaves those rows unattributed.
+    import logging
+    query_result = QueryResult()
+    query_result.columns = [
+        QueryColumn(name="PreTaxCost", type="Number"),
+        QueryColumn(name="ResourceGroup", type="String"),
+        QueryColumn(name="Tag", type="String"),
+        QueryColumn(name="Currency", type="String")]
+    query_result.rows = [
+        # row from a known RG — should be attributed normally
+        [10.0, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
+        # row from an unrecognised secondary RG with no TRE tag
+        [7.5, 'databricks-rg-ws-external', '', 'USD'],
+    ]
+    # only the known RG is present in the dict
+    resource_groups_dict = {'rg-guy22-ws-11a6': '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"'}
+
+    cost_service = CostService()
+    with caplog.at_level(logging.WARNING):
+        rows = cost_service.summarize_untagged(query_result, GranularityEnum.none, resource_groups_dict)
+
+    # no KeyError: the call returns normally
+    # the known resource is still present
+    assert any(
+        row[2] == '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"' for row in rows
+    )
+    # a warning was logged for the unknown resource group
+    assert any('databricks-rg-ws-external' in record.message for record in caplog.records)
 
 
 @pytest.mark.asyncio

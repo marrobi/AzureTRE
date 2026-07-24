@@ -278,10 +278,23 @@ class CostService:
             columns.append(query_result.columns[i].name)
         df.columns = columns
 
-        # fill tags for untagged
+        # fill tags for untagged resources using the resource group's TRE tag as a fallback
         untagged_resource_groups = list(df.loc[df["Tag"] == "", "ResourceGroup"].unique())
         for rg in untagged_resource_groups:
-            df.loc[(df["Tag"] == "") & (df["ResourceGroup"] == rg), "Tag"] = resource_groups_dict[rg]
+            tag = resource_groups_dict.get(rg)
+            if tag is not None:
+                df.loc[(df["Tag"] == "") & (df["ResourceGroup"] == rg), "Tag"] = tag
+            else:
+                # Resource group is not tagged with a TRE tag.  This can happen when an Azure
+                # service creates a secondary or managed resource group (e.g. Azure ML, Databricks)
+                # that inherits no TRE tags, or when the cost collection contains stale rows from a
+                # resource group that has since been removed or re-tagged.  Log a warning so
+                # operators are aware; the rows are left unattributed and will not appear in any
+                # workspace or service cost breakdown.
+                logger.warning(
+                    f"Resource group '{rg}' has untagged costs but is not in the TRE resource "
+                    "groups list. These costs will not be attributed to a workspace or service."
+                )
 
         # group by
         if granularity == GranularityEnum.none:

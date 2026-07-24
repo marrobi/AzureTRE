@@ -15,6 +15,9 @@ ENHANCEMENTS:
 * Host the Cost Processor Function app on the existing `AirlockProcessorSubnet` (and its `ipg-airlock-processor` IP group) instead of adding a dedicated `CostProcessorSubnet`, conserving core VNet address space without renaming or recreating the subnet so existing base workspaces are unaffected ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Collect per-workspace cost periods (`tre_workspace_id`) as well as the TRE-wide scope during cost refresh, and cap each history backfill run with a configurable wall-clock budget so it cannot tie up the single Cost Processor worker ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 
+BUG FIXES:
+* Fix `summarize_untagged` to handle resource groups not in the TRE resource groups list (e.g. managed secondary resource groups created by Azure ML or Databricks, or stale Cosmos collection data from deleted resource groups) without raising a `KeyError`; a warning is now logged for unattributed costs ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
+
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**
 * Sonatype Nexus shared service now requires explicit EULA acceptance (`accept_nexus_eula: true`) when deploying. This ensures compliance with Sonatype Nexus Community Edition licensing. ([#4842](https://github.com/microsoft/AzureTRE/issues/4842))

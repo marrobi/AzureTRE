@@ -212,6 +212,8 @@ if filtered resources have more tags, those tags will appear in the result.
 To rollup untagged resources into workspace costs Azure TRE cost API first calls Azure Resource Manager to get all resource group names which are tagged with the workspace_id and passes those names into Azure Cost Management Query API as a filter and group by resource group along with the tag name.
 untagged costs results will apear in with an empty tag name and get aggregated using the resource group and relevent the workspace id.
 
+If a cost row references a resource group that is not tagged with a TRE tag — for example a secondary managed resource group created by an Azure service such as Azure Databricks or Azure ML, or stale data from a resource group that has since been removed — the costs for those resources are not attributed to any workspace or service. A warning is logged so operators are aware of unattributed spend.
+
 Azure TRE Cost API joins this response with the hierarchical structure of the requested report.
 
 **Cost management query API Request example**
