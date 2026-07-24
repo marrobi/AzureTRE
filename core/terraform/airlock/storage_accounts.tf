@@ -12,6 +12,21 @@ moved {
   to   = azurerm_storage_account.sa_import_in_progress[0]
 }
 
+moved {
+  from = azurerm_storage_account.sa_export_approved
+  to   = azurerm_storage_account.sa_export_approved[0]
+}
+
+moved {
+  from = azurerm_storage_account.sa_import_rejected
+  to   = azurerm_storage_account.sa_import_rejected[0]
+}
+
+moved {
+  from = azurerm_storage_account.sa_import_blocked
+  to   = azurerm_storage_account.sa_import_blocked[0]
+}
+
 resource "azurerm_storage_account" "sa_airlock_core" {
   name                             = local.airlock_core_storage_name
   location                         = var.location
