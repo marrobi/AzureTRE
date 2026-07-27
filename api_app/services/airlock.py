@@ -72,15 +72,6 @@ def get_required_permission(airlock_request: AirlockRequest) -> ContainerSasPerm
         return ContainerSasPermissions(read=True, list=True)
 
 
-def is_publicly_accessible_stage(airlock_request: AirlockRequest) -> bool:
-    if airlock_request.type == constants.IMPORT_TYPE:
-        # Only import Draft (external upload) is publicly accessible via App GW/SAS
-        return airlock_request.status == AirlockRequestStatus.Draft
-    else:
-        # Only export Approved is publicly accessible via App GW/SAS
-        return airlock_request.status == AirlockRequestStatus.Approved
-
-
 def get_account_by_request(airlock_request: AirlockRequest, workspace: Workspace) -> str:
     """Resolve storage account name for v1 (legacy per-stage) airlock requests."""
     tre_id = config.TRE_ID
@@ -376,13 +367,18 @@ async def update_and_publish_event_airlock_request(
     try:
         logger.debug(f"Sending status changed event for airlock request item: {airlock_request.id}")
         await send_status_changed_event(airlock_request=updated_airlock_request, previous_status=airlock_request.status, workspace=workspace)
-        access_service = get_access_service()
-        role_assignment_details = access_service.get_workspace_user_emails_by_role_assignment(workspace)
-        await send_airlock_notification_event(updated_airlock_request, workspace, role_assignment_details)
-        return updated_airlock_request
     except Exception:
         logger.exception("Failed sending status_changed message")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=strings.EVENT_GRID_GENERAL_ERROR_MESSAGE)
+
+    try:
+        access_service = get_access_service()
+        role_assignment_details = access_service.get_workspace_user_emails_by_role_assignment(workspace)
+        await send_airlock_notification_event(updated_airlock_request, workspace, role_assignment_details)
+    except Exception:
+        logger.exception("Failed sending airlock notification event")
+
+    return updated_airlock_request
 
 
 def get_timestamp() -> float:
