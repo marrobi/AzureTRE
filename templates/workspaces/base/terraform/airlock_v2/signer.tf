@@ -20,7 +20,14 @@
 
 locals {
   create_airlock_signer = var.register_aad_application
-  aad_issuer            = "https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0"
+  aad_endpoint          = module.terraform_azurerm_environment_configuration.active_directory_endpoint
+  aad_issuer            = "${local.aad_endpoint}/${data.azuread_client_config.current.tenant_id}/v2.0"
+  # Workload-identity-federation token-exchange audience differs per sovereign cloud and
+  # must match the audience the core API requests when federating as this signer
+  # (see api_app/core/credentials.py). Derived from the same cloud endpoint so both sides align.
+  token_exchange_audience = endswith(local.aad_endpoint, ".us") ? "api://AzureADTokenExchangeUSGov" : (
+    endswith(local.aad_endpoint, ".cn") ? "api://AzureADTokenExchangeChina" : "api://AzureADTokenExchange"
+  )
 }
 
 resource "azuread_application" "airlock_signer" {
@@ -49,7 +56,7 @@ resource "azuread_application_federated_identity_credential" "api" {
   application_id = azuread_application.airlock_signer[0].id
   display_name   = "api-mi"
   description    = "Allows the core API managed identity to mint airlock SAS as this workspace's signer"
-  audiences      = ["api://AzureADTokenExchange"]
+  audiences      = [local.token_exchange_audience]
   issuer         = local.aad_issuer
   subject        = data.azurerm_user_assigned_identity.api_id.principal_id
 }
