@@ -183,6 +183,18 @@ class AirlockRequestRepository(BaseRepository):
         requests = await self.query(query=query, parameters=parameters)
         return [request["id"] for request in requests]
 
+    async def get_in_flight_airlock_request_ids_for_workspace(self, workspace_id: str) -> List[str]:
+        query = (
+            "SELECT c.id FROM c WHERE c.workspaceId = @workspaceId "
+            "AND NOT ARRAY_CONTAINS(@finalStatuses, c.status)"
+        )
+        parameters = [
+            {"name": "@workspaceId", "value": str(workspace_id)},
+            {"name": "@finalStatuses", "value": [status.value for status in self.FINAL_AIRLOCK_STATUSES]}
+        ]
+        requests = await self.query(query=query, parameters=parameters)
+        return [request["id"] for request in requests]
+
     async def get_airlock_requests_for_airlock_manager(self, user_id: str, type: Optional[AirlockRequestType] = None, status: Optional[AirlockRequestStatus] = None, order_by: Optional[str] = None, order_ascending=True) -> List[AirlockRequest]:
         workspace_repo = await WorkspaceRepository.create()
         access_service = get_access_service()

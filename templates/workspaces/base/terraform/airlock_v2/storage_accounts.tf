@@ -21,10 +21,14 @@ resource "azurerm_private_endpoint" "airlock_workspace_pe" {
 
   lifecycle { ignore_changes = [tags] }
 
-  private_dns_zone_group {
-    name                 = "private-dns-zone-group-sa-airlock-ws-global"
-    private_dns_zone_ids = [data.azurerm_private_dns_zone.blobcore.id]
-  }
+  # NOTE: intentionally NO private_dns_zone_group here.
+  # The shared global airlock account is reached by one private endpoint per workspace.
+  # Registering every workspace's PE into the single shared
+  # "privatelink.blob.core.windows.net" zone would collide on the same A-record
+  # (last-writer-wins), breaking DNS resolution for all other workspaces.
+  # Instead we register this PE in a per-workspace, more-qualified zone below
+  # ("<account>.privatelink.blob.core.windows.net"), which wins by longest-suffix
+  # match only within this workspace's VNet.
 
   private_service_connection {
     name                           = "psc-sa-airlock-ws-global-${var.short_workspace_id}"
@@ -34,15 +38,59 @@ resource "azurerm_private_endpoint" "airlock_workspace_pe" {
   }
 }
 
+# Per-workspace private DNS zone for the shared global airlock storage account.
+# The zone name is the full account FQDN, so it is a more specific (longer suffix)
+# match than the shared "privatelink.blob.core.windows.net" zone. Azure Private DNS
+# resolves using the longest matching suffix, so within this workspace's VNet the
+# shared account resolves to THIS workspace's private endpoint IP. This both avoids
+# the shared-zone A-record collision and keeps the @Environment[privateEndpoints]
+# ABAC condition enforceable per workspace (a leaked SAS replayed from another
+# workspace arrives via that workspace's PE and is denied).
+resource "azurerm_private_dns_zone" "airlock_ws_global" {
+  name                = "${local.airlock_workspace_global_storage_name}.${data.azurerm_private_dns_zone.blobcore.name}"
+  resource_group_name = var.ws_resource_group_name
+  tags                = var.tre_workspace_tags
+
+  lifecycle { ignore_changes = [tags] }
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "airlock_ws_global" {
+  name                  = "airlock-ws-global-${var.short_workspace_id}"
+  resource_group_name   = var.ws_resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.airlock_ws_global.name
+  virtual_network_id    = var.workspace_vnet_id
+  registration_enabled  = false
+  tags                  = var.tre_workspace_tags
+
+  lifecycle { ignore_changes = [tags] }
+}
+
+resource "azurerm_private_dns_a_record" "airlock_ws_global" {
+  name                = "@"
+  zone_name           = azurerm_private_dns_zone.airlock_ws_global.name
+  resource_group_name = var.ws_resource_group_name
+  ttl                 = 10
+  records             = [azurerm_private_endpoint.airlock_workspace_pe.private_service_connection[0].private_ip_address]
+  tags                = var.tre_workspace_tags
+
+  lifecycle { ignore_changes = [tags] }
+}
+
 resource "azurerm_role_assignment" "api_workspace_global_blob_data_contributor" {
   provider = azurerm.core
 
   # Use a deterministic name per workspace to avoid conflicts when multiple
   # workspaces assign the same role on the same global storage account.
+  # The principal is the per-workspace SAS signer service principal when Entra
+  # object creation is enabled (register_aad_application); otherwise it falls back
+  # to the shared core API identity. Because distinct signer principals produce
+  # distinct (principal, role, scope) tuples, multiple workspaces can each hold
+  # their own conditioned assignment on the shared global account without collision.
   name                 = uuidv5("url", "${data.azurerm_storage_account.sa_airlock_workspace_global.id}-${var.workspace_id}-blob-data-contributor")
   scope                = data.azurerm_storage_account.sa_airlock_workspace_global.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = data.azurerm_user_assigned_identity.api_id.principal_id
+  principal_id         = var.register_aad_application ? azuread_service_principal.airlock_signer[0].object_id : data.azurerm_user_assigned_identity.api_id.principal_id
+  principal_type       = "ServicePrincipal"
 
   condition_version = "2.0"
   condition         = <<-EOT

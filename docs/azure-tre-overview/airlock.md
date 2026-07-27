@@ -147,7 +147,7 @@ A notification is sent to the Airlock Manager.
 > The Security Scanning can be disabled, changing the request state from **Submitted** straight to **In-Review**.
 
 The Airlock Manager will manually review the data using the tools of their choice available in the TRE workspace. Once review is completed, the Airlock Manager will have to *Approve* or *Reject* the airlock process, through a TRE API call.
-At this point, the request will change state to either **Approval In-progress** or **Rejection In-progress**, while the data movement occurs moving afterwards to **Approved** or **Rejected** accordingly. The data will now be in the final storage destination: `stalexapp` - export approved  or `stalimapp` - import approved.
+At this point, the request will change state to either **Approval In-progress** or **Rejection In-progress**, while the data movement occurs moving afterwards to **Approved** or **Rejected** accordingly. The data will now be in its final location: the core storage account (`stalairlock{tre_id}`) for an approved **export**, or the global workspace storage account (`stalairlockg{tre_id}`) for an approved **import**.
 With this state change, a notification will be triggered to the requestor including the location of the processed data in the form of an URL + SAS token.
 
 ## Data Movement
@@ -247,18 +247,18 @@ The identified data in an airlock process, will be submitted to a security scan.
 
 **Identity access summary:**
 
-| Identity | Core Storage | Workspace Storage | ABAC Condition |
+| Identity | Core Storage | Global Workspace Storage | ABAC Condition |
 | --- | --- | --- | --- |
-| TRE API | `Storage Blob Data Contributor` | — | Only `import-external` and `export-approved` stages |
-| Airlock Processor | `Storage Blob Data Contributor` | `Storage Blob Data Contributor` | None (unrestricted) |
-| Workspace PE | — | `Storage Blob Data Contributor` | `workspace_id` must match + stage restrictions |
+| TRE API (managed identity) | `Storage Blob Data Contributor` | `Storage Blob Delegator` | Core: only `import-external` and `export-approved` stages. Assumes the per-workspace signer (below) to mint SAS for the global account. |
+| Per-workspace airlock signer (app registration) | — | `Storage Blob Data Contributor` | That workspace's private endpoint **and** matching `workspace_id` **and** stage ∈ (`import-approved`, `export-internal`, `export-in-progress`) |
+| Airlock Processor (managed identity) | `Storage Blob Data Contributor` | `Storage Blob Data Contributor` | None (unrestricted) |
 
 **Network access:**
 
-- Core storage allows public access for import-external and export-approved stages via SAS tokens directly to storage.
-- Global workspace storage uses `Deny` as the default network action. Access is only possible via per-workspace private endpoints from within the workspace VNet.
+- Core storage (`stalairlock`) allows public access for the `import-external` and `export-approved` stages, so researchers and reviewers can upload/download via SAS tokens directly to storage.
+- Global workspace storage (`stalairlockg`) uses `Deny` as the default network action and disables public access. It is reachable only through per-workspace private endpoints (one per workspace VNet) and the core airlock-processor private endpoint.
 - The airlock processor has a private endpoint on the airlock storage subnet for internal processing on both accounts.
-- User Delegation SAS tokens inherit the ABAC restrictions of the signing identity, so even a valid SAS token cannot access stages outside the identity's ABAC scope.
+- User Delegation SAS tokens inherit the ABAC restrictions of the **signing identity**. For the global workspace account the signing identity is the per-workspace airlock signer, so a SAS is bound to that workspace's private endpoint and cannot be replayed from another workspace (see [Cross-Workspace Isolation](#cross-workspace-isolation)).
 
 ### Container Metadata Stages
 
@@ -449,6 +449,8 @@ PATCH /api/workspaces/{workspace_id}
 }
 ```
 
+> **Updating `airlock_version` on an existing workspace:** `airlock_version` is a conditional property that only applies while `enable_airlock` is `true`, so a PATCH that changes it **must also include `enable_airlock: true`** in the same request (as shown above). A minimal PATCH containing only `airlock_version` is rejected with `400` (`unevaluatedProperties`). The UI always sends the full set of updateable properties, so it satisfies this automatically; API/CLI callers should include `enable_airlock` (or the workspace's full current property set). Upgrading from `1` to `2` while requests are in progress makes those in-flight requests inaccessible — drain them first.
+
 **Enabling airlock via the UI:**
 
 When creating or updating a workspace, the airlock version is available as a dropdown under the airlock configuration section.
@@ -471,11 +473,17 @@ config.yaml                          Workspace Properties
 
 A common question: if all workspaces share the same storage account (`stalairlockg{tre_id}`), what prevents Workspace A from accessing Workspace B's data?
 
-The answer is **three layers of isolation**:
+The answer is **four layers of isolation**:
 
-### 1. ABAC Conditions (Azure Attribute-Based Access Control)
+### 1. Per-workspace SAS signer identity
 
-Each workspace deployment creates a role assignment on the global workspace storage account with an ABAC condition that requires **all three** of the following to be true for blob operations:
+SAS tokens for the global workspace storage account are **user-delegation SAS**, signed by whichever identity requests the user-delegation key (recorded in the SAS as `skoid`). Each workspace has its own **airlock signer** — a dedicated Entra application registration (`airlock-signer-{workspace_short_id}`) created by the workspace deployment when Entra object creation is permitted (`register_aad_application = true`).
+
+The core TRE API managed identity is configured as a **federated identity credential** on each signer, so the API can mint SAS *as* that workspace's signer without any stored secret (workload identity federation). Because the signer is per-workspace and holds the ABAC-conditioned role (below), a SAS is cryptographically bound to a single workspace's access rules and cannot be replayed from another workspace. When Entra object creation is not permitted, the workspace falls back to signing with the shared core API identity.
+
+### 2. ABAC Conditions (Azure Attribute-Based Access Control)
+
+Each workspace deployment creates a role assignment for that workspace's **signer identity** on the global workspace storage account with an ABAC condition that requires **all three** of the following to be true for blob operations:
 
 - The request must come through **that workspace's specific private endpoint**
 - The container's `workspace_id` metadata must match **that workspace's ID**
@@ -493,13 +501,17 @@ ABAC condition (per workspace):
     IN ('import-approved', 'export-internal', 'export-in-progress')
 ```
 
-This means even if Workspace A somehow obtained a SAS token referencing Workspace B's container, the ABAC condition would deny the operation because the private endpoint wouldn't match.
+This means even if Workspace A somehow obtained a SAS token signed for Workspace B, the ABAC condition would deny the operation because the request would not arrive through Workspace B's private endpoint (see DNS resolution below).
 
-### 2. Network Isolation (Private Endpoints)
+### 3. Network Isolation and Per-Workspace DNS
 
-Each workspace creates its own private endpoint to the global workspace storage account, connected to the workspace's VNet. The ABAC condition references this specific private endpoint ID, so requests from a different workspace's PE are rejected.
+Each workspace creates its own private endpoint to the global workspace storage account, connected to the workspace's VNet, and the signer's ABAC condition references that specific private endpoint's resource ID.
 
-### 3. Container Metadata
+Because all workspaces share the same account FQDN (`stalairlockg{tre_id}.blob.core.windows.net`), each workspace also gets its own **more-specific private DNS zone** — `stalairlockg{tre_id}.privatelink.blob.core.windows.net` — linked only to that workspace's VNet and resolving the account to *that workspace's* private endpoint. A single shared `privatelink.blob.core.windows.net` zone cannot do this: every workspace's endpoint would compete for the same A-record (last-writer-wins). The longer, per-account zone wins by longest-suffix match inside each workspace VNet. The core network resolves the same FQDN to the core airlock-processor private endpoint.
+
+The net effect: a request from Workspace A always egresses through Workspace A's private endpoint, which is exactly what the signer's ABAC condition checks. A SAS signed for another workspace is therefore rejected with `AuthorizationPermissionMismatch`, even if the caller supplies the correct container name.
+
+### 4. Container Metadata
 
 The airlock processor stamps every container with `workspace_id` metadata at creation time. This metadata is immutable in practice (only the processor identity can modify it, and researcher identities have no direct access to the storage account).
 

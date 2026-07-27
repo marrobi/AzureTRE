@@ -3,6 +3,8 @@ import pytest
 import pytest_asyncio
 import time
 from resources import strings
+from resources import constants
+from core import config
 from services.airlock import validate_user_allowed_to_access_storage_account, get_required_permission, \
     validate_request_status, cancel_request, delete_review_user_resource, check_email_exists, revoke_request, is_publicly_accessible_stage
 from models.domain.airlock_request import AirlockRequest, AirlockRequestStatus, AirlockRequestType, AirlockReview, AirlockReviewDecision, AirlockActions, AirlockReviewUserResource
@@ -694,3 +696,51 @@ def test_get_airlock_container_link_v2_resolves_correct_account_for_approved_imp
     mock_sas.assert_called_once()
     account_name = mock_sas.call_args[0][1]  # second positional arg
     assert account_name.startswith("stalairlockg")
+
+
+@patch("services.airlock.validate_request_status")
+@patch("services.airlock.validate_user_allowed_to_access_storage_account")
+@patch("services.airlock.get_airlock_request_container_sas_token", return_value="url")
+def test_get_airlock_container_link_v2_passes_signer_client_id(mock_sas, _mock_validate_user, _mock_validate_status):
+    from services.airlock import get_airlock_container_link
+
+    request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+    request.type = AirlockRequestType.Import
+    request.airlock_version = 2
+
+    workspace = sample_workspace()
+    workspace.properties["airlock_signer_client_id"] = "signer-client-id"
+
+    get_airlock_container_link(request, None, workspace)
+
+    # signer_client_id should be forwarded as the third positional arg
+    assert mock_sas.call_args[0][2] == "signer-client-id"
+
+
+@patch("services.airlock.generate_container_sas", return_value="sas")
+@patch("services.airlock.BlobServiceClient")
+@patch("services.airlock.credentials")
+def test_sas_token_uses_signer_credential_for_global_account(mock_credentials, mock_bsc, _mock_gen_sas):
+    from services.airlock import get_airlock_request_container_sas_token
+    global_account = constants.STORAGE_ACCOUNT_NAME_AIRLOCK_WORKSPACE_GLOBAL.format(config.TRE_ID)
+    request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+
+    get_airlock_request_container_sas_token(request, global_account, signer_client_id="signer-client-id")
+
+    mock_credentials.get_airlock_signer_credential.assert_called_once()
+    mock_credentials.get_credential.assert_not_called()
+
+
+@patch("services.airlock.generate_container_sas", return_value="sas")
+@patch("services.airlock.BlobServiceClient")
+@patch("services.airlock.credentials")
+def test_sas_token_uses_default_credential_when_no_signer(mock_credentials, mock_bsc, _mock_gen_sas):
+    from services.airlock import get_airlock_request_container_sas_token
+    core_account = constants.STORAGE_ACCOUNT_NAME_AIRLOCK_CORE.format(config.TRE_ID)
+    request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+
+    # No signer provided -> falls back to the API identity credential
+    get_airlock_request_container_sas_token(request, core_account, signer_client_id="")
+
+    mock_credentials.get_credential.assert_called_once()
+    mock_credentials.get_airlock_signer_credential.assert_not_called()
