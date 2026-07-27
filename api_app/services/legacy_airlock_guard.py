@@ -23,7 +23,8 @@ def ensure_workspace_airlock_version_supported(properties: dict) -> None:
         return
     if not properties:
         return
-    if properties.get("enable_airlock") and properties.get("airlock_version") == 1:
+    airlock_version = properties.get("airlock_version", 1)
+    if properties.get("enable_airlock") and airlock_version == 1:
         raise ValueError(
             "Cannot create a workspace with airlock_version=1 because legacy airlock is disabled "
             "in core (enable_legacy_airlock=false). Use airlock_version=2."
