@@ -10,10 +10,10 @@
 #     @Environment[privateEndpoints] condition denies access via a foreign PE).
 #
 # The signer is an Entra application/service principal. The shared core API managed
-# identity and the airlock processor managed identity are granted permission to
-# federate as this signer (workload identity federation / "managed identity as FIC"),
-# so they can mint SAS as the signer without any stored secret. The signer's
-# client_id is surfaced as a workspace output and read at signing time.
+# identity is granted permission to federate as this signer (workload identity
+# federation / "managed identity as FIC"), so it can mint SAS as the signer without
+# any stored secret. The signer's client_id is surfaced as a workspace output and
+# read at signing time.
 #
 # This requires TRE to be able to create Entra objects (register_aad_application).
 # When that is not permitted, signing falls back to the shared core API identity.
