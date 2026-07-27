@@ -255,14 +255,19 @@ async def _deploy_vm(airlock_request: AirlockRequest, user: User, workspace: Wor
     workspace_service = await workspace_service_repo.get_workspace_service_by_id(workspace_id=review_workspace_id, service_id=review_workspace_service_id)
     airlock_request_sas_url = get_airlock_container_link(airlock_request, user, workspace)
 
+    review_vm_properties = {
+        "display_name": "Airlock Review VM",
+        "description": f"{airlock_request.title} (ID {airlock_request.id})",
+        "airlock_request_sas_url": airlock_request_sas_url
+    }
+    # Only the export review VM template is version-aware (its network.tf selects the
+    # in-progress export PE by version). The import review VM template does not accept it.
+    if airlock_request.type == AirlockRequestType.Export:
+        review_vm_properties["airlock_version"] = workspace.properties.get("airlock_version", 2)
+
     user_resource_create = UserResourceInCreate(
         templateName=user_resource_template_name,
-        properties={
-            "display_name": "Airlock Review VM",
-            "description": f"{airlock_request.title} (ID {airlock_request.id})",
-            "airlock_request_sas_url": airlock_request_sas_url,
-            "airlock_version": workspace.properties.get("airlock_version", 2)
-        }
+        properties=review_vm_properties
     )
 
     user_resource, resource_template = await user_resource_repo.create_user_resource_item(
