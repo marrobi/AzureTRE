@@ -107,11 +107,9 @@ def get_account_by_request(airlock_request: AirlockRequest, workspace: Workspace
 
 
 def get_airlock_request_container_sas_token(airlock_request: AirlockRequest, account_name: str, signer_client_id: str = ""):
-    # The shared workspace-global airlock account uses a per-workspace signer (app registration)
-    # so that the per-workspace ABAC condition is enforced and a leaked SAS cannot be replayed
-    # from another workspace. Requests on the core account keep using the API identity, which
-    # holds the core-account role assignment. When no signer is available (v1, or Entra object
-    # creation disabled) we fall back to the API identity.
+    # Global account SAS are signed by the per-workspace signer (enforces per-workspace ABAC and blocks
+    # cross-workspace replay); the core account and the no-signer fallback use the API identity.
+    # See docs/azure-tre-overview/airlock.md (SAS signing).
     global_account_name = constants.STORAGE_ACCOUNT_NAME_AIRLOCK_WORKSPACE_GLOBAL.format(config.TRE_ID)
     if signer_client_id and account_name == global_account_name:
         credential = credentials.get_airlock_signer_credential(signer_client_id, config.AAD_TENANT_ID)

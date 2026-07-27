@@ -17,8 +17,7 @@ from azure.identity.aio import (
 
 
 # Audience used when exchanging the core API managed identity token for the
-# per-workspace airlock SAS signer app token (workload identity federation).
-# The audience differs per sovereign cloud, so it is derived from the configured authority.
+# Token-exchange audience for federating as the airlock signer; differs per sovereign cloud.
 def _get_token_exchange_audience() -> str:
     authority = urlparse(AAD_AUTHORITY_URL).netloc.lower()
     if authority.endswith(".us"):
@@ -60,14 +59,8 @@ async def get_credential_async():
 
 
 def get_airlock_signer_credential(signer_client_id: str, tenant_id: str) -> TokenCredential:
-    """Return a credential that authenticates as the per-workspace airlock SAS signer
-    app registration, via workload identity federation from the core API managed identity.
-
-    User-delegation SAS are signed by (skoid =) whichever identity requests the user
-    delegation key. Signing as the per-workspace signer makes the per-workspace ABAC
-    condition on the shared global airlock storage account enforceable and prevents a
-    SAS leaked from one workspace being replayed from another. Requires the core API
-    managed identity to be configured as a federated identity credential on the signer.
+    """Credential that authenticates as the per-workspace airlock SAS signer via workload identity
+    federation from the core API managed identity. See docs/azure-tre-overview/airlock.md (SAS signing).
     """
     managed_identity = ManagedIdentityCredential(client_id=MANAGED_IDENTITY_CLIENT_ID)
 

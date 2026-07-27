@@ -21,14 +21,9 @@ resource "azurerm_private_endpoint" "airlock_workspace_pe" {
 
   lifecycle { ignore_changes = [tags] }
 
-  # NOTE: intentionally NO private_dns_zone_group here.
-  # The shared global airlock account is reached by one private endpoint per workspace.
-  # Registering every workspace's PE into the single shared
-  # "privatelink.blob.core.windows.net" zone would collide on the same A-record
-  # (last-writer-wins), breaking DNS resolution for all other workspaces.
-  # Instead we register this PE in a per-workspace, more-qualified zone below
-  # ("<account>.privatelink.blob.core.windows.net"), which wins by longest-suffix
-  # match only within this workspace's VNet.
+  # NOTE: intentionally NO private_dns_zone_group here. The shared global account is reached by one PE
+  # per workspace; a per-workspace DNS zone (below) avoids the shared-zone A-record collision.
+  # See docs/azure-tre-overview/airlock.md (DNS).
 
   private_service_connection {
     name                           = "psc-sa-airlock-ws-global-${var.short_workspace_id}"
@@ -38,14 +33,9 @@ resource "azurerm_private_endpoint" "airlock_workspace_pe" {
   }
 }
 
-# Per-workspace private DNS zone for the shared global airlock storage account.
-# The zone name is the full account FQDN, so it is a more specific (longer suffix)
-# match than the shared "privatelink.blob.core.windows.net" zone. Azure Private DNS
-# resolves using the longest matching suffix, so within this workspace's VNet the
-# shared account resolves to THIS workspace's private endpoint IP. This both avoids
-# the shared-zone A-record collision and keeps the @Environment[privateEndpoints]
-# ABAC condition enforceable per workspace (a leaked SAS replayed from another
-# workspace arrives via that workspace's PE and is denied).
+# Per-workspace private DNS zone (full account FQDN) so the shared global account resolves to THIS
+# workspace's PE by longest-suffix match, keeping the per-workspace ABAC condition enforceable.
+# See docs/azure-tre-overview/airlock.md (DNS).
 resource "azurerm_private_dns_zone" "airlock_ws_global" {
   name                = "${local.airlock_workspace_global_storage_name}.${data.azurerm_private_dns_zone.blobcore.name}"
   resource_group_name = var.ws_resource_group_name
@@ -79,13 +69,8 @@ resource "azurerm_private_dns_a_record" "airlock_ws_global" {
 resource "azurerm_role_assignment" "api_workspace_global_blob_data_contributor" {
   provider = azurerm.core
 
-  # Use a deterministic name per workspace to avoid conflicts when multiple
-  # workspaces assign the same role on the same global storage account.
-  # The principal is the per-workspace SAS signer service principal when Entra
-  # object creation is enabled (register_aad_application); otherwise it falls back
-  # to the shared core API identity. Because distinct signer principals produce
-  # distinct (principal, role, scope) tuples, multiple workspaces can each hold
-  # their own conditioned assignment on the shared global account without collision.
+  # Deterministic per-workspace name: distinct signer principals give distinct (principal, role, scope)
+  # tuples, so multiple workspaces hold conditioned assignments on the shared account without collision.
   name                 = uuidv5("url", "${data.azurerm_storage_account.sa_airlock_workspace_global.id}-${var.workspace_id}-blob-data-contributor")
   scope                = data.azurerm_storage_account.sa_airlock_workspace_global.id
   role_definition_name = "Storage Blob Data Contributor"

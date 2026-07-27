@@ -103,9 +103,8 @@ def handle_status_changed(request_properties: RequestProperties, stepResultEvent
                 logging.info(f'Request {req_id}: Updating container stage to {new_stage} (no copy needed)')
                 update_container_stage(source_account, req_id, new_stage, changed_by='system')
 
-                # In v2, same-account transitions don't fire BlobCreated events.
-                # For SUBMITTED, v1 relies on BlobCreatedTrigger to handle the malware scanning gate
-                # (skip to in_review when scanning is disabled). We handle this inline for v2.
+                # In v2, same-account transitions don't fire BlobCreated events, so handle the
+                # SUBMITTED malware-scan gate inline (v1 does this in BlobCreatedTrigger).
                 if new_status == constants.STAGE_SUBMITTED:
                     try:
                         enable_malware_scanning = parsers.parse_bool(os.environ["ENABLE_MALWARE_SCANNING"])

@@ -13,12 +13,7 @@ def _truncate_ids(resource_ids: list[str], limit: int = 25) -> list[str]:
 
 
 def ensure_workspace_airlock_version_supported(properties: dict) -> None:
-    """Block creating a legacy (airlock_version=1) workspace when core legacy airlock is
-    disabled (v2-only). Fails fast before deployment instead of deploying a workspace
-    whose airlock would be non-functional (the core v1 storage accounts do not exist).
-
-    Raises ValueError so the API returns HTTP 400.
-    """
+    """Block creating an airlock_version=1 workspace when core legacy airlock is disabled. Raises ValueError (HTTP 400)."""
     if config.ENABLE_LEGACY_AIRLOCK:
         return
     if not properties:
@@ -32,14 +27,8 @@ def ensure_workspace_airlock_version_supported(properties: dict) -> None:
 
 
 async def ensure_airlock_version_change_allowed(workspace: Resource, resource_patch: ResourcePatch, request_repo: AirlockRequestRepository) -> None:
-    """Block changing a workspace's airlock_version while it has in-flight airlock requests.
-
-    Changing the version transitions the workspace between the v1 and v2 airlock storage
-    modules; the previous version's storage accounts are destroyed, which would strand any
-    in-flight request stamped with the old version (mirrors the core-level
-    BLOCK_DISABLE_LEGACY_AIRLOCK_IF_V1_EXISTS guard, but at the per-workspace level).
-
-    Raises ValueError so the API returns HTTP 400.
+    """Block changing airlock_version while the workspace has in-flight airlock requests (they would be
+    stranded when the previous version's storage is destroyed). Raises ValueError (HTTP 400).
     """
     if not resource_patch.properties:
         return

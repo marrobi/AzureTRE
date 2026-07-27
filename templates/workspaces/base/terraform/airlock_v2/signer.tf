@@ -1,30 +1,14 @@
-# Per-workspace airlock SAS signer.
-#
-# The airlock user-delegation SAS tokens are signed by whichever identity calls
-# GetUserDelegationKey (the SAS "skoid"). To make the per-workspace ABAC condition
-# on the shared global airlock storage account enforceable, each workspace has its
-# own signer identity so that:
-#   * the (principal, role, scope) role-assignment tuple is unique per workspace
-#     (no RoleAssignmentExists 409 collision on the shared account), and
-#   * a SAS leaked from one workspace cannot be replayed from another (the signer's
-#     @Environment[privateEndpoints] condition denies access via a foreign PE).
-#
-# The signer is an Entra application/service principal. The shared core API managed
-# identity is granted permission to federate as this signer (workload identity
-# federation / "managed identity as FIC"), so it can mint SAS as the signer without
-# any stored secret. The signer's client_id is surfaced as a workspace output and
-# read at signing time.
-#
-# This requires TRE to be able to create Entra objects (register_aad_application).
-# When that is not permitted, signing falls back to the shared core API identity.
+# Per-workspace airlock SAS signer (Entra app registration). Signing airlock user-delegation
+# SAS as a per-workspace identity makes the shared global storage account's ABAC condition
+# enforceable and prevents cross-workspace SAS replay. The core API federates as this signer
+# via workload identity federation, falling back to the core API identity when
+# register_aad_application is false. See docs/azure-tre-overview/airlock.md for the rationale.
 
 locals {
   create_airlock_signer = var.register_aad_application
   aad_endpoint          = module.terraform_azurerm_environment_configuration.active_directory_endpoint
   aad_issuer            = "${local.aad_endpoint}/${data.azuread_client_config.current.tenant_id}/v2.0"
-  # Workload-identity-federation token-exchange audience differs per sovereign cloud and
-  # must match the audience the core API requests when federating as this signer
-  # (see api_app/core/credentials.py). Derived from the same cloud endpoint so both sides align.
+  # Token-exchange audience differs per sovereign cloud; must match api_app/core/credentials.py.
   token_exchange_audience = endswith(local.aad_endpoint, ".us") ? "api://AzureADTokenExchangeUSGov" : (
     endswith(local.aad_endpoint, ".cn") ? "api://AzureADTokenExchangeChina" : "api://AzureADTokenExchange"
   )
