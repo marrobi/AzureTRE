@@ -28,7 +28,7 @@ def get_credential():
 
 def create_container_with_metadata(account_name: str, request_id: str, stage: str,
                                    workspace_id: str = None, request_type: str = None,
-                                   created_by: str = None) -> None:
+                                   created_by: str = None, review_workspace_id: str = None) -> None:
     try:
         container_name = request_id
         blob_service_client = BlobServiceClient(
@@ -50,6 +50,9 @@ def create_container_with_metadata(account_name: str, request_id: str, stage: st
             metadata["request_type"] = request_type
         if created_by:
             metadata["created_by"] = created_by
+        # Stamped so the import-review workspace ABAC condition can scope access to its own requests.
+        if review_workspace_id:
+            metadata["review_workspace_id"] = review_workspace_id
 
         # Create container with metadata
         container_client = blob_service_client.get_container_client(container_name)

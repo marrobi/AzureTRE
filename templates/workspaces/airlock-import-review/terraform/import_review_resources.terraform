@@ -102,6 +102,9 @@ resource "azurerm_role_assignment" "review_workspace_import_access" {
         AND
         @Resource[Microsoft.Storage/storageAccounts/blobServices/containers/metadata:stage]
           StringEquals 'import-in-progress'
+        AND
+        @Resource[Microsoft.Storage/storageAccounts/blobServices/containers/metadata:review_workspace_id]
+          StringEquals '${var.tre_resource_id}'
       )
     )
   EOT

@@ -15,10 +15,17 @@ from azure.identity.aio import (
     ChainedTokenCredential as ChainedTokenCredentialASync,
 )
 
+
 # Audience used when exchanging the core API managed identity token for the
 # per-workspace airlock SAS signer app token (workload identity federation).
-# Public cloud value; sovereign clouds use api://AzureADTokenExchangeUSGov / ...China.
-TOKEN_EXCHANGE_AUDIENCE = "api://AzureADTokenExchange/.default"  # nosec B105 - token exchange audience, not a secret
+# The audience differs per sovereign cloud, so it is derived from the configured authority.
+def _get_token_exchange_audience() -> str:
+    authority = urlparse(AAD_AUTHORITY_URL).netloc.lower()
+    if authority.endswith(".us"):
+        return "api://AzureADTokenExchangeUSGov/.default"  # nosec B105 - token exchange audience, not a secret
+    if authority.endswith(".cn"):
+        return "api://AzureADTokenExchangeChina/.default"  # nosec B105 - token exchange audience, not a secret
+    return "api://AzureADTokenExchange/.default"  # nosec B105 - token exchange audience, not a secret
 
 
 def get_credential() -> TokenCredential:
@@ -65,7 +72,7 @@ def get_airlock_signer_credential(signer_client_id: str, tenant_id: str) -> Toke
     managed_identity = ManagedIdentityCredential(client_id=MANAGED_IDENTITY_CLIENT_ID)
 
     def _get_managed_identity_assertion() -> str:
-        return managed_identity.get_token(TOKEN_EXCHANGE_AUDIENCE).token
+        return managed_identity.get_token(_get_token_exchange_audience()).token
 
     return ClientAssertionCredential(
         tenant_id=tenant_id,

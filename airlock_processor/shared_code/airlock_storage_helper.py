@@ -50,6 +50,8 @@ def get_storage_account_name_for_request(request_type: str, status: str, short_w
             elif status == constants.STAGE_BLOCKED_BY_SCAN:
                 return constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED + short_workspace_id
 
+    raise ValueError(f"Unsupported request type '{request_type}' / status '{status}' for airlock_version {airlock_version} storage account resolution")
+
 
 def get_stage_from_status(request_type: str, status: str) -> str:
     if request_type == constants.IMPORT_TYPE:

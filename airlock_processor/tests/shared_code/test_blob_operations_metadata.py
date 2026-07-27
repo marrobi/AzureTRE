@@ -81,7 +81,8 @@ class TestCreateContainerWithMetadata:
             stage="export-internal",
             workspace_id="ws-456",
             request_type="export",
-            created_by="user@example.com"
+            created_by="user@example.com",
+            review_workspace_id="review-ws-789"
         )
 
         call_args = mock_container_client.create_container.call_args
@@ -91,6 +92,7 @@ class TestCreateContainerWithMetadata:
         assert metadata['workspace_id'] == "ws-456"
         assert metadata['request_type'] == "export"
         assert metadata['created_by'] == "user@example.com"
+        assert metadata['review_workspace_id'] == "review-ws-789"
 
     @patch("shared_code.blob_operations_metadata.BlobServiceClient")
     @patch("shared_code.blob_operations_metadata.get_credential")

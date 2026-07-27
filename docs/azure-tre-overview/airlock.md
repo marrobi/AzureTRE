@@ -251,6 +251,7 @@ The identified data in an airlock process, will be submitted to a security scan.
 | --- | --- | --- | --- |
 | TRE API (managed identity) | `Storage Blob Data Contributor` | `Storage Blob Delegator` | Core: only `import-external` and `export-approved` stages. Assumes the per-workspace signer (below) to mint SAS for the global account. |
 | Per-workspace airlock signer (app registration) | — | `Storage Blob Data Contributor` | That workspace's private endpoint **and** matching `workspace_id` **and** stage ∈ (`import-approved`, `export-internal`, `export-in-progress`) |
+| Per-workspace import-review identity (managed identity) | `Storage Blob Data Reader` | — | That review workspace's private endpoint **and** stage `import-in-progress` **and** matching `review_workspace_id` (so a review workspace can only read the import requests routed to it) |
 | Airlock Processor (managed identity) | `Storage Blob Data Contributor` | `Storage Blob Data Contributor` | None (unrestricted) |
 
 **Network access:**
@@ -269,7 +270,7 @@ Each container has a `stage` metadata key that tracks the current stage of the a
 | Stage | Description | Access |
 | --- | --- | --- |
 | `import-external` | Initial upload location for imports | Public via SAS |
-| `import-in-progress` | After submission, during review | Processor only |
+| `import-in-progress` | After submission, during review | Processor, and the assigned import-review workspace (ABAC: its private endpoint + `review_workspace_id`) |
 | `import-rejected` | Import rejected by reviewer | Processor only |
 | `import-blocked` | Import blocked by security scan | Processor only |
 | `export-approved` | Final location for approved exports | Public via SAS |
@@ -473,7 +474,7 @@ config.yaml                          Workspace Properties
 
 A common question: if all workspaces share the same storage account (`stalairlockg{tre_id}`), what prevents Workspace A from accessing Workspace B's data?
 
-The answer is **four layers of isolation**:
+The answer is **four layers of isolation** for the shared global workspace account, plus an equivalent `review_workspace_id` control for import-review access to the shared core account ([section 5](#5-import-review-workspace-isolation-core-storage)):
 
 ### 1. Per-workspace SAS signer identity
 
@@ -544,3 +545,22 @@ graph TB
     style c2 fill:#cc7000,stroke:#995300,color:#fff
 ```
 > Cross-workspace isolation. Each workspace can only access containers matching its own workspace_id, through its own private endpoint. ABAC enforces both conditions at the Azure RBAC layer.
+
+### 5. Import-review workspace isolation (core storage)
+
+Imports are reviewed from a dedicated **import-review workspace**, whose managed identity reads the `import-in-progress` container directly from the **shared core account** (`stalairlock{tre_id}`) — not via SAS. Because the core account is shared, the review identity's private endpoint alone does **not** identify which research workspace's data a container holds (one review-workspace private endpoint can reach every container on the account). Isolation is therefore enforced by a `review_workspace_id` metadata match, analogous to the `workspace_id` match used on the global account:
+
+- The airlock processor stamps `review_workspace_id` on the container (the review workspace the request is routed to, taken from the research workspace's `airlock_review_config`).
+- The review identity's ABAC condition requires **all three**: the request arrives through **that review workspace's private endpoint**, the container's `stage` is `import-in-progress`, **and** the container's `review_workspace_id` matches **that review workspace's ID**.
+
+```text
+ABAC condition (import-review identity, core account):
+@Environment[Microsoft.Network/privateEndpoints]
+    == '.../privateEndpoints/pe-airlock-import-review-{review_workspace_short_id}'
+  AND
+  @Resource[...containers/metadata:stage] == 'import-in-progress'
+  AND
+  @Resource[...containers/metadata:review_workspace_id] == '{review_workspace_id}'
+```
+
+Without the `review_workspace_id` term, a review workspace could read **any** research workspace's in-progress import on the shared account; the metadata match confines it to the requests explicitly routed to it.

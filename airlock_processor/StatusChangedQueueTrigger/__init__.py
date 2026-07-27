@@ -65,7 +65,7 @@ def handle_status_changed(request_properties: RequestProperties, stepResultEvent
             from shared_code.blob_operations_metadata import create_container_with_metadata
             account_name = airlock_storage_helper.get_storage_account_name_for_request(request_type, new_status, ws_id, airlock_version=request_properties.airlock_version)
             stage = airlock_storage_helper.get_stage_from_status(request_type, new_status)
-            create_container_with_metadata(account_name, req_id, stage, workspace_id=ws_id, request_type=request_type)
+            create_container_with_metadata(account_name, req_id, stage, workspace_id=ws_id, request_type=request_type, review_workspace_id=request_properties.review_workspace_id)
         else:
             account_name = get_storage_account(status=constants.STAGE_DRAFT, request_type=request_type, short_workspace_id=ws_id)
             blob_operations.create_container(account_name, req_id)
