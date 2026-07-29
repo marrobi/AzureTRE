@@ -3,14 +3,6 @@
 # VM Terraform is shared via the ./vm module; this file holds the
 # export-specific networking.
 
-# Airlock storage version of the workspace under review (passed by the API).
-# Declared here (not in the shared locals.tf/variables.tf which are symlinked
-# from the import review VM template) so this stays export-specific.
-variable "airlock_version" {
-  type    = number
-  default = 2
-}
-
 locals {
   # In-progress export storage private endpoint the review VM needs outbound access to.
   # Airlock v2 (default) keeps in-progress export data in the shared global airlock
