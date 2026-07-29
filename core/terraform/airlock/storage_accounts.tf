@@ -170,9 +170,9 @@ resource "azurerm_role_assignment" "api_core_blob_data_contributor" {
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = var.api_principal_id
 
-  # ABAC condition: Restrict blob operations to specific stages only
-  # Logic: Allow if (action is NOT a blob operation) OR (action is blob operation AND stage matches)
-  # This allows container operations (list, etc.) while restricting blob read/write/delete to allowed stages
+  # ABAC condition: Restrict blob and container operations to specific stages only.
+  # Account-level actions, such as user delegation key generation, are intentionally left unrestricted by
+  # container metadata because they are required before a container-scoped SAS can be minted.
   condition_version = "2.0"
   condition         = <<-EOT
     (
@@ -181,6 +181,10 @@ resource "azurerm_role_assignment" "api_core_blob_data_contributor" {
         AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write'})
         AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/add/action'})
         AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete'})
+        AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/move/action'})
+        AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/read'})
+        AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/write'})
+        AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/delete'})
       )
       OR
       @Resource[Microsoft.Storage/storageAccounts/blobServices/containers/metadata:stage]

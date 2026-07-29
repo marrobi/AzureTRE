@@ -94,7 +94,10 @@ resource "azurerm_role_assignment" "review_workspace_import_access" {
   condition_version = "2.0"
   condition         = <<-EOT
     (
-      !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read'})
+      (
+        !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read'})
+        AND !(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/read'})
+      )
       OR
       (
         @Environment[Microsoft.Network/privateEndpoints] StringEqualsIgnoreCase
@@ -181,4 +184,3 @@ resource "azurerm_role_assignment" "review_workspace_import_access_v1" {
 
   depends_on = [azurerm_private_endpoint.sa_airlock_v1_pe]
 }
-
