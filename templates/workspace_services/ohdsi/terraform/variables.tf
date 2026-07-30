@@ -7,6 +7,10 @@ variable "tre_id" {
 variable "tre_resource_id" {
   type = string
 }
+variable "workspace_storage_name" {
+  type    = string
+  default = ""
+}
 variable "arm_environment" {
   type = string
 }

@@ -53,7 +53,7 @@ module "aad" {
 }
 
 module "airlock" {
-  count                                  = var.enable_airlock ? 1 : 0
+  count                                  = var.enable_airlock && var.airlock_version == 1 ? 1 : 0
   source                                 = "./airlock"
   location                               = var.location
   tre_id                                 = var.tre_id
@@ -62,6 +62,7 @@ module "airlock" {
   enable_local_debugging                 = var.enable_local_debugging
   services_subnet_id                     = module.network.services_subnet_id
   short_workspace_id                     = local.short_workspace_id
+  unique_identifier_suffix               = local.unique_identifier_suffix
   airlock_processor_subnet_id            = module.network.airlock_processor_subnet_id
   arm_environment                        = var.arm_environment
   enable_cmk_encryption                  = var.enable_cmk_encryption
@@ -73,6 +74,31 @@ module "airlock" {
   providers = {
     azurerm      = azurerm
     azurerm.core = azurerm.core
+  }
+
+  depends_on = [
+    module.network,
+  ]
+}
+
+module "airlock_v2" {
+  count                    = var.enable_airlock && var.airlock_version >= 2 ? 1 : 0
+  source                   = "./airlock_v2"
+  location                 = var.location
+  tre_id                   = var.tre_id
+  tre_workspace_tags       = local.tre_workspace_tags
+  ws_resource_group_name   = azurerm_resource_group.ws.name
+  services_subnet_id       = module.network.services_subnet_id
+  short_workspace_id       = local.short_workspace_id
+  workspace_id             = var.tre_resource_id
+  workspace_vnet_id        = module.network.vnet_id
+  register_aad_application = var.register_aad_application
+  arm_environment          = var.arm_environment
+
+  providers = {
+    azurerm      = azurerm
+    azurerm.core = azurerm.core
+    azuread      = azuread
   }
 
   depends_on = [
@@ -102,7 +128,8 @@ module "azure_monitor" {
 
   depends_on = [
     module.network,
-    module.airlock
+    module.airlock,
+    module.airlock_v2
   ]
 }
 

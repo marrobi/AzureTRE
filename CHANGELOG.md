@@ -6,6 +6,8 @@
 * Add data science tooling (Azure CLI, VS Code, Storage Explorer, Git, Python/JupyterLab, R/RStudio) to Guacamole Windows VMs via a shared `vm_config.ps1` bootstrap pulled through Nexus. Existing `tre-service-guacamole-windowsvm`, `tre-service-guacamole-import-reviewvm`, and `tre-service-guacamole-export-reviewvm` resources **must not be upgraded** to these new versions — redeploy instead. Upgrade the Nexus shared service to `sonatype-nexus` 3.9.0 before deploying the new Windows VM templates to ensure the required proxy repositories are available. (`tre-service-guacamole-windowsvm` 3.0.0, `tre-service-guacamole-import-reviewvm`/`tre-service-guacamole-export-reviewvm` 2.0.0, `sonatype-nexus` 3.9.0) ([#4981](https://github.com/microsoft/AzureTRE/pull/4981))
 
 ENHANCEMENTS:
+<!-- markdownlint-disable-next-line MD013 -->
+* Redesign the airlock storage architecture around two shared storage accounts — external-facing core (`stalairlock{tre_id}`) and internal workspace-global (`stalairlockg{tre_id}`) — using container metadata to track request stages instead of per-workspace accounts. A per-workspace `airlock_version` (1=legacy, 2=consolidated) and a core-level `enable_legacy_airlock` toggle provide a gradual, backwards-compatible migration, with API guardrails and ABAC-based cross-workspace isolation on the shared accounts (including sovereign-cloud support for the per-workspace SAS signer). See the [airlock architecture documentation](./docs/azure-tre-overview/airlock.md) for details. (`tre-workspace-base` 3.10.3, `tre-workspace-airlock-import-review` 1.7.0, `tre-service-guacamole-export-reviewvm` 2.0.1, `api` 0.27.5, `airlock_processor` 0.8.16) ([#4964](https://github.com/microsoft/AzureTRE/pull/4964), [#4853](https://github.com/microsoft/AzureTRE/pull/4853), [#4358](https://github.com/microsoft/AzureTRE/issues/4358))
 * Enable graceful upgrading of the Nexus shared service: modified or added repository configs and the container image (now `3.94.0`) are applied to the existing VM on upgrade without recreating it. Removed the non-functional `snapcraft` proxy (dead remote URL) and skip repositories left in a failed state so they don't block upgrades. (`sonatype-nexus` 3.10.0) ([#2721](https://github.com/microsoft/AzureTRE/issues/2721))
 * Specify default_outbound_access_enabled = false setting for all subnets ([#4757](https://github.com/microsoft/AzureTRE/pull/4757))
 * Pin all GitHub Actions workflow steps to full commit SHAs to prevent supply chain attacks plus update to latest releases ([#4886](https://github.com/microsoft/AzureTRE/pull/4886))
@@ -28,6 +30,9 @@ BUG FIXES:
 * Replace deprecated yaspell with codespell and add pre-commit hook installer to devcontainer. ([#4953](https://github.com/microsoft/AzureTRE/issues/4953))
 * Fix Guacamole Windows VM image selections by aligning schema enums/defaults with supported image options in Windows and review VM templates. ([#4963](https://github.com/microsoft/AzureTRE/issues/4963))
 * Remove deprecated `soft_delete_enabled` setting from `azurerm_recovery_services_vault` in base workspace template. ([#4967](https://github.com/microsoft/AzureTRE/issues/4967))
+
+BUG FIXES:
+* Generate a longer random `unique_identifier_suffix` for the base workspace storage account name (`stgws{suffix}`), replacing the previous 4-char id-derived scheme, to prevent `StorageAccountAlreadyTaken` deployment failures. Scoped to v2 workspaces; v1 per-workspace airlock account naming is handled by the airlock redesign above. (`tre-workspace-base` 3.10.4, `api` 0.27.6) ([#2893](https://github.com/microsoft/AzureTRE/issues/2893))
 
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**

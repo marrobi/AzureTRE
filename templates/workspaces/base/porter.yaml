@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-workspace-base
-version: 2.8.4
+version: 3.10.4
 description: "A base Azure TRE workspace"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -31,6 +31,10 @@ parameters:
   - name: id
     type: string
     description: "the resource ID for this installation"
+  - name: unique_identifier_suffix
+    type: string
+    description: "A globally-unique suffix used to build resource names (e.g. storage accounts). Falls back to the last 4 characters of the resource ID for backwards compatibility."
+    default: ""
   - name: azure_environment
     type: string
     default: "AzureCloud"
@@ -71,24 +75,26 @@ parameters:
   - name: create_aad_groups
     type: boolean
     default: true
-    description: "Whether this bundle should create AAD groups for the workspace app roles (required for User Management)"
+    description:
+      "Whether this bundle should create AAD groups for the workspace app
+      roles (required for User Management)"
   - name: core_api_client_id
     type: string
     description: "The client id of the core API"
   - name: workspace_owner_object_id
     type: string
-    description: "The object id of the user that will be granted WorkspaceOwner after it is created."
+    description: "The object id of the user that will be granted WorkspaceOwner
+      after it is created."
   - name: client_id
     type: string
     default: ""
-    description:
-      "The client id of the workspace in the identity provider. This value is typically provided to you
-      when you create the ws application"
+    description: "The client id of the workspace in the identity provider. This
+      value is typically provided to you when you create the ws application"
   - name: client_secret
     type: string
     description:
-      "The client secret of the workspace in the identity provider. This value is typically provided to you
-      when you create the ws application"
+      "The client secret of the workspace in the identity provider. This
+      value is typically provided to you when you create the ws application"
     default: ""
   - name: ui_client_id
     type: string
@@ -109,7 +115,9 @@ parameters:
   - name: app_role_id_workspace_researcher
     type: string
     default: ""
-    description: "The id of the application role WorkspaceResearcher in the identity provider"
+    description:
+      "The id of the application role WorkspaceResearcher in the identity
+      provider"
   - name: app_role_id_workspace_airlock_manager
     type: string
     default: ""
@@ -125,6 +133,12 @@ parameters:
   - name: enable_airlock
     type: boolean
     default: true
+  - name: airlock_version
+    type: integer
+    default: 2
+    description:
+      "Airlock storage version: 1 = legacy per-stage storage accounts, 2
+      = consolidated metadata-based storage"
   - name: arm_environment
     type: string
   - name: enable_cmk_encryption
@@ -136,7 +150,9 @@ parameters:
   - name: storage_account_redundancy
     type: string
     default: "GRS"
-    description: "The redundancy option for the storage account in the workspace: GRS (Geo-Redundant Storage) or ZRS (Zone-Redundant Storage)."
+    description:
+      "The redundancy option for the storage account in the workspace:
+      GRS (Geo-Redundant Storage) or ZRS (Zone-Redundant Storage)."
   - name: enable_backup
     type: boolean
     default: true
@@ -148,7 +164,9 @@ parameters:
   - name: auto_grant_workspace_consent
     type: boolean
     default: true
-    description: "Setting this to `true` will prevent the need for users to manually grant consent to new workspaces"
+    description:
+      "Setting this to `true` will prevent the need for users to manually
+      grant consent to new workspaces"
   - name: enable_airlock_malware_scanning
     type: boolean
     default: false
@@ -224,6 +242,21 @@ outputs:
     applyTo:
       - install
       - upgrade
+  - name: storage_account_name
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: unique_identifier_suffix
+    type: string
+    applyTo:
+      - install
+      - upgrade
+  - name: airlock_signer_client_id
+    type: string
+    applyTo:
+      - install
+      - upgrade
 
 mixins:
   - exec
@@ -238,6 +271,7 @@ install:
       vars:
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         location: ${ bundle.parameters.azure_location }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         address_spaces: ${ bundle.parameters.address_spaces }
@@ -261,6 +295,7 @@ install:
         aad_redirect_uris_b64: ${ bundle.parameters.aad_redirect_uris }
         app_service_plan_sku: ${ bundle.parameters.app_service_plan_sku }
         enable_airlock: ${ bundle.parameters.enable_airlock }
+        airlock_version: ${ bundle.parameters.airlock_version }
         arm_environment: ${ bundle.parameters.arm_environment }
         enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
         key_store_id: ${ bundle.parameters.key_store_id }
@@ -291,6 +326,9 @@ install:
         - name: workspace_owners_group_id
         - name: workspace_researchers_group_id
         - name: workspace_airlock_managers_group_id
+        - name: storage_account_name
+        - name: unique_identifier_suffix
+        - name: airlock_signer_client_id
 
 upgrade:
   - terraform:
@@ -298,6 +336,7 @@ upgrade:
       vars:
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         location: ${ bundle.parameters.azure_location }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         address_spaces: ${ bundle.parameters.address_spaces }
@@ -321,6 +360,7 @@ upgrade:
         aad_redirect_uris_b64: ${ bundle.parameters.aad_redirect_uris }
         app_service_plan_sku: ${ bundle.parameters.app_service_plan_sku }
         enable_airlock: ${ bundle.parameters.enable_airlock }
+        airlock_version: ${ bundle.parameters.airlock_version }
         arm_environment: ${ bundle.parameters.arm_environment }
         enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
         key_store_id: ${ bundle.parameters.key_store_id }
@@ -351,6 +391,9 @@ upgrade:
         - name: workspace_owners_group_id
         - name: workspace_researchers_group_id
         - name: workspace_airlock_managers_group_id
+        - name: storage_account_name
+        - name: unique_identifier_suffix
+        - name: airlock_signer_client_id
   - az:
       description: "Set Azure Cloud Environment"
       arguments:
@@ -382,6 +425,7 @@ uninstall:
       vars:
         tre_id: ${ bundle.parameters.tre_id }
         tre_resource_id: ${ bundle.parameters.id }
+        unique_identifier_suffix: ${ bundle.parameters.unique_identifier_suffix }
         location: ${ bundle.parameters.azure_location }
         workspace_subscription_id: ${ bundle.parameters.workspace_subscription_id }
         address_spaces: ${ bundle.parameters.address_spaces }
@@ -404,6 +448,7 @@ uninstall:
         aad_redirect_uris_b64: ${ bundle.parameters.aad_redirect_uris }
         app_service_plan_sku: ${ bundle.parameters.app_service_plan_sku }
         enable_airlock: ${ bundle.parameters.enable_airlock }
+        airlock_version: ${ bundle.parameters.airlock_version }
         arm_environment: ${ bundle.parameters.arm_environment }
         enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
         key_store_id: ${ bundle.parameters.key_store_id }

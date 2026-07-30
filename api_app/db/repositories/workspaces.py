@@ -9,6 +9,7 @@ from models.domain.resource_template import ResourceTemplate
 from models.domain.authentication import User
 
 import resources.strings as strings
+from resources import constants
 from core import config, credentials
 from azure.core.exceptions import HttpResponseError
 from db.errors import EntityDoesNotExist, InvalidInput, ResourceIsNotDeployed, StorageAccountNameGenerationTimeout, StorageAccountNameCheckFailed
@@ -65,6 +66,13 @@ class WorkspaceRepository(ResourceRepository):
         workspaces = await self.query(query=query, parameters=parameters)
         return parse_obj_as(List[Workspace], workspaces)
 
+    async def get_active_v1_workspace_ids(self) -> List[str]:
+        query, parameters = WorkspaceRepository.active_workspaces_query_string()
+        query += " AND (NOT IS_DEFINED(c.properties.airlock_version) OR c.properties.airlock_version = @airlockVersion)"
+        parameters.append({'name': '@airlockVersion', 'value': 1})
+        workspaces = await self.query(query=query, parameters=parameters)
+        return [workspace["id"] for workspace in workspaces]
+
     async def get_deployed_workspace_by_id(self, workspace_id: str, operations_repo: OperationRepository) -> Workspace:
         workspace = await self.get_workspace_by_id(workspace_id)
 
@@ -83,9 +91,11 @@ class WorkspaceRepository(ResourceRepository):
             raise EntityDoesNotExist
         return parse_obj_as(Workspace, workspaces[0])
 
-    # Remove this method once not using last 4 digits for naming - https://github.com/microsoft/AzureTRE/issues/3666
-    async def is_workspace_storage_account_available(self, credential, workspace_id: str) -> bool:
-        name = f"stgws{workspace_id[-4:]}"
+    async def is_workspace_storage_account_available(self, credential, unique_identifier_suffix: str) -> bool:
+        # Check that the base workspace storage account derived from the suffix is available.
+        # In v2 workspaces, airlock accounts are consolidated into global storage (see #2893, #3666),
+        # so only the base workspace storage account needs to be checked here.
+        name = constants.STORAGE_ACCOUNT_NAME_WORKSPACE.format(unique_identifier_suffix)
         storage_client = StorageManagementClient(
             credential,
             config.SUBSCRIPTION_ID,
@@ -105,14 +115,17 @@ class WorkspaceRepository(ResourceRepository):
 
         full_workspace_id = str(uuid.uuid4())
 
-        # Ensure workspace with last four digits of ID does not already exist - remove when https://github.com/microsoft/AzureTRE/issues/3666 is resolved
+        # Generate a unique suffix for the base workspace storage account and verify availability
+        # before proceeding (prevents StorageAccountAlreadyTaken failures — see #2893).
+        # In v2, only the base workspace storage needs checking; airlock uses global consolidated accounts.
+        unique_identifier_suffix = self.generate_unique_identifier_suffix()
         async with credentials.get_credential_async_context() as credential:
-            async def name_check():
-                nonlocal full_workspace_id
-                while not await self.is_workspace_storage_account_available(credential, full_workspace_id):
-                    full_workspace_id = str(uuid.uuid4())
+            async def suffix_check():
+                nonlocal unique_identifier_suffix
+                while not await self.is_workspace_storage_account_available(credential, unique_identifier_suffix):
+                    unique_identifier_suffix = self.generate_unique_identifier_suffix()
             try:
-                await asyncio.wait_for(name_check(), timeout=45.0)
+                await asyncio.wait_for(suffix_check(), timeout=45.0)
             except asyncio.TimeoutError:
                 raise StorageAccountNameGenerationTimeout("Unable to generate a unique storage account name within the timeout limit.")
             except HttpResponseError as e:
@@ -136,7 +149,7 @@ class WorkspaceRepository(ResourceRepository):
                                     **auto_app_registration_param,
                                     **workspace_owner_param,
                                     **auth_info,
-                                    **self.get_workspace_spec_params(full_workspace_id)}
+                                    **self.get_workspace_spec_params(full_workspace_id, unique_identifier_suffix)}
 
         workspace = Workspace(
             id=full_workspace_id,
@@ -195,10 +208,11 @@ class WorkspaceRepository(ResourceRepository):
         workspace_template = await resource_template_repo.get_template_by_name_and_version(workspace.templateName, workspace.templateVersion, ResourceType.Workspace)
         return await self.patch_resource(workspace, workspace_patch, workspace_template, etag, resource_template_repo, resource_history_repo, user, strings.RESOURCE_ACTION_UPDATE, force_version_update)
 
-    def get_workspace_spec_params(self, full_workspace_id: str):
+    def get_workspace_spec_params(self, full_workspace_id: str, unique_identifier_suffix: str):
         params = self.get_resource_base_spec_params()
         params.update({
             "azure_location": config.RESOURCE_LOCATION,
             "workspace_id": full_workspace_id[-4:],  # TODO: remove with #729
+            "unique_identifier_suffix": unique_identifier_suffix,
         })
         return params

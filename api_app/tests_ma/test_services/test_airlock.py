@@ -3,6 +3,8 @@ import pytest
 import pytest_asyncio
 import time
 from resources import strings
+from resources import constants
+from core import config
 from services.airlock import validate_user_allowed_to_access_storage_account, get_required_permission, \
     validate_request_status, cancel_request, delete_review_user_resource, check_email_exists, revoke_request
 from models.domain.airlock_request import AirlockRequest, AirlockRequestStatus, AirlockRequestType, AirlockReview, AirlockReviewDecision, AirlockActions, AirlockReviewUserResource
@@ -24,6 +26,7 @@ AIRLOCK_REQUEST_ID = "5dbc15ae-40e1-49a5-834b-595f59d626b7"
 AIRLOCK_REVIEW_ID = "96d909c5-e913-4c05-ae53-668a702ba2e5"
 USER_RESOURCE_ID = "cce59042-1dee-42dc-9388-6db846feeb3b"
 WORKSPACE_SERVICE_ID = "30f2fefa-e7bb-4e5b-93aa-e50bb037502a"
+REVIEW_WORKSPACE_ID = "def111e4-93eb-4afc-c7fa-0b8964fg864f"
 CURRENT_TIME = time.time()
 ALL_ROLES = AzureADAuthorization.WORKSPACE_ROLES_DICT.keys()
 
@@ -45,6 +48,26 @@ def sample_workspace():
             "client_id": "12345",
             "display_name": "my research workspace",
             "description": "for science!"},
+        resourcePath="test")
+
+
+def sample_workspace_with_review_config():
+    return Workspace(
+        id=WORKSPACE_ID,
+        templateName='template name',
+        templateVersion='1.0',
+        etag='',
+        properties={
+            "client_id": "12345",
+            "display_name": "my research workspace",
+            "description": "for science!",
+            "airlock_review_config": {
+                "import": {
+                    "import_vm_workspace_id": REVIEW_WORKSPACE_ID,
+                    "import_vm_workspace_service_id": WORKSPACE_SERVICE_ID,
+                    "import_vm_user_resource_template_name": "test-template"
+                }
+            }},
         resourcePath="test")
 
 
@@ -82,10 +105,10 @@ def sample_airlock_user_resource_object():
     )
 
 
-def sample_status_changed_event(new_status="draft", previous_status=None):
+def sample_status_changed_event(new_status="draft", previous_status=None, review_workspace_id=None):
     status_changed_event = EventGridEvent(
         event_type="statusChanged",
-        data=StatusChangedData(request_id=AIRLOCK_REQUEST_ID, new_status=new_status, previous_status=previous_status, type=AirlockRequestType.Import, workspace_id=WORKSPACE_ID[-4:]).__dict__,
+        data=StatusChangedData(request_id=AIRLOCK_REQUEST_ID, new_status=new_status, previous_status=previous_status, type=AirlockRequestType.Import, workspace_id=WORKSPACE_ID[-4:], review_workspace_id=review_workspace_id).__dict__,
         subject=f"{AIRLOCK_REQUEST_ID}/statusChanged",
         data_version="2.0"
     )
@@ -402,6 +425,30 @@ async def test_update_and_publish_event_airlock_request_updates_item(_, event_gr
 
 
 @pytest.mark.asyncio
+@patch("event_grid.helpers.EventGridPublisherClient", return_value=AsyncMock())
+@patch("services.aad_authentication.AzureADAuthorization.get_workspace_user_emails_by_role_assignment", return_value={"WorkspaceResearcher": ["researcher@outlook.com"], "WorkspaceOwner": ["owner@outlook.com"], "AirlockManager": ["manager@outlook.com"]})
+async def test_update_and_publish_event_includes_review_workspace_id_for_import(_, event_grid_publisher_client_mock,
+                                                                                airlock_request_repo_mock):
+    airlock_request_mock = sample_airlock_request()
+    updated_airlock_request_mock = sample_airlock_request(status=AirlockRequestStatus.Submitted)
+    status_changed_event_mock = sample_status_changed_event(new_status="submitted", previous_status="draft", review_workspace_id=REVIEW_WORKSPACE_ID[-4:])
+    airlock_request_repo_mock.update_airlock_request = AsyncMock(return_value=updated_airlock_request_mock)
+    event_grid_sender_client_mock = event_grid_publisher_client_mock.return_value
+    event_grid_sender_client_mock.send = AsyncMock()
+
+    await update_and_publish_event_airlock_request(
+        airlock_request=airlock_request_mock,
+        airlock_request_repo=airlock_request_repo_mock,
+        updated_by=create_test_user(),
+        new_status=AirlockRequestStatus.Submitted,
+        workspace=sample_workspace_with_review_config())
+
+    actual_status_changed_event = event_grid_sender_client_mock.send.await_args_list[0].args[0][0]
+    assert actual_status_changed_event.data == status_changed_event_mock.data
+    assert actual_status_changed_event.data["review_workspace_id"] == REVIEW_WORKSPACE_ID[-4:]
+
+
+@pytest.mark.asyncio
 @patch("services.airlock.send_status_changed_event")
 @patch("services.airlock.send_airlock_notification_event")
 @patch("services.aad_authentication.AzureADAuthorization.get_workspace_user_emails_by_role_assignment")
@@ -586,3 +633,72 @@ async def test_delete_review_user_resource_disables_the_resource_before_deletion
                                       resource_history_repo=AsyncMock(),
                                       user=create_test_user())
     disable_user_resource.assert_called_once()
+
+
+@patch("services.airlock.validate_request_status")
+@patch("services.airlock.validate_user_allowed_to_access_storage_account")
+@patch("services.airlock.get_airlock_request_container_sas_token", return_value="https://stalairlockgtest.blob.core.windows.net/container?sas")
+def test_get_airlock_container_link_v2_resolves_correct_account_for_approved_import(mock_sas, mock_validate_user, mock_validate_status):
+    from services.airlock import get_airlock_container_link
+
+    # v2 Import Approved should resolve to workspace-global storage account
+    request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+    request.type = AirlockRequestType.Import
+    request.airlock_version = 2
+
+    workspace = sample_workspace()
+    result = get_airlock_container_link(request, None, workspace)
+
+    assert result == "https://stalairlockgtest.blob.core.windows.net/container?sas"
+    # Should have called SAS generation with the workspace-global account
+    mock_sas.assert_called_once()
+    account_name = mock_sas.call_args[0][1]  # second positional arg
+    assert account_name.startswith("stalairlockg")
+
+
+@patch("services.airlock.validate_request_status")
+@patch("services.airlock.validate_user_allowed_to_access_storage_account")
+@patch("services.airlock.get_airlock_request_container_sas_token", return_value="url")
+def test_get_airlock_container_link_v2_passes_signer_client_id(mock_sas, _mock_validate_user, _mock_validate_status):
+    from services.airlock import get_airlock_container_link
+
+    request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+    request.type = AirlockRequestType.Import
+    request.airlock_version = 2
+
+    workspace = sample_workspace()
+    workspace.properties["airlock_signer_client_id"] = "signer-client-id"
+
+    get_airlock_container_link(request, None, workspace)
+
+    # signer_client_id should be forwarded as the third positional arg
+    assert mock_sas.call_args[0][2] == "signer-client-id"
+
+
+@patch("services.airlock.generate_container_sas", return_value="sas")
+@patch("services.airlock.BlobServiceClient")
+@patch("services.airlock.credentials")
+def test_sas_token_uses_signer_credential_for_global_account(mock_credentials, mock_bsc, _mock_gen_sas):
+    from services.airlock import get_airlock_request_container_sas_token
+    global_account = constants.STORAGE_ACCOUNT_NAME_AIRLOCK_WORKSPACE_GLOBAL.format(config.TRE_ID)
+    request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+
+    get_airlock_request_container_sas_token(request, global_account, signer_client_id="signer-client-id")
+
+    mock_credentials.get_airlock_signer_credential.assert_called_once()
+    mock_credentials.get_credential.assert_not_called()
+
+
+@patch("services.airlock.generate_container_sas", return_value="sas")
+@patch("services.airlock.BlobServiceClient")
+@patch("services.airlock.credentials")
+def test_sas_token_uses_default_credential_when_no_signer(mock_credentials, mock_bsc, _mock_gen_sas):
+    from services.airlock import get_airlock_request_container_sas_token
+    core_account = constants.STORAGE_ACCOUNT_NAME_AIRLOCK_CORE.format(config.TRE_ID)
+    request = sample_airlock_request(status=AirlockRequestStatus.Approved)
+
+    # No signer provided -> falls back to the API identity credential
+    get_airlock_request_container_sas_token(request, core_account, signer_client_id="")
+
+    mock_credentials.get_credential.assert_called_once()
+    mock_credentials.get_airlock_signer_credential.assert_not_called()

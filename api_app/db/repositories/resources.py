@@ -1,4 +1,6 @@
 import copy
+import secrets
+import string
 import semantic_version
 from datetime import datetime, UTC
 from typing import Optional, Tuple, List
@@ -58,6 +60,20 @@ class ResourceRepository(BaseRepository):
     @staticmethod
     def get_resource_base_spec_params():
         return {"tre_id": config.TRE_ID}
+
+    # The unique_identifier_suffix is used to build globally-unique resource names (e.g. storage
+    # accounts) that previously relied only on the last 4 characters of the resource id. Using a
+    # longer random suffix dramatically reduces the chance of a name collision (see #2893, #3666).
+    # It is constrained so that the longest resource name (e.g. the airlock export blocked storage
+    # account "stalexblockedws" prefix) still fits within Azure's 24 character storage account limit.
+    UNIQUE_IDENTIFIER_SUFFIX_LENGTH = 9
+
+    @staticmethod
+    def generate_unique_identifier_suffix() -> str:
+        # Generates a random suffix only. Callers that need the resulting resource names to be
+        # globally unique (e.g. storage accounts) are responsible for checking availability and
+        # regenerating on collision - see WorkspaceRepository.generate_available_unique_identifier_suffix.
+        return "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(ResourceRepository.UNIQUE_IDENTIFIER_SUFFIX_LENGTH))
 
     async def get_resource_dict_by_id(self, resource_id: UUID4) -> dict:
         try:

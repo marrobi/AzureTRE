@@ -8,6 +8,12 @@ variable "tre_resource_id" {
   description = "Resource ID"
 }
 
+variable "unique_identifier_suffix" {
+  type        = string
+  description = "A globally-unique suffix used to build resource names (e.g. storage accounts). Falls back to the last 4 characters of the resource ID for backwards compatibility."
+  default     = ""
+}
+
 variable "workspace_subscription_id" {
   type        = string
   description = "Subscription ID for the workspace resources"
@@ -67,6 +73,12 @@ variable "core_api_client_id" {
 variable "enable_airlock" {
   type        = bool
   description = "Controls the deployment of Airlock resources in the workspace."
+}
+
+variable "airlock_version" {
+  type        = number
+  default     = 2
+  description = "Airlock storage version: 1 = legacy per-stage storage accounts, 2 = consolidated metadata-based storage."
 }
 
 variable "aad_redirect_uris_b64" {
@@ -172,14 +184,16 @@ variable "enable_dns_policy" {
   default     = false
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "enable_airlock_malware_scanning" {
   type        = bool
   default     = false
-  description = "Enable Airlock malware scanning for the workspace"
+  description = "Enable Airlock malware scanning for the workspace. Only consumed by the legacy (v1) airlock module when airlock_version=1; the consolidated (v2) airlock manages scanning centrally in the core."
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "airlock_malware_scan_result_topic_name" {
   type        = string
-  description = "The name of the topic to publish scan results to"
+  description = "The name of the topic to publish scan results to. Only consumed by the legacy (v1) airlock module when airlock_version=1; unused by the consolidated (v2) airlock."
   default     = null
 }

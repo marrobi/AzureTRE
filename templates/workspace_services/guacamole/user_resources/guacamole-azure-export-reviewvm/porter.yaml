@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-service-guacamole-export-reviewvm
-version: 2.0.0
+version: 2.0.1
 description: "An Azure TRE User Resource Template for reviewing Airlock export requests"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -84,6 +84,10 @@ parameters:
     type: string
     description: "A SAS token to access storage resource in workspace under review"
     env: airlock_request_sas_url
+  - name: airlock_version
+    type: integer
+    description: "Airlock storage version of the workspace under review (1=legacy per-stage, 2=consolidated global)"
+    default: 2
   - name: enable_cmk_encryption
     type: boolean
     default: false
@@ -134,6 +138,7 @@ install:
         vm_size: ${ bundle.parameters.vm_size }
         image_gallery_id: ${ bundle.parameters.image_gallery_id }
         airlock_request_sas_url: ${ bundle.parameters.airlock_request_sas_url }
+        airlock_version: ${ bundle.parameters.airlock_version }
         enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
         key_store_id: ${ bundle.parameters.key_store_id }
       backendConfig:
@@ -161,6 +166,7 @@ upgrade:
         vm_size: ${ bundle.parameters.vm_size }
         image_gallery_id: ${ bundle.parameters.image_gallery_id }
         airlock_request_sas_url: "unused"
+        airlock_version: ${ bundle.parameters.airlock_version }
         enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
         key_store_id: ${ bundle.parameters.key_store_id }
       backendConfig:
@@ -200,6 +206,7 @@ uninstall:
         vm_size: ${ bundle.parameters.vm_size }
         image_gallery_id: ${ bundle.parameters.image_gallery_id }
         airlock_request_sas_url: "unused"
+        airlock_version: ${ bundle.parameters.airlock_version }
         enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
         key_store_id: ${ bundle.parameters.key_store_id }
       backendConfig:

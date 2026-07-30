@@ -646,6 +646,19 @@ class TestWorkspaceRoutesThatRequireAdminRights:
         assert response.status_code == status.HTTP_202_ACCEPTED
 
     # [PATCH] /workspaces/{workspace_id}
+    @patch("services.legacy_airlock_guard.config.ENABLE_LEGACY_AIRLOCK", False)
+    @patch("api.routes.workspaces.WorkspaceRepository.update_item_with_etag", return_value=sample_workspace())
+    @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id", return_value=sample_workspace())
+    async def test_patch_workspaces_rejects_legacy_airlock_version_when_legacy_disabled(self, _, update_item_mock, app, client):
+        workspace_patch = {"properties": {"enable_airlock": True, "airlock_version": 1}}
+        etag = "some-etag-value"
+
+        response = await client.patch(app.url_path_for(strings.API_UPDATE_WORKSPACE, workspace_id=WORKSPACE_ID), json=workspace_patch, headers={"etag": etag})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        update_item_mock.assert_not_called()
+
+    # [PATCH] /workspaces/{workspace_id}
     @patch("api.routes.resource_helpers.ResourceRepository.get_resource_dependency_list", return_value=[sample_workspace().__dict__])
     @patch("api.routes.workspaces.ResourceHistoryRepository.save_item", return_value=AsyncMock())
     @patch("api.dependencies.workspaces.WorkspaceRepository.get_workspace_by_id", return_value=sample_workspace())

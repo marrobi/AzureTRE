@@ -3,6 +3,23 @@
 # VM Terraform is shared via the ./vm module; this file holds the
 # export-specific networking.
 
+# Airlock storage version of the workspace under review (passed by the API).
+# This variable is export-specific; variables.tf is intentionally symlinked to
+# the import review VM template, where this variable would be unused.
+# tflint-ignore: terraform_standard_module_structure
+variable "airlock_version" {
+  type    = number
+  default = 2
+}
+
+locals {
+  # In-progress export storage private endpoint the review VM needs outbound access to.
+  # Airlock v2 (default) keeps in-progress export data in the shared global airlock
+  # account, reached via PE pe-sa-airlock-ws-global-<ws>. Airlock v1 (legacy) used a
+  # per-workspace account, reached via PE pe-sa-export-ip-blob-<ws>.
+  airlock_export_inprogress_pe_name = var.airlock_version >= 2 ? "pe-sa-airlock-ws-global-${module.windows_vm.short_workspace_id}" : "pe-sa-export-ip-blob-${module.windows_vm.short_workspace_id}"
+}
+
 data "azurerm_subnet" "webapps" {
   name                 = "WebAppsSubnet"
   virtual_network_name = module.windows_vm.virtual_network_name
@@ -10,7 +27,7 @@ data "azurerm_subnet" "webapps" {
 }
 
 data "azurerm_private_endpoint_connection" "airlock_export_inprogress_pe" {
-  name                = "pe-sa-export-ip-blob-${module.windows_vm.short_workspace_id}"
+  name                = local.airlock_export_inprogress_pe_name
   resource_group_name = module.windows_vm.resource_group_name
 }
 
