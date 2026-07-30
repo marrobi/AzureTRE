@@ -32,7 +32,7 @@ BUG FIXES:
 * Remove deprecated `soft_delete_enabled` setting from `azurerm_recovery_services_vault` in base workspace template. ([#4967](https://github.com/microsoft/AzureTRE/issues/4967))
 
 BUG FIXES:
-* Generate a longer random `unique_identifier_suffix` for workspace-scoped storage account names and check all workspace and airlock storage account names for availability before creating a workspace, preventing `StorageAccountAlreadyTaken` deployment failures ([#2893](https://github.com/microsoft/AzureTRE/issues/2893), [#3666](https://github.com/microsoft/AzureTRE/issues/3666))
+* Generate a longer random `unique_identifier_suffix` for the base workspace storage account name (`stgws{suffix}`), replacing the previous 4-char id-derived scheme, to prevent `StorageAccountAlreadyTaken` deployment failures. Scoped to v2 workspaces; v1 per-workspace airlock account naming is handled by the airlock redesign above. (`tre-workspace-base` 3.10.4, `api` 0.27.6) ([#2893](https://github.com/microsoft/AzureTRE/issues/2893))
 
 ## (0.28.0) (March 2, 2026)
 **BREAKING CHANGES**
