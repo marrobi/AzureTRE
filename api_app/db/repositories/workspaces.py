@@ -1,6 +1,8 @@
 import uuid
 from typing import List, Tuple
-from azure.mgmt.storage import StorageManagementClient
+import asyncio
+from azure.mgmt.storage.aio import StorageManagementClient
+
 from pydantic import parse_obj_as
 from db.repositories.resources_history import ResourceHistoryRepository
 from models.domain.resource_template import ResourceTemplate
@@ -9,7 +11,8 @@ from models.domain.authentication import User
 import resources.strings as strings
 from resources import constants
 from core import config, credentials
-from db.errors import EntityDoesNotExist, InvalidInput, ResourceIsNotDeployed
+from azure.core.exceptions import HttpResponseError
+from db.errors import EntityDoesNotExist, InvalidInput, ResourceIsNotDeployed, StorageAccountNameGenerationTimeout, StorageAccountNameCheckFailed
 from db.repositories.resource_templates import ResourceTemplateRepository
 from db.repositories.resources import ResourceRepository
 from models.domain.operation import Status
@@ -19,6 +22,7 @@ from models.domain.workspace import Workspace
 from models.schemas.resource import ResourcePatch
 from models.schemas.workspace import WorkspaceInCreate
 from services.cidr_service import generate_new_cidr, is_network_available
+from services.logging import logger
 
 
 class WorkspaceRepository(ResourceRepository):
@@ -62,6 +66,13 @@ class WorkspaceRepository(ResourceRepository):
         workspaces = await self.query(query=query, parameters=parameters)
         return parse_obj_as(List[Workspace], workspaces)
 
+    async def get_active_v1_workspace_ids(self) -> List[str]:
+        query, parameters = WorkspaceRepository.active_workspaces_query_string()
+        query += " AND (NOT IS_DEFINED(c.properties.airlock_version) OR c.properties.airlock_version = @airlockVersion)"
+        parameters.append({'name': '@airlockVersion', 'value': 1})
+        workspaces = await self.query(query=query, parameters=parameters)
+        return [workspace["id"] for workspace in workspaces]
+
     async def get_deployed_workspace_by_id(self, workspace_id: str, operations_repo: OperationRepository) -> Workspace:
         workspace = await self.get_workspace_by_id(workspace_id)
 
@@ -80,48 +91,45 @@ class WorkspaceRepository(ResourceRepository):
             raise EntityDoesNotExist
         return parse_obj_as(Workspace, workspaces[0])
 
-    @staticmethod
-    def get_workspace_storage_account_names(unique_identifier_suffix: str) -> List[str]:
-        # The workspace (and its airlock) create several globally-unique storage accounts whose
-        # names are built from the workspace's unique_identifier_suffix. All of them must be
-        # available, otherwise the deployment fails with "StorageAccountAlreadyTaken".
-        return [
-            constants.STORAGE_ACCOUNT_NAME_WORKSPACE.format(unique_identifier_suffix),
-            constants.STORAGE_ACCOUNT_NAME_IMPORT_APPROVED.format(unique_identifier_suffix),
-            constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL.format(unique_identifier_suffix),
-            constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS.format(unique_identifier_suffix),
-            constants.STORAGE_ACCOUNT_NAME_EXPORT_REJECTED.format(unique_identifier_suffix),
-            constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED.format(unique_identifier_suffix),
-        ]
-
-    async def is_workspace_storage_account_available(self, unique_identifier_suffix: str) -> bool:
-        storage_client = StorageManagementClient(credentials.get_credential(), config.SUBSCRIPTION_ID)
-        # check that all workspace-scoped storage accounts built from the suffix are available
-        for storage_account_name in self.get_workspace_storage_account_names(unique_identifier_suffix):
-            availability_result = storage_client.storage_accounts.check_name_availability(
-                {
-                    "name": storage_account_name
-                }
+    async def is_workspace_storage_account_available(self, credential, unique_identifier_suffix: str) -> bool:
+        # Check that the base workspace storage account derived from the suffix is available.
+        # In v2 workspaces, airlock accounts are consolidated into global storage (see #2893, #3666),
+        # so only the base workspace storage account needs to be checked here.
+        name = constants.STORAGE_ACCOUNT_NAME_WORKSPACE.format(unique_identifier_suffix)
+        storage_client = StorageManagementClient(
+            credential,
+            config.SUBSCRIPTION_ID,
+            base_url=config.RESOURCE_MANAGER_ENDPOINT,
+            credential_scopes=config.CREDENTIAL_SCOPES,
+        )
+        try:
+            logger.info("Checking storage account name availability: %s", name)
+            result = await storage_client.storage_accounts.check_name_availability(
+                {"name": name, "type": "Microsoft.Storage/storageAccounts"}
             )
-            if not availability_result.name_available:
-                return False
-        return True
-
-    async def generate_available_unique_identifier_suffix(self) -> str:
-        # Generate a unique suffix and make sure all the workspace-scoped storage accounts that
-        # will be derived from it are available before using it (see #2893, #3666).
-        unique_identifier_suffix = self.generate_unique_identifier_suffix()
-        while not await self.is_workspace_storage_account_available(unique_identifier_suffix):
-            unique_identifier_suffix = self.generate_unique_identifier_suffix()
-        return unique_identifier_suffix
+            return result.name_available
+        finally:
+            await storage_client.close()
 
     async def create_workspace_item(self, workspace_input: WorkspaceInCreate, auth_info: dict, workspace_owner_object_id: str, user_roles: List[str]) -> Tuple[Workspace, ResourceTemplate]:
 
         full_workspace_id = str(uuid.uuid4())
 
-        # Generate a unique suffix for globally-unique resource names (e.g. storage accounts) and
-        # ensure the derived storage account names are available before proceeding.
-        unique_identifier_suffix = await self.generate_available_unique_identifier_suffix()
+        # Generate a unique suffix for the base workspace storage account and verify availability
+        # before proceeding (prevents StorageAccountAlreadyTaken failures — see #2893).
+        # In v2, only the base workspace storage needs checking; airlock uses global consolidated accounts.
+        unique_identifier_suffix = self.generate_unique_identifier_suffix()
+        async with credentials.get_credential_async_context() as credential:
+            async def suffix_check():
+                nonlocal unique_identifier_suffix
+                while not await self.is_workspace_storage_account_available(credential, unique_identifier_suffix):
+                    unique_identifier_suffix = self.generate_unique_identifier_suffix()
+            try:
+                await asyncio.wait_for(suffix_check(), timeout=45.0)
+            except asyncio.TimeoutError:
+                raise StorageAccountNameGenerationTimeout("Unable to generate a unique storage account name within the timeout limit.")
+            except HttpResponseError as e:
+                raise StorageAccountNameCheckFailed("Storage name availability check failed.") from e
 
         template = await self.validate_input_against_template(workspace_input.templateName, workspace_input, ResourceType.Workspace, user_roles)
 

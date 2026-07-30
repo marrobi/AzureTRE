@@ -7,13 +7,14 @@ from jsonschema.exceptions import ValidationError
 
 from api.helpers import get_repository
 from api.dependencies.workspaces import get_operation_by_id_from_path, get_workspace_by_id_from_path, get_deployed_workspace_by_id_from_path, get_deployed_workspace_service_by_id_from_path, get_workspace_service_by_id_from_path, get_user_resource_by_id_from_path
-from db.errors import InvalidInput, MajorVersionUpdateDenied, TargetTemplateVersionDoesNotExist, UserNotAuthorizedToUseTemplate, VersionDowngradeDenied
+from db.errors import InvalidInput, MajorVersionUpdateDenied, TargetTemplateVersionDoesNotExist, UserNotAuthorizedToUseTemplate, VersionDowngradeDenied, StorageAccountNameGenerationTimeout, StorageAccountNameCheckFailed
 from db.repositories.operations import OperationRepository
 from db.repositories.resource_templates import ResourceTemplateRepository
 from db.repositories.resources_history import ResourceHistoryRepository
 from db.repositories.user_resources import UserResourceRepository
 from db.repositories.workspaces import WorkspaceRepository
 from db.repositories.workspace_services import WorkspaceServiceRepository
+from db.repositories.airlock_requests import AirlockRequestRepository
 from models.domain.resource import ResourceType
 from models.domain.workspace import WorkspaceAuth, WorkspaceRole
 from models.schemas.operation import OperationInList, OperationInResponse
@@ -32,7 +33,9 @@ from services.authentication import get_current_admin_user, \
     get_current_workspace_owner_or_researcher_user_or_airlock_manager_or_tre_admin
 from services.authentication import extract_auth_information
 from services.azure_resource_status import get_azure_resource_status
+from services.legacy_airlock_guard import ensure_workspace_airlock_version_supported, ensure_airlock_version_change_allowed
 from azure.cosmos.exceptions import CosmosAccessConditionFailedError
+
 from .resource_helpers import cascaded_update_resource, delete_validation, enrich_resource_with_available_upgrades, get_identity_role_assignments, save_and_deploy_resource, construct_location_header, send_uninstall_message, \
     send_custom_action_message, send_resource_request_message, update_user_resource
 from models.domain.request_action import RequestAction
@@ -101,10 +104,17 @@ async def create_workspace(workspace_create: WorkspaceInCreate, response: Respon
     try:
         # TODO: This requires Directory.ReadAll ( Application.Read.All ) to be enabled in the Azure AD application to enable a users workspaces to be listed. This should be made optional.
         auth_info = extract_auth_information(workspace_create.properties)
+        ensure_workspace_airlock_version_supported(workspace_create.properties)
         workspace, resource_template = await workspace_repo.create_workspace_item(workspace_create, auth_info, user.id, user.roles)
     except (ValidationError, ValueError) as e:
         logger.exception("Failed to create workspace model instance")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except StorageAccountNameGenerationTimeout:
+        logger.exception("Storage name availability check timed out")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage name availability check timed out. Please try again.")
+    except StorageAccountNameCheckFailed:
+        logger.exception("Storage name availability check failed")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage name availability check failed. Please try again.")
     except UserNotAuthorizedToUseTemplate as e:
         logger.exception("User not authorized to use template")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
@@ -125,8 +135,11 @@ async def create_workspace(workspace_create: WorkspaceInCreate, response: Respon
 
 
 @workspaces_core_router.patch("/workspaces/{workspace_id}", status_code=status.HTTP_202_ACCEPTED, response_model=OperationInResponse, name=strings.API_UPDATE_WORKSPACE, dependencies=[Depends(get_current_admin_user)])
-async def patch_workspace(resource_patch: ResourcePatch, response: Response, user=Depends(get_current_admin_user), workspace=Depends(get_workspace_by_id_from_path), workspace_repo: WorkspaceRepository = Depends(get_repository(WorkspaceRepository)), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), etag: str = Header(...), force_version_update: bool = False) -> OperationInResponse:
+async def patch_workspace(resource_patch: ResourcePatch, response: Response, user=Depends(get_current_admin_user), workspace=Depends(get_workspace_by_id_from_path), workspace_repo: WorkspaceRepository = Depends(get_repository(WorkspaceRepository)), resource_template_repo=Depends(get_repository(ResourceTemplateRepository)), operations_repo=Depends(get_repository(OperationRepository)), resource_history_repo=Depends(get_repository(ResourceHistoryRepository)), airlock_request_repo=Depends(get_repository(AirlockRequestRepository)), etag: str = Header(...), force_version_update: bool = False) -> OperationInResponse:
     try:
+        await ensure_airlock_version_change_allowed(workspace, resource_patch, airlock_request_repo)
+        if resource_patch.properties and "airlock_version" in resource_patch.properties:
+            ensure_workspace_airlock_version_supported({**workspace.properties, **resource_patch.properties})
         is_disablement = resource_patch.isEnabled is not None and not resource_patch.isEnabled
         if is_disablement:
             await cascaded_update_resource(resource_patch, workspace, user, force_version_update, resource_template_repo=resource_template_repo, resource_history_repo=resource_history_repo, resource_repo=workspace_repo)
@@ -148,6 +161,8 @@ async def patch_workspace(resource_patch: ResourcePatch, response: Response, use
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=strings.ETAG_CONFLICT)
     except ValidationError as v:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=v.message)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except (MajorVersionUpdateDenied, TargetTemplateVersionDoesNotExist, VersionDowngradeDenied) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

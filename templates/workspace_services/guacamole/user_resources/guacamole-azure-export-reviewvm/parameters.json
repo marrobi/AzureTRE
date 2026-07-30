@@ -65,6 +65,12 @@
       }
     },
     {
+      "name": "airlock_version",
+      "source": {
+        "env": "AIRLOCK_VERSION"
+      }
+    },
+    {
       "name": "azure_environment",
       "source": {
         "env": "AZURE_ENVIRONMENT"

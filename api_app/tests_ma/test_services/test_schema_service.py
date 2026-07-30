@@ -133,3 +133,32 @@ def test_enrich_template_adds_read_only_on_update(basic_resource_template):
 
     assert "readOnly" not in template["properties"]["updateable_property"].keys()
     assert template["properties"]["fixed_property"]["readOnly"] is True
+
+
+def test_conditional_property_update_requires_its_gate_in_partial_patch(basic_resource_template):
+    """A property defined inside an ``allOf``/``if-then`` block (gated on another
+    property being set) can only be included in a partial PATCH when its gating
+    property is also present, because the enriched schema uses
+    ``unevaluatedProperties: false``.
+
+    This mirrors the base workspace template, where ``airlock_version`` lives in an
+    ``if enable_airlock == true then`` block: a PATCH that changes ``airlock_version``
+    must also include ``enable_airlock: true`` (which the UI does automatically by
+    sending the full updateable property set). Here ``supply_secret`` is the gate and
+    ``secret`` is the conditional property.
+    """
+    from jsonschema import Draft202012Validator
+
+    template = services.schema_service.enrich_template(basic_resource_template, [], is_update=True)
+    # The ResourceTemplate model applies unevaluatedProperties=false when validating patches
+    template["unevaluatedProperties"] = False
+    template.pop("required", None)  # PATCH payloads are partial, so root 'required' is not enforced
+    validator = Draft202012Validator(template)
+
+    # Conditional property alone -> gate not satisfied -> 'then' not evaluated -> rejected
+    errors_without_gate = list(validator.iter_errors({"secret": "s3cret"}))
+    assert any("Unevaluated properties" in e.message for e in errors_without_gate)
+
+    # Conditional property together with its gate -> 'then' evaluated -> accepted
+    errors_with_gate = list(validator.iter_errors({"supply_secret": True, "secret": "s3cret"}))
+    assert errors_with_gate == []

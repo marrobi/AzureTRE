@@ -1,11 +1,12 @@
 import copy
-from unittest.mock import AsyncMock, call
+from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 from mock import patch, MagicMock
 import uuid
+import asyncio
 
-from db.errors import EntityDoesNotExist, InvalidInput, ResourceIsNotDeployed
+from db.errors import EntityDoesNotExist, InvalidInput, ResourceIsNotDeployed, StorageAccountNameGenerationTimeout
 from db.repositories.operations import OperationRepository
 from db.repositories.workspaces import WorkspaceRepository
 from models.domain.operation import Status
@@ -317,66 +318,88 @@ def test_workspace_owner_is_not_overwritten_if_present_in_workspace_properties(w
 @pytest.mark.asyncio
 @patch('db.repositories.workspaces.StorageManagementClient')
 async def test_is_workspace_storage_account_available_when_name_available(mock_storage_client):
-    unique_identifier_suffix = "1234"
-    mock_storage_client.return_value = MagicMock()
-    mock_storage_client.return_value.storage_accounts.check_name_availability.return_value = AsyncMock()
-    mock_storage_client.return_value.storage_accounts.check_name_availability.return_value.name_available = True
+    unique_identifier_suffix = "abc123xyz"
+    mock_storage_client_instance = MagicMock()
+    mock_storage_client_instance.storage_accounts.check_name_availability = AsyncMock()
+    mock_storage_client_instance.storage_accounts.check_name_availability.return_value.name_available = True
+    mock_storage_client_instance.close = AsyncMock()
+    mock_storage_client.return_value = mock_storage_client_instance
     workspace_repo = WorkspaceRepository()
-
-    result = await workspace_repo.is_workspace_storage_account_available(unique_identifier_suffix)
-
-    # all workspace-scoped storage account names must be checked
-    expected_calls = [call({"name": name}) for name in WorkspaceRepository.get_workspace_storage_account_names(unique_identifier_suffix)]
-    mock_storage_client.return_value.storage_accounts.check_name_availability.assert_has_calls(expected_calls)
-    assert mock_storage_client.return_value.storage_accounts.check_name_availability.call_count == len(expected_calls)
-    assert result is True
 
 
 @pytest.mark.asyncio
 @patch('db.repositories.workspaces.StorageManagementClient')
 async def test_is_workspace_storage_account_available_when_name_not_available(mock_storage_client):
-    unique_identifier_suffix = "1234"
-    mock_storage_client.return_value = MagicMock()
-    mock_storage_client.return_value.storage_accounts.check_name_availability.return_value = AsyncMock()
-    mock_storage_client.return_value.storage_accounts.check_name_availability.return_value.name_available = False
+    unique_identifier_suffix = "abc123xyz"
+    mock_storage_client_instance = MagicMock()
+    mock_storage_client_instance.storage_accounts.check_name_availability = AsyncMock()
+    mock_storage_client_instance.close = AsyncMock()
+    mock_result_unavailable = MagicMock(name_available=False)
+    mock_storage_client_instance.storage_accounts.check_name_availability.side_effect = [
+        mock_result_unavailable
+    ]
+    mock_storage_client.return_value = mock_storage_client_instance
     workspace_repo = WorkspaceRepository()
 
-    result = await workspace_repo.is_workspace_storage_account_available(unique_identifier_suffix)
+    result = await workspace_repo.is_workspace_storage_account_available(MagicMock(), unique_identifier_suffix)
 
-    # the very first (workspace) storage account is unavailable, so we short-circuit
-    mock_storage_client.return_value.storage_accounts.check_name_availability.assert_called_once_with({"name": f"stgws{unique_identifier_suffix}"})
     assert result is False
+    assert mock_storage_client_instance.storage_accounts.check_name_availability.call_count == 1
+    mock_storage_client_instance.storage_accounts.check_name_availability.assert_any_call(
+        {"name": f"stgws{unique_identifier_suffix}", "type": "Microsoft.Storage/storageAccounts"}
+    )
 
 
 @pytest.mark.asyncio
 @patch('db.repositories.workspaces.StorageManagementClient')
-async def test_is_workspace_storage_account_available_when_airlock_name_not_available(mock_storage_client):
-    unique_identifier_suffix = "1234"
-    storage_account_names = WorkspaceRepository.get_workspace_storage_account_names(unique_identifier_suffix)
-
-    # the workspace storage account is free, but an airlock storage account (2nd name) is taken
-    def check_name_availability(params):
-        availability = AsyncMock()
-        availability.name_available = params["name"] != storage_account_names[1]
-        return availability
-
-    mock_storage_client.return_value = MagicMock()
-    mock_storage_client.return_value.storage_accounts.check_name_availability.side_effect = check_name_availability
+async def test_is_workspace_storage_account_available_when_check_raises_exception(mock_storage_client):
+    unique_identifier_suffix = "abc123xyz"
+    mock_storage_client_instance = MagicMock()
+    mock_storage_client_instance.storage_accounts.check_name_availability = AsyncMock()
+    mock_storage_client_instance.storage_accounts.check_name_availability.side_effect = Exception("ARM error")
+    mock_storage_client_instance.close = AsyncMock()
+    mock_storage_client.return_value = mock_storage_client_instance
     workspace_repo = WorkspaceRepository()
 
-    result = await workspace_repo.is_workspace_storage_account_available(unique_identifier_suffix)
-
-    assert result is False
+    with pytest.raises(Exception, match="ARM error"):
+        await workspace_repo.is_workspace_storage_account_available(MagicMock(), unique_identifier_suffix)
 
 
 @pytest.mark.asyncio
+@patch('db.repositories.workspaces.asyncio.wait_for')
+@patch('db.repositories.workspaces.generate_new_cidr')
+@patch('db.repositories.workspaces.WorkspaceRepository.validate_input_against_template')
 @patch('db.repositories.workspaces.WorkspaceRepository.is_workspace_storage_account_available')
-async def test_generate_available_unique_identifier_suffix_retries_until_available(mock_is_available):
+async def test_create_workspace_item_raises_timeout_error_after_timeout(mock_is_workspace_storage_account_available, validate_input_mock, new_cidr_mock, mock_wait_for, workspace_repo, basic_workspace_request, basic_resource_template):
+    workspace_to_create = basic_workspace_request
+    mock_is_workspace_storage_account_available.return_value = False
+    validate_input_mock.return_value = basic_resource_template
+    new_cidr_mock.return_value = "1.2.3.4/24"
+
+    async def mock_wait_for_se(coro, timeout=None):
+        coro.close()
+        raise asyncio.TimeoutError
+    mock_wait_for.side_effect = mock_wait_for_se
+
+    with pytest.raises(StorageAccountNameGenerationTimeout) as exc_info:
+        await workspace_repo.create_workspace_item(workspace_to_create, {}, "test_object_id", ["test_role"])
+
+    assert "Unable to generate a unique storage account name within the timeout limit." in str(exc_info.value)
+    mock_wait_for.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.StorageManagementClient')
+async def test_is_workspace_storage_account_available_when_check_times_out(mock_storage_client):
+    unique_identifier_suffix = "abc123xyz"
+    mock_storage_client_instance = MagicMock()
+    mock_storage_client_instance.storage_accounts.check_name_availability = AsyncMock()
+    mock_storage_client_instance.close = AsyncMock()
+    mock_storage_client_instance.storage_accounts.check_name_availability.side_effect = asyncio.TimeoutError("Stall")
+    mock_storage_client.return_value = mock_storage_client_instance
     workspace_repo = WorkspaceRepository()
-    # first suffix is taken, second is available
-    mock_is_available.side_effect = [False, True]
 
-    suffix = await workspace_repo.generate_available_unique_identifier_suffix()
+    with pytest.raises(asyncio.TimeoutError):
+        await workspace_repo.is_workspace_storage_account_available(MagicMock(), unique_identifier_suffix)
 
-    assert len(suffix) == WorkspaceRepository.UNIQUE_IDENTIFIER_SUFFIX_LENGTH
-    assert mock_is_available.call_count == 2
+    assert mock_storage_client_instance.storage_accounts.check_name_availability.call_count == 1

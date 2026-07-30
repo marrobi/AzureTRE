@@ -23,6 +23,14 @@ def main(msg: func.ServiceBusMessage,
     topic = json_body["topic"]
     request_id = re.search(r'/blobServices/default/containers/(.*?)/blobs', json_body["subject"]).group(1)
 
+    # v2 consolidated storage accounts drive every stage transition synchronously in
+    # StatusChangedQueueTrigger (metadata updates, the malware-scan gate, and copy
+    # completion), so BlobCreated events from these accounts need no action here.
+    if constants.STORAGE_ACCOUNT_NAME_AIRLOCK_CORE in topic or constants.STORAGE_ACCOUNT_NAME_AIRLOCK_WORKSPACE_GLOBAL in topic:
+        logging.info("BlobCreated from v2 consolidated storage account; transitions are handled by StatusChangedQueueTrigger, no action needed.")
+        return
+
+    # Legacy v1 handling below
     # message originated from in-progress blob creation
     if constants.STORAGE_ACCOUNT_NAME_IMPORT_INPROGRESS in topic or constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS in topic:
         try:
@@ -55,6 +63,9 @@ def main(msg: func.ServiceBusMessage,
     elif constants.STORAGE_ACCOUNT_NAME_IMPORT_BLOCKED in topic or constants.STORAGE_ACCOUNT_NAME_EXPORT_BLOCKED in topic:
         completed_step = constants.STAGE_BLOCKING_INPROGRESS
         new_status = constants.STAGE_BLOCKED_BY_SCAN
+    else:
+        logging.warning(f"Unknown storage account in topic: {topic}")
+        return
 
     # reply with a step completed event
     stepResultEvent.set(

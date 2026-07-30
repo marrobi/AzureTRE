@@ -4,7 +4,7 @@ import pytest
 from mock import MagicMock, patch
 
 from pydantic import ValidationError
-from StatusChangedQueueTrigger import get_request_files, main, extract_properties, get_source_dest_for_copy, is_require_data_copy
+from StatusChangedQueueTrigger import get_request_files, main, extract_properties, get_source_dest_for_copy, is_require_data_copy, get_storage_account_destination_for_copy
 from azure.functions.servicebus import ServiceBusMessage
 from shared_code import constants
 
@@ -20,36 +20,17 @@ class TestPropertiesExtraction():
         assert req_prop.type == "101112"
         assert req_prop.workspace_id == "ws1"
 
-    def test_extract_prop_unique_identifier_suffix_optional(self):
-        # unique_identifier_suffix is optional for backward compatibility with older messages
+    def test_extract_prop_with_review_workspace_id(self):
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\", \"review_workspace_id\":\"rw01\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        req_prop = extract_properties(message)
+        assert req_prop.review_workspace_id == "rw01"
+
+    def test_extract_prop_without_review_workspace_id_defaults_to_none(self):
         message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\"  }}"
         message = _mock_service_bus_message(body=message_body)
         req_prop = extract_properties(message)
-        assert req_prop.unique_identifier_suffix is None
-
-    def test_extract_prop_unique_identifier_suffix_returned_when_present(self):
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        req_prop = extract_properties(message)
-        assert req_prop.unique_identifier_suffix == "abc123xyz"
-
-    def test_extract_prop_storage_account_names_optional(self):
-        # workspace-scoped storage account names are optional for backward compatibility
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        req_prop = extract_properties(message)
-        assert req_prop.import_approved_storage_name is None
-        assert req_prop.export_internal_storage_name is None
-        assert req_prop.export_inprogress_storage_name is None
-        assert req_prop.export_rejected_storage_name is None
-        assert req_prop.export_blocked_storage_name is None
-
-    def test_extract_prop_storage_account_names_returned_when_present(self):
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"456\" ,\"previous_status\":\"789\" , \"type\":\"101112\", \"workspace_id\":\"ws1\", \"import_approved_storage_name\":\"stalimappwscustom\", \"export_internal_storage_name\":\"stalexintwscustom\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        req_prop = extract_properties(message)
-        assert req_prop.import_approved_storage_name == "stalimappwscustom"
-        assert req_prop.export_internal_storage_name == "stalexintwscustom"
+        assert req_prop.review_workspace_id is None
 
     def test_extract_prop_missing_arg_throws(self):
         message_body = "{ \"data\": { \"status\":\"456\" , \"type\":\"789\", \"workspace_id\":\"ws1\"  }}"
@@ -140,59 +121,6 @@ class TestFileEnumeration():
         mock_get_request_files.assert_called_with(account_name=source_storage_account_for_submitted_stage, request_id=request_properties.request_id)
 
 
-class TestUniqueIdentifierSuffix():
-    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
-    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
-    def test_draft_uses_unique_identifier_suffix_when_present(self, mock_create_container):
-        # when unique_identifier_suffix is provided, storage account name is built from it
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
-        expected_account_name = constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL + 'abc123xyz'
-        mock_create_container.assert_called_with(expected_account_name, "123")
-
-    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
-    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
-    def test_draft_falls_back_to_workspace_id_when_suffix_absent(self, mock_create_container):
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
-        expected_account_name = constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL + 'ws1'
-        mock_create_container.assert_called_with(expected_account_name, "123")
-
-
-class TestWorkspaceStorageAccountNames():
-    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
-    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
-    def test_draft_uses_provided_storage_account_name_when_present(self, mock_create_container):
-        # when the actual storage account name is provided on the event, it is used directly
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\", \"export_internal_storage_name\":\"stalexintwscustom\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
-        mock_create_container.assert_called_with("stalexintwscustom", "123")
-
-    @patch("StatusChangedQueueTrigger.blob_operations.copy_data")
-    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
-    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
-    def test_copy_uses_provided_storage_account_names_when_present(self, mock_create_container, mock_copy_data):
-        # export rejection_in_progress: source export_inprogress, dest export_rejected; both provided on the event
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"rejection_in_progress\" ,\"previous_status\":\"submitted\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\", \"export_inprogress_storage_name\":\"stalexipwscustom\", \"export_rejected_storage_name\":\"stalexrejwscustom\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
-        mock_create_container.assert_called_with("stalexrejwscustom", "123")
-        mock_copy_data.assert_called_with("stalexipwscustom", "stalexrejwscustom", "123")
-
-    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
-    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
-    def test_draft_falls_back_to_suffix_when_name_absent(self, mock_create_container):
-        # without the provided name the account name is still built from the suffix
-        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\" ,\"previous_status\":\"\" , \"type\":\"export\", \"workspace_id\":\"ws1\", \"unique_identifier_suffix\":\"abc123xyz\"  }}"
-        message = _mock_service_bus_message(body=message_body)
-        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
-        expected_account_name = constants.STORAGE_ACCOUNT_NAME_EXPORT_INTERNAL + 'abc123xyz'
-        mock_create_container.assert_called_with(expected_account_name, "123")
-
-
 class TestFilesDeletion():
     @patch("StatusChangedQueueTrigger.set_output_event_to_trigger_container_deletion")
     @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
@@ -203,7 +131,152 @@ class TestFilesDeletion():
         assert mock_set_output_event_to_trigger_container_deletion.called
 
 
+class TestMainFailurePaths():
+    def test_main_raises_json_decode_error_when_invalid_json(self):
+        message = _mock_service_bus_message(body="invalid json")
+        with pytest.raises(JSONDecodeError):
+            main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+
+    def test_main_raises_key_error_when_missing_data_field(self):
+        message = _mock_service_bus_message(body="{}")
+        with pytest.raises(KeyError):
+            main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+
+    def test_main_raises_validation_error_when_missing_properties(self):
+        message = _mock_service_bus_message(body="{ \"data\": {} }")
+        with pytest.raises(ValidationError):
+            main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+
+
+class TestImportSubmitUsesReviewWorkspaceId():
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_import_submit_destination_uses_tre_id_regardless_of_review_workspace_id(self):
+        dest = get_storage_account_destination_for_copy(
+            new_status=constants.STAGE_SUBMITTED,
+            request_type=constants.IMPORT_TYPE,
+            short_workspace_id="ws01",
+            review_workspace_id="rw01"
+        )
+        assert dest == constants.STORAGE_ACCOUNT_NAME_IMPORT_INPROGRESS + "tre-id"
+
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_import_submit_destination_falls_back_to_tre_id_when_no_review_workspace_id(self):
+        dest = get_storage_account_destination_for_copy(
+            new_status=constants.STAGE_SUBMITTED,
+            request_type=constants.IMPORT_TYPE,
+            short_workspace_id="ws01",
+            review_workspace_id=None
+        )
+        assert dest == constants.STORAGE_ACCOUNT_NAME_IMPORT_INPROGRESS + "tre-id"
+
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_export_submit_destination_ignores_review_workspace_id(self):
+        dest = get_storage_account_destination_for_copy(
+            new_status=constants.STAGE_SUBMITTED,
+            request_type=constants.EXPORT_TYPE,
+            short_workspace_id="ws01",
+            review_workspace_id="rw01"
+        )
+        assert dest == constants.STORAGE_ACCOUNT_NAME_EXPORT_INPROGRESS + "ws01"
+
+
+class TestImportApproval():
+    @patch("StatusChangedQueueTrigger.blob_operations.copy_data")
+    @patch("StatusChangedQueueTrigger.blob_operations.create_container")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id"}, clear=True)
+    def test_import_approval_copies_data_in_legacy_mode(self, mock_create_container, mock_copy_data):
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"approval_in_progress\" ,\"previous_status\":\"in_review\" , \"type\":\"import\", \"workspace_id\":\"ws01\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+        main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+        mock_create_container.assert_called_once()
+        mock_copy_data.assert_called_once()
+
+
 def _mock_service_bus_message(body: str):
     encoded_body = str.encode(body, "utf-8")
     message = ServiceBusMessage(body=encoded_body, message_id="123", user_properties={}, application_properties={})
     return message
+
+
+class TestV2MetadataMode():
+
+    @patch("StatusChangedQueueTrigger.blob_operations.copy_data")
+    @patch("StatusChangedQueueTrigger.blob_operations.wait_for_blob_copy_completion")
+    @patch("shared_code.blob_operations_metadata.update_container_stage")
+    @patch("shared_code.blob_operations_metadata.create_container_with_metadata")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id", "ENABLE_MALWARE_SCANNING": "False"}, clear=True)
+    def test_v2_import_approval_waits_for_copy_and_emits_approved(self, mock_create_container, mock_update_stage, mock_wait_for_copy, mock_copy_data):
+        source_blob = MagicMock()
+        source_blob.url = "https://stalairlocktre-id.blob.core.windows.net/request-123/source.txt"
+        destination_blob = MagicMock()
+        destination_blob.blob_name = "source.txt"
+        mock_copy_data.return_value = {"source_blob": source_blob, "destination_blob": destination_blob, "copy": {"copy_status": "success"}}
+        mock_wait_for_copy.return_value = True
+
+        message_body = '{ "data": { "request_id":"123","new_status":"approval_in_progress","previous_status":"in_review","type":"import","workspace_id":"ws01","airlock_version":2 }}'
+        message = _mock_service_bus_message(body=message_body)
+        step_result = MagicMock()
+        deletion_event = MagicMock()
+
+        main(msg=message, stepResultEvent=step_result, dataDeletionEvent=deletion_event)
+
+        mock_create_container.assert_called_once()
+        created_stage = mock_create_container.call_args.args[2]
+        assert created_stage == constants.STAGE_IMPORT_IN_PROGRESS
+        mock_wait_for_copy.assert_called_once_with(destination_blob, timeout_seconds=300)
+        mock_update_stage.assert_called_once_with(constants.STORAGE_ACCOUNT_NAME_AIRLOCK_WORKSPACE_GLOBAL + "tre-id", "123", constants.STAGE_IMPORT_APPROVED, changed_by='system')
+
+        step_result.set.assert_called_once()
+        event_data = step_result.set.call_args[0][0]
+        assert event_data.get_json()["completed_step"] == constants.STAGE_APPROVAL_INPROGRESS
+        assert event_data.get_json()["new_status"] == constants.STAGE_APPROVED
+
+        deletion_event.set.assert_called_once()
+        deletion_data = deletion_event.set.call_args[0][0]
+        assert deletion_data.get_json()["blob_to_delete"] == source_blob.url
+
+    @patch("StatusChangedQueueTrigger.blob_operations.copy_data")
+    @patch("StatusChangedQueueTrigger.blob_operations.wait_for_blob_copy_completion", side_effect=TimeoutError("timed out"))
+    @patch("shared_code.blob_operations_metadata.create_container_with_metadata")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id", "ENABLE_MALWARE_SCANNING": "False"}, clear=True)
+    def test_v2_import_approval_timeout_emits_blocked_step_result(self, mock_create_container, mock_wait_for_copy, mock_copy_data):
+        source_blob = MagicMock()
+        source_blob.url = "https://stalairlocktre-id.blob.core.windows.net/request-123/source.txt"
+        destination_blob = MagicMock()
+        destination_blob.blob_name = "source.txt"
+        mock_copy_data.return_value = {"source_blob": source_blob, "destination_blob": destination_blob, "copy": {"copy_status": "pending"}}
+
+        message_body = '{ "data": { "request_id":"123","new_status":"approval_in_progress","previous_status":"in_review","type":"import","workspace_id":"ws01","airlock_version":2 }}'
+        message = _mock_service_bus_message(body=message_body)
+        step_result = MagicMock()
+
+        main(msg=message, stepResultEvent=step_result, dataDeletionEvent=MagicMock())
+
+        mock_create_container.assert_called_once()
+        step_result.set.assert_called_once()
+        event_data = step_result.set.call_args[0][0]
+        assert event_data.get_json()["completed_step"] == constants.STAGE_BLOCKING_INPROGRESS
+        assert event_data.get_json()["new_status"] == constants.STAGE_BLOCKED_BY_SCAN
+
+    @patch("StatusChangedQueueTrigger.blob_operations.copy_data")
+    @patch("StatusChangedQueueTrigger.blob_operations.wait_for_blob_copy_completion", side_effect=Exception("copy failed"))
+    @patch("shared_code.blob_operations_metadata.create_container_with_metadata")
+    @patch.dict(os.environ, {"TRE_ID": "tre-id", "ENABLE_MALWARE_SCANNING": "False"}, clear=True)
+    def test_v2_import_approval_failure_emits_rejected_step_result(self, mock_create_container, mock_wait_for_copy, mock_copy_data):
+        source_blob = MagicMock()
+        source_blob.url = "https://stalairlocktre-id.blob.core.windows.net/request-123/source.txt"
+        destination_blob = MagicMock()
+        destination_blob.blob_name = "source.txt"
+        mock_copy_data.return_value = {"source_blob": source_blob, "destination_blob": destination_blob, "copy": {"copy_status": "failed"}}
+
+        message_body = '{ "data": { "request_id":"123","new_status":"approval_in_progress","previous_status":"in_review","type":"import","workspace_id":"ws01","airlock_version":2 }}'
+        message = _mock_service_bus_message(body=message_body)
+        step_result = MagicMock()
+
+        main(msg=message, stepResultEvent=step_result, dataDeletionEvent=MagicMock())
+
+        mock_create_container.assert_called_once()
+        step_result.set.assert_called_once()
+        event_data = step_result.set.call_args[0][0]
+        assert event_data.get_json()["completed_step"] == constants.STAGE_REJECTION_INPROGRESS
+        assert event_data.get_json()["new_status"] == constants.STAGE_REJECTED

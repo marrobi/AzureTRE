@@ -10,29 +10,6 @@ output "storage_account_name" {
   value = local.storage_name
 }
 
-# Airlock storage account names are output so that consumers (e.g. the API airlock service) can
-# read the actual names from the workspace properties rather than re-deriving them. They are empty
-# when airlock is disabled (no airlock storage accounts are created).
-output "import_approved_storage_name" {
-  value = var.enable_airlock ? module.airlock[0].import_approved_storage_name : ""
-}
-
-output "export_internal_storage_name" {
-  value = var.enable_airlock ? module.airlock[0].export_internal_storage_name : ""
-}
-
-output "export_inprogress_storage_name" {
-  value = var.enable_airlock ? module.airlock[0].export_inprogress_storage_name : ""
-}
-
-output "export_rejected_storage_name" {
-  value = var.enable_airlock ? module.airlock[0].export_rejected_storage_name : ""
-}
-
-output "export_blocked_storage_name" {
-  value = var.enable_airlock ? module.airlock[0].export_blocked_storage_name : ""
-}
-
 # The following outputs are dependent on an Automatic AAD Workspace Application Registration.
 # If we are not creating an App Reg we simple pass back the same values that were already created
 # This is necessary so that we don't delete workspace properties
@@ -86,4 +63,10 @@ output "workspace_researchers_group_id" {
 
 output "workspace_airlock_managers_group_id" {
   value = var.register_aad_application ? module.aad[0].workspace_airlock_managers_group_id : ""
+}
+
+# Client id of the per-workspace airlock SAS signer app registration (airlock v2 only).
+# Empty when airlock v2 is disabled or Entra object creation is not permitted.
+output "airlock_signer_client_id" {
+  value = var.enable_airlock && var.airlock_version >= 2 ? module.airlock_v2[0].airlock_signer_client_id : ""
 }
