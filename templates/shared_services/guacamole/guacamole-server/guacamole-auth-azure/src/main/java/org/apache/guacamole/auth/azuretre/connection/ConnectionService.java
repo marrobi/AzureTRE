@@ -176,10 +176,24 @@ public final class ConnectionService {
 
     private static JSONArray getVMsFromProjectAPI(
         final AzureTREAuthenticatedUser user) throws GuacamoleException {
+        // In shared service mode the workspace is determined per-request from
+        // the authenticated user (dynamic), so that VM retrieval is always
+        // scoped to the workspace the user's token was validated against. This
+        // preserves the per-workspace security boundary. Fall back to the
+        // WORKSPACE_ID environment variable for static (single-workspace) mode.
+        String workspaceId = user.getWorkspaceId();
+        if (workspaceId == null || workspaceId.isEmpty()) {
+            workspaceId = System.getenv("WORKSPACE_ID");
+        }
+        if (workspaceId == null || workspaceId.isEmpty()) {
+            throw new GuacamoleException(
+                "Unable to determine workspace ID for user-resources lookup");
+        }
+
         final String url = String.format(
             "%s/api/workspaces/%s/workspace-services/%s/user-resources",
             System.getenv("API_URL"),
-            System.getenv("WORKSPACE_ID"),
+            workspaceId,
             System.getenv("SERVICE_ID"));
 
         final HttpClient client = HttpClient.newHttpClient();
