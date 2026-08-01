@@ -67,6 +67,24 @@ resource "azurerm_role_assignment" "keyvault_resourceprocessor_ws_role" {
 
 }
 
+# Allow workspace owners and researchers to read secrets stored in the workspace
+# Key Vault by workspace services (e.g. Gitea/OHDSI database passwords). The group
+# ids are only known to this template when TRE registers the AAD application, which
+# is also the only case where no workspace client secret is stored in the vault.
+resource "azurerm_role_assignment" "keyvault_owners_secrets_user" {
+  count                = var.register_aad_application ? 1 : 0
+  scope                = azurerm_key_vault.kv.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.aad[0].workspace_owners_group_id
+}
+
+resource "azurerm_role_assignment" "keyvault_researchers_secrets_user" {
+  count                = var.register_aad_application ? 1 : 0
+  scope                = azurerm_key_vault.kv.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.aad[0].workspace_researchers_group_id
+}
+
 # If running the terraform locally
 resource "azurerm_role_assignment" "keyvault_deployer_ws_role" {
   count                = var.enable_local_debugging ? 1 : 0
