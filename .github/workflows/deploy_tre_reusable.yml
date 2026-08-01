@@ -529,6 +529,8 @@ jobs:
             BUNDLE_DIR: "./templates/shared_services/sonatype-nexus-vm/"
           - BUNDLE_TYPE: "shared_service"
             BUNDLE_DIR: "./templates/shared_services/databricks-auth/"
+          - BUNDLE_TYPE: "shared_service"
+            BUNDLE_DIR: "./templates/shared_services/guacamole/"
     environment: ${{ inputs.environmentName }}
     steps:
       - name: Checkout
@@ -582,6 +584,8 @@ jobs:
             BUNDLE_DIR: "./templates/shared_services/sonatype-nexus-vm/"
           - BUNDLE_TYPE: "shared_service"
             BUNDLE_DIR: "./templates/shared_services/databricks-auth/"
+          - BUNDLE_TYPE: "shared_service"
+            BUNDLE_DIR: "./templates/shared_services/guacamole/"
     environment: ${{ inputs.environmentName }}
     steps:
       - name: Checkout
