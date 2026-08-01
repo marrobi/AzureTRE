@@ -35,6 +35,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -58,6 +59,14 @@ public final class ConnectionService {
      */
     private static final String DEFAULT_GUACAMOLE_SERVICE_TEMPLATE_NAME =
         "tre-service-guacamole";
+
+    /**
+     * Key under which each aggregated user-resource carries the guac policy
+     * settings (copy/paste, drive, download/upload, keyboard layout) taken
+     * from its parent Guacamole workspace service's specification. Prefixed
+     * with an underscore so it cannot collide with a real resource property.
+     */
+    private static final String GUAC_SETTINGS_KEY = "_guacSettings";
 
     /**
      * Retrieves the JSON body for a GET request against the TRE API.
@@ -117,29 +126,13 @@ public final class ConnectionService {
             final JSONArray vmsJsonArray = getVMsFromProjectAPI(user);
 
             for (int i = 0; i < vmsJsonArray.length(); i++) {
-                final GuacamoleConfiguration config =
-                    new GuacamoleConfiguration();
                 final JSONObject vmJsonObject = vmsJsonArray.getJSONObject(i);
-                final JSONObject templateParameters =
-                    (JSONObject) vmJsonObject.get("properties");
+                final GuacamoleConfiguration config =
+                    buildConfiguration(vmJsonObject);
 
-                if (templateParameters.has("hostname")
-                    && templateParameters.has("ip")) {
-                    final String azureResourceId =
-                        templateParameters.getString("hostname");
-                    final String ip = templateParameters.getString("ip");
-                    final String displayName =
-                        templateParameters.getString("display_name");
-
-                    setConfig(config, azureResourceId, ip, displayName);
-                    LOGGER.info(
-                        "Adding VM id:{} ip:{} name:{}",
-                        azureResourceId,
-                        ip,
-                        displayName);
-                    configs.putIfAbsent(azureResourceId, config);
-                } else {
-                    LOGGER.info("Missing ip or hostname, skipping VM");
+                if (config != null) {
+                    configs.putIfAbsent(
+                        config.getParameter("azure-resource-id"), config);
                 }
             }
         } catch (final Exception ex) {
@@ -151,11 +144,55 @@ public final class ConnectionService {
         return configs;
     }
 
+    /**
+     * Builds a Guacamole configuration for a single user-resource (VM) JSON
+     * object, applying the policy settings from the VM's parent workspace
+     * service specification (tagged under {@link #GUAC_SETTINGS_KEY}).
+     *
+     * @param vmJsonObject the user-resource JSON object.
+     * @return the configuration, or {@code null} if the VM is missing the
+     *     hostname/ip required to build a connection.
+     */
+    static GuacamoleConfiguration buildConfiguration(
+        final JSONObject vmJsonObject) {
+        final JSONObject templateParameters =
+            (JSONObject) vmJsonObject.get("properties");
+        final JSONObject workspaceServiceSettings =
+            vmJsonObject.optJSONObject(GUAC_SETTINGS_KEY);
+
+        if (!templateParameters.has("hostname")
+            || !templateParameters.has("ip")) {
+            LOGGER.info("Missing ip or hostname, skipping VM");
+            return null;
+        }
+
+        final String azureResourceId =
+            templateParameters.getString("hostname");
+        final String ip = templateParameters.getString("ip");
+        final String displayName =
+            templateParameters.getString("display_name");
+
+        final GuacamoleConfiguration config = new GuacamoleConfiguration();
+        setConfig(
+            config,
+            azureResourceId,
+            ip,
+            displayName,
+            workspaceServiceSettings);
+        LOGGER.info(
+            "Adding VM id:{} ip:{} name:{}",
+            azureResourceId,
+            ip,
+            displayName);
+        return config;
+    }
+
     private static void setConfig(
         final GuacamoleConfiguration config,
         final String azureResourceId,
         final String ip,
-        final String displayName) {
+        final String displayName,
+        final JSONObject workspaceServiceSettings) {
         config.setProtocol("rdp");
         config.setParameter("hostname", ip);
         config.setParameter("display_name", displayName);
@@ -164,33 +201,68 @@ public final class ConnectionService {
         config.setParameter("port", "3389");
         config.setParameter("ignore-cert", "true");
 
-        setEnvParameter(config, "disable-copy", "GUAC_DISABLE_COPY");
-        setEnvParameter(config, "disable-paste", "GUAC_DISABLE_PASTE");
-        setEnvParameter(config, "enable-drive", "GUAC_ENABLE_DRIVE");
-        setEnvParameter(config, "drive-name", "GUAC_DRIVE_NAME");
-        setEnvParameter(config, "drive-path", "GUAC_DRIVE_PATH");
-        setEnvParameter(
-            config,
-            "disable-download",
+        // Guacamole policy settings (copy/paste, drive, download/upload and
+        // keyboard layout) are taken from the parent Guacamole workspace
+        // service's specification so that each workspace's own policy is
+        // honoured. When a workspace service does not specify a value the
+        // shared service's deployment-time default (environment variable) is
+        // used as a fallback.
+        applyGuacParameter(config, "disable-copy",
+            "guac_disable_copy", workspaceServiceSettings, "GUAC_DISABLE_COPY");
+        applyGuacParameter(config, "disable-paste",
+            "guac_disable_paste", workspaceServiceSettings,
+            "GUAC_DISABLE_PASTE");
+        applyGuacParameter(config, "enable-drive",
+            "guac_enable_drive", workspaceServiceSettings, "GUAC_ENABLE_DRIVE");
+        applyGuacParameter(config, "drive-name",
+            "guac_drive_name", workspaceServiceSettings, "GUAC_DRIVE_NAME");
+        applyGuacParameter(config, "drive-path",
+            "guac_drive_path", workspaceServiceSettings, "GUAC_DRIVE_PATH");
+        applyGuacParameter(config, "disable-download",
+            "guac_disable_download", workspaceServiceSettings,
             "GUAC_DISABLE_DOWNLOAD");
-        setEnvParameter(
-            config,
-            "disable-upload",
+        applyGuacParameter(config, "disable-upload",
+            "guac_disable_upload", workspaceServiceSettings,
             "GUAC_DISABLE_UPLOAD");
-
-        final String serverLayout = System.getenv("GUAC_SERVER_LAYOUT");
-        if (serverLayout != null && !serverLayout.isEmpty()) {
-            config.setParameter("server-layout", serverLayout);
-        }
+        applyGuacParameter(config, "server-layout",
+            "guac_server_layout", workspaceServiceSettings,
+            "GUAC_SERVER_LAYOUT");
     }
 
-    private static void setEnvParameter(
+    /**
+     * Applies a single Guacamole connection parameter, preferring the value
+     * from the parent workspace service's specification (its {@code
+     * properties}) and falling back to the shared service's deployment-time
+     * environment variable default when the workspace service does not set
+     * it.
+     *
+     * @param config the connection configuration to mutate.
+     * @param parameterName the Guacamole connection parameter name.
+     * @param propertyName the workspace service property name.
+     * @param workspaceServiceSettings the workspace service properties (may be
+     *     {@code null} when unavailable, e.g. legacy single-workspace mode).
+     * @param envVarName the fallback environment variable name.
+     */
+    private static void applyGuacParameter(
         final GuacamoleConfiguration config,
         final String parameterName,
+        final String propertyName,
+        final JSONObject workspaceServiceSettings,
         final String envVarName) {
-        final String value = System.getenv(envVarName);
-        if (value != null && !value.isEmpty()) {
-            config.setParameter(parameterName, value);
+        if (workspaceServiceSettings != null
+            && workspaceServiceSettings.has(propertyName)
+            && !workspaceServiceSettings.isNull(propertyName)) {
+            final String value = String.valueOf(
+                workspaceServiceSettings.get(propertyName));
+            if (!value.isEmpty()) {
+                config.setParameter(parameterName, value);
+                return;
+            }
+        }
+
+        final String envValue = System.getenv(envVarName);
+        if (envValue != null && !envValue.isEmpty()) {
+            config.setParameter(parameterName, envValue);
         }
     }
 
@@ -222,11 +294,14 @@ public final class ConnectionService {
         final String apiUrl = requireEnv("API_URL", "API URL");
         final String workspaceId = resolveWorkspaceId(user);
 
-        final List<String> serviceIds =
-            resolveGuacamoleServiceIds(apiUrl, workspaceId, user, fetcher);
+        final Map<String, JSONObject> services =
+            resolveGuacamoleServices(apiUrl, workspaceId, user, fetcher);
 
         final JSONArray aggregated = new JSONArray();
-        for (final String serviceId : serviceIds) {
+        for (final Map.Entry<String, JSONObject> service
+            : services.entrySet()) {
+            final String serviceId = service.getKey();
+            final JSONObject serviceProperties = service.getValue();
             final String url = String.format(
                 "%s/api/workspaces/%s/workspace-services/%s/user-resources",
                 apiUrl,
@@ -238,7 +313,16 @@ public final class ConnectionService {
                     final JSONArray userResources =
                         new JSONObject(body).getJSONArray("userResources");
                     for (int i = 0; i < userResources.length(); i++) {
-                        aggregated.put(userResources.get(i));
+                        final Object resource = userResources.get(i);
+                        // Tag each VM with its parent workspace service's
+                        // policy settings so the connection can honour that
+                        // workspace's specification (copy/paste, drive, etc.).
+                        if (resource instanceof JSONObject
+                            && serviceProperties != null) {
+                            ((JSONObject) resource).put(
+                                GUAC_SETTINGS_KEY, serviceProperties);
+                        }
+                        aggregated.put(resource);
                     }
                 }
             } catch (final Exception ex) {
@@ -255,22 +339,29 @@ public final class ConnectionService {
     }
 
     /**
-     * Resolves the IDs of the Guacamole workspace services to query.
+     * Resolves the Guacamole workspace services to query, mapped to the
+     * {@code properties} (specification) of each service.
      *
      * <p>If a static {@code SERVICE_ID} is configured (legacy single-workspace
-     * mode) it is used directly. Otherwise the workspace-services listing is
-     * retrieved and filtered to the enabled Guacamole services.</p>
+     * mode) it is used directly with no properties (the shared service's
+     * deployment-time defaults then apply). Otherwise the workspace-services
+     * listing is retrieved and filtered to the enabled Guacamole services,
+     * preserving each service's properties.</p>
+     *
+     * @return an ordered map of workspace service ID to its properties (the
+     *     properties value may be {@code null} when unavailable).
      */
-    private static List<String> resolveGuacamoleServiceIds(
+    private static Map<String, JSONObject> resolveGuacamoleServices(
         final String apiUrl,
         final String workspaceId,
         final AzureTREAuthenticatedUser user,
         final ApiJsonFetcher fetcher) throws GuacamoleException {
+        final Map<String, JSONObject> services = new LinkedHashMap<>();
+
         final String staticServiceId = System.getenv("SERVICE_ID");
         if (staticServiceId != null && !staticServiceId.isEmpty()) {
-            final List<String> ids = new ArrayList<>();
-            ids.add(staticServiceId);
-            return ids;
+            services.put(staticServiceId, null);
+            return services;
         }
 
         final String url = String.format(
@@ -278,7 +369,13 @@ public final class ConnectionService {
             apiUrl,
             workspaceId);
         final String body = fetcher.fetch(url, user);
-        return extractGuacamoleServiceIds(body);
+        for (final JSONObject service : extractGuacamoleServices(body)) {
+            final String id = service.optString("id", "");
+            if (!id.isEmpty()) {
+                services.put(id, service.optJSONObject("properties"));
+            }
+        }
+        return services;
     }
 
     /**
@@ -290,14 +387,34 @@ public final class ConnectionService {
      */
     static List<String> extractGuacamoleServiceIds(final String body) {
         final List<String> ids = new ArrayList<>();
+        for (final JSONObject service : extractGuacamoleServices(body)) {
+            final String id = service.optString("id", "");
+            if (!id.isEmpty()) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Extracts the enabled Guacamole workspace service objects (including
+     * their {@code properties}) from a workspace-services listing response
+     * body.
+     *
+     * @param body the JSON body returned by the workspace-services endpoint.
+     * @return the list of matching workspace service objects (never
+     *     {@code null}).
+     */
+    static List<JSONObject> extractGuacamoleServices(final String body) {
+        final List<JSONObject> matches = new ArrayList<>();
         if (body == null || body.isBlank()) {
-            return ids;
+            return matches;
         }
 
         final JSONArray services =
             new JSONObject(body).optJSONArray("workspaceServices");
         if (services == null) {
-            return ids;
+            return matches;
         }
 
         final String templateName = guacamoleTemplateName();
@@ -309,13 +426,10 @@ public final class ConnectionService {
             if (!service.optBoolean("isEnabled", true)) {
                 continue;
             }
-            final String id = service.optString("id", "");
-            if (!id.isEmpty()) {
-                ids.add(id);
-            }
+            matches.add(service);
         }
 
-        return ids;
+        return matches;
     }
 
     private static String guacamoleTemplateName() {

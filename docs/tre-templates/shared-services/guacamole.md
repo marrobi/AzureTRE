@@ -14,7 +14,7 @@ The per-workspace Guacamole service authenticates every user against a single wo
 
 Because both tokens are the user's own tokens, the shared service does **not** require any managed identity permissions on the Core API.
 
-Once authenticated, the extension queries the Core API for the Guacamole workspace services in the resolved workspace and aggregates their user-resource virtual machines to build the list of available connections. The per-workspace Guacamole [workspace service](../workspace-services/guacamole.md) is still used to create those user-resource VMs.
+Once authenticated, the extension queries the Core API for the Guacamole workspace services in the resolved workspace and aggregates their user-resource virtual machines to build the list of available connections. Each connection is configured using the Guacamole policy (copy/paste, transfer drive, download/upload and keyboard layout) declared on the specification of the workspace service that owns the VM, so a workspace's own policy is always applied. The per-workspace Guacamole [workspace service](../workspace-services/guacamole.md) is still used to create those user-resource VMs.
 
 ## Deploy
 
@@ -22,16 +22,16 @@ To deploy this shared service you should use the UI (or the API) to issue a requ
 
 ## Configuration
 
-The following properties can be set when deploying the shared service (see `template_schema.json` for the full list):
+Each connection's Guacamole policy (copy/paste, transfer drive, file download/upload and keyboard layout) is taken from the **specification of the Guacamole [workspace service](../workspace-services/guacamole.md)** that owns the virtual machine, so every workspace's own policy is enforced even though a single shared instance serves them all. The properties below are the shared service's own settings and are only used as a **fallback default** when a workspace service does not specify a value (see `template_schema.json` for the full list):
 
 | Property | Description | Default |
 | --- | --- | --- |
-| `guac_disable_copy` | Disable copying from the remote clipboard. | `true` |
-| `guac_disable_paste` | Disable pasting to the remote clipboard. | `false` |
-| `guac_enable_drive` | Enable the virtual transfer drive. | `false` |
-| `guac_disable_download` | Disable file download from the remote VM. | `true` |
-| `guac_disable_upload` | Disable file upload to the remote VM. | `true` |
-| `guac_server_layout` | Keyboard layout for the Guacamole server. | `en-us-qwerty` |
+| `guac_disable_copy` | Fallback: disable copying from the remote clipboard. | `true` |
+| `guac_disable_paste` | Fallback: disable pasting to the remote clipboard. | `false` |
+| `guac_enable_drive` | Fallback: enable the virtual transfer drive. | `false` |
+| `guac_disable_download` | Fallback: disable file download from the remote VM. | `true` |
+| `guac_disable_upload` | Fallback: disable file upload to the remote VM. | `true` |
+| `guac_server_layout` | Fallback: keyboard layout for the Guacamole server. | `en-us-qwerty` |
 
 ## Network exposure
 
