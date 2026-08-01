@@ -329,10 +329,10 @@ public final class ConnectionService {
      * {@code properties} (specification) of each service.
      *
      * <p>If a static {@code SERVICE_ID} is configured (legacy single-workspace
-     * mode) it is used directly with no properties (the shared service's
-     * deployment-time defaults then apply). Otherwise the workspace-services
-     * listing is retrieved and filtered to the enabled Guacamole services,
-     * preserving each service's properties.</p>
+     * mode) it is used directly with no properties (so Guacamole's built-in
+     * defaults apply). Otherwise the workspace-services listing is retrieved
+     * and filtered to the enabled Guacamole services, preserving each
+     * service's properties.</p>
      *
      * @return an ordered map of workspace service ID to its properties (the
      *     properties value may be {@code null} when unavailable).
