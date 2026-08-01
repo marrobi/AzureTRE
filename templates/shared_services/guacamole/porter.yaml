@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-shared-service-guacamole
-version: 0.2.0
+version: 0.3.0
 description: "A shared Apache Guacamole service for Azure TRE supporting multiple workspaces"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -40,45 +40,6 @@ parameters:
     type: string
     description: "Resource group containing the devops ACR"
     env: MGMT_RESOURCE_GROUP_NAME
-  - name: guac_disable_copy
-    type: boolean
-    default: true
-    env: GUAC_DISABLE_COPY
-    description: "Guacamole disable copy configuration"
-  - name: guac_disable_paste
-    type: boolean
-    default: false
-    env: GUAC_DISABLE_PASTE
-    description: "Guacamole disable paste configuration"
-  - name: guac_enable_drive
-    type: boolean
-    default: false
-    env: GUAC_ENABLE_DRIVE
-    description: "Guacamole enable drive configuration"
-  - name: guac_drive_name
-    type: string
-    default: "transfer"
-    env: GUAC_DRIVE_NAME
-    description: "Guacamole drive name configuration"
-  - name: guac_drive_path
-    type: string
-    default: "/guac-transfer"
-    env: GUAC_DRIVE_PATH
-    description: "Guacamole drive path configuration"
-  - name: guac_disable_download
-    type: boolean
-    default: true
-    env: GUAC_DISABLE_DOWNLOAD
-    description: "Guacamole disable download configuration"
-  - name: guac_disable_upload
-    type: boolean
-    default: true
-    env: GUAC_DISABLE_UPLOAD
-  - name: guac_server_layout
-    type: string
-    default: ""
-    env: GUAC_SERVER_LAYOUT
-    description: "Guacamole server keyboard layout (defaults to en-us-qwerty when not set)"
   # the following are added automatically by the resource processor
   - name: id
     type: string
@@ -131,14 +92,6 @@ install:
         image_tag: ${ bundle.parameters.image_tag }
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
-        guac_disable_copy: ${ bundle.parameters.guac_disable_copy }
-        guac_disable_paste: ${ bundle.parameters.guac_disable_paste }
-        guac_enable_drive: ${ bundle.parameters.guac_enable_drive }
-        guac_drive_name: ${ bundle.parameters.guac_drive_name }
-        guac_drive_path: ${ bundle.parameters.guac_drive_path }
-        guac_disable_download: ${ bundle.parameters.guac_disable_download }
-        guac_disable_upload: ${ bundle.parameters.guac_disable_upload }
-        guac_server_layout: ${ bundle.parameters.guac_server_layout }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
@@ -162,14 +115,6 @@ upgrade:
         image_tag: ${ bundle.parameters.image_tag }
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
-        guac_disable_copy: ${ bundle.parameters.guac_disable_copy }
-        guac_disable_paste: ${ bundle.parameters.guac_disable_paste }
-        guac_enable_drive: ${ bundle.parameters.guac_enable_drive }
-        guac_drive_name: ${ bundle.parameters.guac_drive_name }
-        guac_drive_path: ${ bundle.parameters.guac_drive_path }
-        guac_disable_download: ${ bundle.parameters.guac_disable_download }
-        guac_disable_upload: ${ bundle.parameters.guac_disable_upload }
-        guac_server_layout: ${ bundle.parameters.guac_server_layout }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
@@ -193,14 +138,6 @@ uninstall:
         image_tag: ${ bundle.parameters.image_tag }
         mgmt_acr_name: ${ bundle.parameters.mgmt_acr_name }
         mgmt_resource_group_name: ${ bundle.parameters.mgmt_resource_group_name }
-        guac_disable_copy: ${ bundle.parameters.guac_disable_copy }
-        guac_disable_paste: ${ bundle.parameters.guac_disable_paste }
-        guac_enable_drive: ${ bundle.parameters.guac_enable_drive }
-        guac_drive_name: ${ bundle.parameters.guac_drive_name }
-        guac_drive_path: ${ bundle.parameters.guac_drive_path }
-        guac_disable_download: ${ bundle.parameters.guac_disable_download }
-        guac_disable_upload: ${ bundle.parameters.guac_disable_upload }
-        guac_server_layout: ${ bundle.parameters.guac_server_layout }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }

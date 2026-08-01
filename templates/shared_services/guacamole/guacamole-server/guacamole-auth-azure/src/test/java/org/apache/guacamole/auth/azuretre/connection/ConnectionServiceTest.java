@@ -213,9 +213,6 @@ class ConnectionServiceTest {
     }
 
     @Test
-    @ClearEnvironmentVariable(key = "GUAC_DISABLE_COPY")
-    @ClearEnvironmentVariable(key = "GUAC_DISABLE_PASTE")
-    @ClearEnvironmentVariable(key = "GUAC_SERVER_LAYOUT")
     public void buildConfigurationAppliesWorkspaceServicePolicySettings() {
         final JSONObject vm = vmWithSettings(new JSONObject()
             .put("guac_disable_copy", false)
@@ -237,20 +234,20 @@ class ConnectionServiceTest {
 
     @Test
     @SetEnvironmentVariable(key = "GUAC_DISABLE_COPY", value = "true")
-    public void buildConfigurationWorkspaceServiceSettingOverridesEnv() {
+    public void buildConfigurationIgnoresEnvAndUsesWorkspaceServiceSetting() {
         final JSONObject vm = vmWithSettings(new JSONObject()
             .put("guac_disable_copy", false));
 
         final GuacamoleConfiguration config = ConnectionService.buildConfiguration(vm);
 
-        // The workspace service's own policy must win over the shared
-        // service's deployment-time default.
+        // The workspace service's own policy is the only source; the shared
+        // service's deployment-time environment variable is ignored.
         assertEquals("false", config.getParameter("disable-copy"));
     }
 
     @Test
     @SetEnvironmentVariable(key = "GUAC_DISABLE_COPY", value = "true")
-    public void buildConfigurationFallsBackToEnvWhenNoWorkspaceServiceSettings() {
+    public void buildConfigurationDoesNotFallBackToEnvWhenNoWorkspaceServiceSettings() {
         final JSONObject vm = new JSONObject().put("properties", new JSONObject()
             .put("hostname", "vm-host")
             .put("ip", "10.0.0.1")
@@ -258,7 +255,10 @@ class ConnectionServiceTest {
 
         final GuacamoleConfiguration config = ConnectionService.buildConfiguration(vm);
 
-        assertEquals("true", config.getParameter("disable-copy"));
+        // With no workspace service settings the parameter is left unset so
+        // Guacamole's own default applies; the environment variable must not
+        // be used as a fallback.
+        assertNull(config.getParameter("disable-copy"));
     }
 
     @Test

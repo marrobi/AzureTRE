@@ -202,53 +202,45 @@ public final class ConnectionService {
         config.setParameter("ignore-cert", "true");
 
         // Guacamole policy settings (copy/paste, drive, download/upload and
-        // keyboard layout) are taken from the parent Guacamole workspace
-        // service's specification so that each workspace's own policy is
-        // honoured. When a workspace service does not specify a value the
-        // shared service's deployment-time default (environment variable) is
-        // used as a fallback.
+        // keyboard layout) are taken solely from the parent Guacamole
+        // workspace service's specification so that each workspace's own
+        // policy is honoured. When a workspace service does not specify a
+        // value the Guacamole built-in default for that parameter applies.
         applyGuacParameter(config, "disable-copy",
-            "guac_disable_copy", workspaceServiceSettings, "GUAC_DISABLE_COPY");
+            "guac_disable_copy", workspaceServiceSettings);
         applyGuacParameter(config, "disable-paste",
-            "guac_disable_paste", workspaceServiceSettings,
-            "GUAC_DISABLE_PASTE");
+            "guac_disable_paste", workspaceServiceSettings);
         applyGuacParameter(config, "enable-drive",
-            "guac_enable_drive", workspaceServiceSettings, "GUAC_ENABLE_DRIVE");
+            "guac_enable_drive", workspaceServiceSettings);
         applyGuacParameter(config, "drive-name",
-            "guac_drive_name", workspaceServiceSettings, "GUAC_DRIVE_NAME");
+            "guac_drive_name", workspaceServiceSettings);
         applyGuacParameter(config, "drive-path",
-            "guac_drive_path", workspaceServiceSettings, "GUAC_DRIVE_PATH");
+            "guac_drive_path", workspaceServiceSettings);
         applyGuacParameter(config, "disable-download",
-            "guac_disable_download", workspaceServiceSettings,
-            "GUAC_DISABLE_DOWNLOAD");
+            "guac_disable_download", workspaceServiceSettings);
         applyGuacParameter(config, "disable-upload",
-            "guac_disable_upload", workspaceServiceSettings,
-            "GUAC_DISABLE_UPLOAD");
+            "guac_disable_upload", workspaceServiceSettings);
         applyGuacParameter(config, "server-layout",
-            "guac_server_layout", workspaceServiceSettings,
-            "GUAC_SERVER_LAYOUT");
+            "guac_server_layout", workspaceServiceSettings);
     }
 
     /**
-     * Applies a single Guacamole connection parameter, preferring the value
-     * from the parent workspace service's specification (its {@code
-     * properties}) and falling back to the shared service's deployment-time
-     * environment variable default when the workspace service does not set
-     * it.
+     * Applies a single Guacamole connection parameter from the parent
+     * workspace service's specification (its {@code properties}). When the
+     * workspace service does not set the property the parameter is left
+     * unset and Guacamole's built-in default applies.
      *
      * @param config the connection configuration to mutate.
      * @param parameterName the Guacamole connection parameter name.
      * @param propertyName the workspace service property name.
      * @param workspaceServiceSettings the workspace service properties (may be
      *     {@code null} when unavailable, e.g. legacy single-workspace mode).
-     * @param envVarName the fallback environment variable name.
      */
     private static void applyGuacParameter(
         final GuacamoleConfiguration config,
         final String parameterName,
         final String propertyName,
-        final JSONObject workspaceServiceSettings,
-        final String envVarName) {
+        final JSONObject workspaceServiceSettings) {
         if (workspaceServiceSettings != null
             && workspaceServiceSettings.has(propertyName)
             && !workspaceServiceSettings.isNull(propertyName)) {
@@ -256,13 +248,7 @@ public final class ConnectionService {
                 workspaceServiceSettings.get(propertyName));
             if (!value.isEmpty()) {
                 config.setParameter(parameterName, value);
-                return;
             }
-        }
-
-        final String envValue = System.getenv(envVarName);
-        if (envValue != null && !envValue.isEmpty()) {
-            config.setParameter(parameterName, envValue);
         }
     }
 

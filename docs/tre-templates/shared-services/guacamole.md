@@ -22,16 +22,7 @@ To deploy this shared service you should use the UI (or the API) to issue a requ
 
 ## Configuration
 
-Each connection's Guacamole policy (copy/paste, transfer drive, file download/upload and keyboard layout) is taken from the **specification of the Guacamole [workspace service](../workspace-services/guacamole.md)** that owns the virtual machine, so every workspace's own policy is enforced even though a single shared instance serves them all. The properties below are the shared service's own settings and are only used as a **fallback default** when a workspace service does not specify a value (see `template_schema.json` for the full list):
-
-| Property | Description | Default |
-| --- | --- | --- |
-| `guac_disable_copy` | Fallback: disable copying from the remote clipboard. | `true` |
-| `guac_disable_paste` | Fallback: disable pasting to the remote clipboard. | `false` |
-| `guac_enable_drive` | Fallback: enable the virtual transfer drive. | `false` |
-| `guac_disable_download` | Fallback: disable file download from the remote VM. | `true` |
-| `guac_disable_upload` | Fallback: disable file upload to the remote VM. | `true` |
-| `guac_server_layout` | Fallback: keyboard layout for the Guacamole server. | `en-us-qwerty` |
+Each connection's Guacamole policy (copy/paste, transfer drive, file download/upload and keyboard layout) is taken solely from the **specification of the Guacamole [workspace service](../workspace-services/guacamole.md)** that owns the virtual machine, so every workspace's own policy is enforced even though a single shared instance serves them all. The shared service itself has no policy settings of its own; when a workspace service does not specify a value, Guacamole's built-in default for that setting applies.
 
 ## Network exposure
 
