@@ -38,7 +38,6 @@ resource "azurerm_linux_web_app" "guacamole" {
     WEBSITES_PORT              = "8085"
     TENANT_ID                  = data.azurerm_client_config.current.tenant_id
     API_URL                    = local.api_url
-    SERVICE_ID                 = var.tre_resource_id
     MANAGED_IDENTITY_CLIENT_ID = azurerm_user_assigned_identity.guacamole_id.client_id
 
     # AAD configuration for deriving issuer and JWKS endpoints
