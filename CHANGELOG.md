@@ -15,6 +15,7 @@ ENHANCEMENTS:
 * Strengthen TRE API authentication with a layered `auth/` package (typed exceptions, `PyJWKClient`-backed token validation, immutable `AuthenticatedUser` model, composable RBAC factories), remove the redundant `AccessService` abstraction, and add Event Grid publish resilience with distinct Graph/publish failure reporting. ([#4989](https://github.com/microsoft/AzureTRE/pull/4989))
 * Add support for formatting UI code via `pre-commit` and fix existing formatting issues. ([#4955](https://github.com/microsoft/AzureTRE/issues/4955))
 * Update the version of `super-linter` used in the `build_validation_develop` workflow to 8.7.0 ([#4957](https://github.com/microsoft/AzureTRE/issues/4957))
+* Wire the shared Guacamole service (`tre-shared-service-guacamole`) into CI: build/test its runtime image in `build_docker_images.yml` and publish/register its bundle in `deploy_tre_reusable.yml`, and add its documentation page. ([#13](https://github.com/microsoft/AzureTRE/issues/13))
 
 BUG FIXES:
 * Update `starlette` to 1.3.1 in the e2e tests to address DoS (form limits silently ignored) and StaticFiles SSRF/NTLM-via-UNC advisories.

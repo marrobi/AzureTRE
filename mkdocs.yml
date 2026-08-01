@@ -108,6 +108,7 @@ nav:
           - Nexus (Package Mirror): tre-templates/shared-services/nexus.md
           - Azure CycleCloud (HPC Compute): tre-templates/shared-services/cyclecloud.md
           - Airlock Notifier: tre-templates/shared-services/airlock-notifier.md
+          - Guacamole (Remote Desktop Gateway): tre-templates/shared-services/guacamole.md
       - User Resources:
           - Guacamole Windows VM: tre-templates/user-resources/guacamole-windows-vm.md
           - Guacamole Linux VM: tre-templates/user-resources/guacamole-linux-vm.md
