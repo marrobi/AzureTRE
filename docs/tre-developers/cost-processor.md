@@ -26,11 +26,16 @@ rather than synchronously per request.
 ## Components
 
 ```text
-                +------------------+     scheduled query     +---------------------+
+                +------------------+  current month: query   +---------------------+
                 |  Cost Processor  |  ---------------------->  | Azure Cost Mgmt API |
-                |  (Function app)  |                           +---------------------+
-                +------------------+
-                         |  POST /internal/costs/refresh (managed identity)
+                |  (Function app)  |  closed months: export    +---------------------+
+                +------------------+                                     |
+                         |                                    monthly CSV v
+                         |                                +---------------------+
+                         |  <---------------------------  |  cost-exports blob  |
+                         |                                |  container          |
+                         |  POST /internal/costs/refresh  +---------------------+
+                         |  POST /internal/costs/ingest   (managed identity)
                          v
                 +------------------+     read/write            +---------------------+
                 |     TRE API      |  <---------------------->  |  Cost collection    |
@@ -43,16 +48,19 @@ rather than synchronously per request.
 ```
 
 - **Cost Processor** – a Python Azure Function app with timer triggers. On each
-  run it asks the TRE API to refresh a period; it does not talk to Cosmos or hold
-  cost business logic itself. It runs on the shared **core processing** App
+  run it asks the TRE API to refresh or ingest a period; it does not talk to Cosmos or
+  hold cost business logic itself. It runs on the shared **core processing** App
   Service Plan (`plan-airlock-<tre_id>`), alongside the Airlock Processor.
-- **TRE API** – owns the cost collection and is its **only** writer. It exposes an
-  internal, managed-identity-authenticated refresh endpoint used by the Cost
-  Processor, and serves the existing `/costs` endpoints cache-first from the
+- **TRE API** – owns the cost collection and is its **only** writer. It exposes
+  internal, managed-identity-authenticated refresh and ingest endpoints used by the
+  Cost Processor, and serves the existing `/costs` endpoints cache-first from the
   collection.
 - **Cost collection (Cosmos DB)** – a durable collection storing collected cost
   rows at daily granularity, designed to also hold budgets and manual
   adjustments in future (discriminated by an item-type field).
+- **`cost-exports` blob container** – on the Cost Processor's own storage account,
+  the delivery destination for the monthly Cost Management exports used to seed and
+  finalise closed months.
 
 ### Why the API is the sole writer
 
@@ -88,23 +96,86 @@ and only increases throttling risk.
 
 The Cost Processor therefore uses a tiered, latency-aware schedule:
 
-| Data segment | Volatility | Cadence |
-| --- | --- | --- |
-| Current month | Still settling | Every ~6 hours (`0 0 */6 * * *`) |
-| Just-closed previous month | Settling | Daily sweep (`0 30 2 * * *`) until finalised |
-| Older, completed months | Immutable | Daily backfill sweep (`0 0 4 * * *`), collected once then retained |
+| Data segment | Volatility | Cadence | Source |
+| --- | --- | --- | --- |
+| Current month | Still settling | Every ~6 hours (`0 0 */6 * * *`) | Query API |
+| Just-closed previous month | Settling | Daily sweep (`0 30 2 * * *`) until finalised | Exports API |
+| Older, completed months | Immutable | Daily backfill sweep (`0 0 4 * * *`), collected once then retained | Exports API |
 
 The three timers run on a single-worker plan, so their default schedules are
 staggered (current-month on the hour, previous-month at 02:30, backfill at 04:00)
 to avoid three concurrent Cost Management sweeps competing on the one worker. The
 backfill also has a wall-clock budget (`COST_PROCESSOR_BACKFILL_MAX_RUNTIME_SECONDS`,
-default 30 minutes; `0` disables it) so a run that keeps getting throttled stops
-and resumes on its next schedule rather than tying up the worker indefinitely.
+default 5 hours; `0` disables it) so a run that stalls stops and resumes on its next
+schedule rather than tying up the worker indefinitely.
 
-Completed months are marked final and never re-queried, so multi-year reports are
+Completed months are marked final and never re-collected, so multi-year reports are
 served almost entirely from the collection; only the current month is refreshed,
 and only by the background processor. Schedules and the prior-month look-back
 window are exposed as app settings.
+
+## Collecting closed months with the Exports API
+
+The current month and closed months are collected in two different ways, because they
+have different characteristics.
+
+The **current month** is refreshed frequently and is never final, so it uses the
+**Query API** (`POST /api/internal/costs/refresh`): a query returns synchronously in
+seconds, which suits a period that has to be re-collected every few hours.
+
+**Closed months** — both the just-closed previous month and the history backfill — use
+the **[Cost Management Exports API](https://learn.microsoft.com/azure/cost-management-billing/automate/tutorial-seed-historical-cost-dataset-exports-api)**
+instead. Each closed month is collected exactly once, but there can be many of them,
+and the Query API is a poor fit for that shape of work:
+
+- it returns at most one year of data per request, so long histories need to be split
+  into many requests;
+- it throttles aggressively (HTTP 429), and a backfill issuing dozens of historical
+  queries is exactly the pattern that trips the limits.
+
+An export, by contrast, is billed as a bulk operation: one export delivers a whole
+month of daily, resource-level cost data as a single CSV. It is asynchronous and can
+take a long time to run, which is fine for a once-per-month collection but unsuitable
+for the frequently refreshed current month.
+
+For each closed month the processor:
+
+1. Creates (or updates) a **one-time** export named `tre-<tre_id>-costs-<YYYYMM>`
+   scoped to the subscription — `ActualCost` type, `Custom` timeframe covering the
+   calendar month, `Daily` granularity, delivering to the `cost-exports` container.
+   The name is deterministic, so re-running a month reuses the same export.
+2. Executes it and polls the run history until the run completes.
+3. Downloads the resulting CSV, aggregates it to one row per
+   (date, resource group, TRE tag, currency) — exploding multi-tag resources into one
+   row per tag, matching how the Query API groups by tag — and drops rows that carry no
+   TRE tag and belong to no TRE resource group.
+4. POSTs the rows to `POST /api/internal/costs/ingest`, which persists them in exactly
+   the same shape as query-derived rows, for the TRE-wide scope and for each active
+   workspace's scope, marked **final**.
+
+Because ingested periods are indistinguishable from queried ones, the read path,
+untagged-cost attribution and report builders are unchanged.
+
+### Permissions and storage
+
+Exports are delivered to the `cost-exports` container on the Cost Processor's storage
+account. That account denies public network access and has `AzureServices` in its
+bypass list, which is what Cost Management needs to write to it.
+
+The Cost Processor's managed identity is granted:
+
+| Role | Scope | Why |
+| --- | --- | --- |
+| Cost Management Contributor | Subscription | Create and run exports |
+| Storage Blob Data Reader | `cost-exports` container | Read the exported CSVs |
+| Role Based Access Control Administrator | `cost-exports` container | Creating an export makes Cost Management assign `Storage Blob Data Contributor` to the export's own system-assigned identity on the destination container, **using the caller's privilege** |
+
+### Retention limit
+
+Cost Management retains roughly **13 months** of data, so a backfill can seed at most
+that much history regardless of `COST_PROCESSOR_BACKFILL_MAX_MONTHS`. Once collected,
+months stay in the Cosmos collection indefinitely, so the reportable range grows past
+13 months over time.
 
 ## Read path
 

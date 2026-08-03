@@ -6,6 +6,7 @@ locals {
   cost_processor_version           = replace(replace(replace(data.local_file.cost_processor_version.content, "__version__ = \"", ""), "\"", ""), "\n", "")
   cost_processor_function_app_name = "func-cost-processor-${var.tre_id}"
   cost_processor_function_sa_name  = lower(replace("stcostp${var.tre_id}", "-", ""))
+  cost_exports_container_name      = "cost-exports"
 }
 
 # Managed identity the Cost Processor uses to call the TRE API; the internal refresh endpoint
@@ -76,6 +77,39 @@ resource "azurerm_role_assignment" "cost_processor_function_host_storage" {
   principal_id         = azurerm_user_assigned_identity.cost_processor_id.principal_id
 }
 
+# Container the Cost Management exports deliver their monthly CSVs to. Closed months are seeded
+# and finalised from exports (see the "Seed a historical cost dataset with the Exports API"
+# tutorial) rather than repeated Query API calls.
+resource "azurerm_storage_container" "cost_exports" {
+  name                  = local.cost_exports_container_name
+  storage_account_id    = azurerm_storage_account.sa_cost_processor_func_app.id
+  container_access_type = "private"
+}
+
+# Create/run Cost Management exports and read the cost data they are built from.
+resource "azurerm_role_assignment" "cost_processor_cost_management" {
+  scope                = data.azurerm_subscription.current.id
+  role_definition_name = "Cost Management Contributor"
+  principal_id         = azurerm_user_assigned_identity.cost_processor_id.principal_id
+}
+
+# Read the CSVs the export writes.
+resource "azurerm_role_assignment" "cost_processor_exports_blob_reader" {
+  scope                = azurerm_storage_container.cost_exports.resource_manager_id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = azurerm_user_assigned_identity.cost_processor_id.principal_id
+}
+
+# Creating or updating an export makes Cost Management assign Storage Blob Data Contributor to
+# the export's own system-assigned identity on the destination container, using the caller's
+# privilege - so the caller needs to be able to write role assignments at that scope.
+resource "azurerm_role_assignment" "cost_processor_exports_rbac_admin" {
+  scope                            = azurerm_storage_container.cost_exports.resource_manager_id
+  role_definition_name             = "Role Based Access Control Administrator"
+  principal_id                     = azurerm_user_assigned_identity.cost_processor_id.principal_id
+  skip_service_principal_aad_check = true
+}
+
 resource "azurerm_linux_function_app" "cost_processor_function_app" {
   name                                           = local.cost_processor_function_app_name
   resource_group_name                            = azurerm_resource_group.core.name
@@ -101,6 +135,10 @@ resource "azurerm_linux_function_app" "cost_processor_function_app" {
     "API_CLIENT_ID"                                   = var.api_client_id
     "MANAGED_IDENTITY_CLIENT_ID"                      = azurerm_user_assigned_identity.cost_processor_id.client_id
     "TRE_ID"                                          = var.tre_id
+    "AZURE_SUBSCRIPTION_ID"                           = data.azurerm_subscription.current.subscription_id
+    "COST_EXPORT_STORAGE_ACCOUNT"                     = azurerm_storage_account.sa_cost_processor_func_app.name
+    "COST_EXPORT_STORAGE_ACCOUNT_ID"                  = azurerm_storage_account.sa_cost_processor_func_app.id
+    "COST_EXPORT_CONTAINER"                           = azurerm_storage_container.cost_exports.name
     "ARM_ENVIRONMENT"                                 = var.arm_environment
     "COST_PROCESSOR_CURRENT_MONTH_SCHEDULE"           = var.cost_processor_current_month_schedule
     "COST_PROCESSOR_PREVIOUS_MONTH_SCHEDULE"          = var.cost_processor_previous_month_schedule

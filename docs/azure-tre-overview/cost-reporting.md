@@ -57,13 +57,17 @@ The Cost Processor uses a **latency-aware**, tiered schedule rather than polling
 - Cost figures **lag actual usage by approximately 24–48 hours**, and this latency is set by Azure – it **cannot** be reduced by querying more frequently.
 - Polling more often than the data changes returns identical numbers and only increases the risk of throttling.
 
-| Data segment | Volatility | Refresh cadence |
-| --- | --- | --- |
-| Current month (incl. last few days) | Still settling | Every ~6 hours (timer) |
-| Just-closed previous month (first few days of the new month) | Settling | Daily sweep until finalised |
-| Older, completed months | Immutable | Collected once, then retained indefinitely |
+| Data segment | Volatility | Refresh cadence | Collected via |
+| --- | --- | --- | --- |
+| Current month (incl. last few days) | Still settling | Every ~6 hours (timer) | Cost Management Query API |
+| Just-closed previous month (first few days of the new month) | Settling | Daily sweep until finalised | Cost Management Exports API |
+| Older, completed months | Immutable | Collected once, then retained indefinitely | Cost Management Exports API |
 
 Because completed months are immutable, the vast majority of a multi-year report is served entirely from the collection; only the current month is ever re-queried, and only by the background Cost Processor rather than by user requests. The schedules and the prior-month look-back window are configurable via app settings.
+
+Closed months are collected with the [Cost Management Exports API](https://learn.microsoft.com/azure/cost-management-billing/automate/tutorial-seed-historical-cost-dataset-exports-api) rather than the Query API: a single one-time export delivers a whole month of daily, resource-level cost data as one CSV, which avoids both the Query API's one-year-per-request limit and the throttling that repeated historical queries provoke. The current month stays on the Query API because exports are asynchronous and can take hours, which does not suit a period that is re-collected every few hours.
+
+Cost Management retains roughly 13 months of data, so seeding history is limited to that window. Everything collected is then retained in the TRE cost collection indefinitely, so the reportable range grows beyond 13 months over time.
 
 > **Note:** Because Cost Management is structurally 24–48 hours behind, cost reporting is **not** a suitable near-real-time control for catching an expensive resource (for example a high-cost VM) shortly after it starts. Use Azure Budgets/alerts, showing the resource's price per hour at provisioning time, and auto-shutdown for that purpose. These are tracked as separate work.
 

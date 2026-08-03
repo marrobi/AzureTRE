@@ -2,4 +2,6 @@
 azure-core==1.38.0
 azure-functions==1.24.0
 azure-identity==1.25.1
+azure-mgmt-costmanagement==4.0.1
+azure-storage-blob==12.27.1
 requests==2.32.5

@@ -69,7 +69,7 @@ variable "cost_processor_backfill_schedule" {
 
 variable "cost_processor_backfill_max_months" {
   type        = number
-  description = "Maximum months the backfill walks back per run; 0 walks back until Azure returns a month with no data"
+  description = "Maximum months the backfill walks back per run; 0 walks back until a month has no cost data (capped at Cost Management's ~13 month retention window)"
   default     = 0
 }
 
@@ -81,8 +81,8 @@ variable "cost_processor_backfill_stop_after_empty_months" {
 
 variable "cost_processor_backfill_max_runtime_seconds" {
   type        = number
-  description = "Wall-clock budget (seconds) for a single backfill run so a throttled run cannot tie up the single Cost Processor worker indefinitely; 0 means no limit. Remaining months are picked up on the next scheduled run"
-  default     = 1800
+  description = "Wall-clock budget (seconds) for a single backfill run so a long-running run cannot tie up the single Cost Processor worker indefinitely; 0 means no limit. Cost Management export runs can take hours, so the remaining months are picked up on the next scheduled run"
+  default     = 18000
 }
 
 variable "core_app_service_plan_sku" {

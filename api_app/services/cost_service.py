@@ -20,7 +20,7 @@ from db.repositories.user_resources import UserResourceRepository
 from db.repositories.workspace_services import WorkspaceServiceRepository
 from db.repositories.workspaces import WorkspaceRepository
 from models.domain.costs import GranularityEnum, CostReport, WorkspaceCostReport, CostItem, WorkspaceServiceCostItem, \
-    CostRow
+    CostRow, ExportedCostRow
 from models.domain.resource import Resource
 from services.logging import logger
 
@@ -620,6 +620,96 @@ class CostService:
             total_rows += period_rows
 
         return {"collected_periods": collected, "total_rows": total_rows}
+
+    async def ingest_export_costs(self, tre_id: str, granularity: GranularityEnum, from_date: datetime,
+                                  to_date: datetime, rows: List[ExportedCostRow],
+                                  workspace_repo: WorkspaceRepository,
+                                  costs_repo: CostsRepository) -> dict:
+        """Persist rows produced by a Cost Management export into the cost collection.
+
+        Closed months are seeded/finalised from one-time Cost Management *exports* rather than
+        Query API calls (see the "Seed a historical cost dataset with the Exports API" tutorial):
+        an export returns the whole month in a single CSV, which avoids the Query API's
+        one-year-per-request limit and its aggressive throttling of repeated historical queries.
+
+        The exported rows are bucketed into exactly the same period keys the read path looks up
+        - the TRE-wide ``tre_id`` scope and one per active workspace's ``tre_workspace_id`` scope
+        - applying the same "tag matches OR resource group belongs to this scope" filter the
+        Query API applies, so a period ingested from an export is indistinguishable from one
+        collected by ``refresh_costs``.
+
+        The period is persisted as final: exports are only ever run for closed months.
+        """
+        subscription_ids = {config.SUBSCRIPTION_ID}
+        subscription_ids.update(await self.__get_workspace_subscription_ids(workspace_repo))
+
+        collected = 0
+        total_rows = 0
+
+        for subscription_id in subscription_ids:
+            resource_groups = list(self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id).keys())
+            scope = "/subscriptions/{}".format(subscription_id)
+            persisted = await self.__ingest_tag_period(
+                costs_repo, self.TRE_ID_TAG, tre_id, granularity, from_date, to_date,
+                resource_groups, scope, rows)
+            collected += 1
+            total_rows += persisted
+
+        for workspace in await workspace_repo.get_active_workspaces():
+            resource_groups, scope = self.__resolve_workspace_resource_groups(workspace)
+            if not resource_groups:
+                continue
+            persisted = await self.__ingest_tag_period(
+                costs_repo, self.TRE_WORKSPACE_ID_TAG, workspace.id, granularity, from_date, to_date,
+                resource_groups, scope, rows)
+            collected += 1
+            total_rows += persisted
+
+        return {"collected_periods": collected, "total_rows": total_rows}
+
+    async def __ingest_tag_period(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
+                                  granularity: GranularityEnum, from_date: datetime, to_date: datetime,
+                                  resource_groups: list, scope: str,
+                                  rows: List[ExportedCostRow]) -> int:
+        query_result = self.__export_rows_to_query_result(granularity, tag_name, tag_value, resource_groups, rows)
+        await self.__persist_period(
+            costs_repo, tag_name, tag_value, granularity, from_date, to_date,
+            resource_groups, scope, query_result, final=True)
+        return len(query_result.rows)
+
+    def __export_rows_to_query_result(self, granularity: GranularityEnum, tag_name: str, tag_value: str,
+                                      resource_groups: list, rows: List[ExportedCostRow]) -> QueryResult:
+        """Shape exported rows like a Cost Management query result for the given tag scope.
+
+        Mirrors ``build_query_definition``'s filter (rows whose tag matches *or* whose resource
+        group belongs to the scope) and column order, so the persisted rows can be consumed by
+        ``summarize_untagged`` and the report builders unchanged.
+        """
+        wanted_tag = f'"{tag_name}":"{tag_value}"'
+        resource_group_set = {rg.lower() for rg in resource_groups}
+        columns = [QueryColumn(name=name, type=column_type) for name, column_type in
+                   self.__export_result_columns(granularity)]
+
+        aggregated: Dict[tuple, float] = {}
+        for row in rows:
+            if row.tag != wanted_tag and row.resource_group.lower() not in resource_group_set:
+                continue
+            if granularity == GranularityEnum.none:
+                key = (row.resource_group, row.tag, row.currency)
+            else:
+                key = (row.date, row.resource_group, row.tag, row.currency)
+            aggregated[key] = aggregated.get(key, 0.0) + row.cost
+
+        result_rows = [[cost, *key] for key, cost in aggregated.items()]
+        return QueryResult(columns=columns, rows=result_rows)
+
+    @staticmethod
+    def __export_result_columns(granularity: GranularityEnum) -> List[Tuple[str, str]]:
+        if granularity == GranularityEnum.none:
+            return [("PreTaxCost", "Number"), ("ResourceGroup", "String"),
+                    ("Tag", "String"), ("Currency", "String")]
+        return [("PreTaxCost", "Number"), ("UsageDate", "Number"), ("ResourceGroup", "String"),
+                ("Tag", "String"), ("Currency", "String")]
 
     def __resolve_workspace_resource_groups(self, workspace: Resource) -> Tuple[list, str]:
         """Resolve a workspace's resource groups and Cost Management scope.

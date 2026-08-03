@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -13,7 +13,7 @@ from db.repositories.shared_services import SharedServiceRepository
 from db.repositories.user_resources import UserResourceRepository
 from db.repositories.workspace_services import WorkspaceServiceRepository
 from db.repositories.workspaces import WorkspaceRepository
-from models.domain.costs import CostReport, GranularityEnum, WorkspaceCostReport
+from models.domain.costs import CostIngestRequest, CostReport, GranularityEnum, WorkspaceCostReport
 from resources import strings
 from services.authentication import get_current_admin_user, get_current_cost_processor, get_current_workspace_owner_or_tre_admin
 from services.cost_service import CostService, ServiceUnavailable, SubscriptionNotSupported, TooManyRequests, WorkspaceDoesNotExist, cost_service_factory
@@ -122,6 +122,37 @@ async def workspace_costs(workspace_id: UUID4, params: CostsQueryParams = Depend
     except Exception:
         logger.exception("Failed to query Azure TRE costs")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=strings.API_GET_COSTS_INTERNAL_SERVER_ERROR)
+
+
+@costs_internal_router.post("/internal/costs/ingest", name=strings.API_INGEST_COSTS,
+                            status_code=status.HTTP_202_ACCEPTED)
+async def ingest_costs(
+        payload: CostIngestRequest,
+        cost_service: CostService = Depends(cost_service_factory),
+        workspace_repo=Depends(get_repository(WorkspaceRepository)),
+        costs_repo=Depends(get_repository(CostsRepository))) -> JSONResponse:
+    """Persist cost rows produced by a Cost Management export for a closed month.
+
+    Used by the Cost Processor for history backfill and month finalisation, which run one-time
+    Cost Management exports rather than Query API requests. Authenticated via the Cost Processor
+    managed identity.
+    """
+    if payload.from_date >= payload.to_date:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=strings.API_GET_COSTS_TO_DATE_NEED_TO_BE_LATER_THEN_FROM_DATE)
+    try:
+        collected = await cost_service.ingest_export_costs(
+            config.TRE_ID, payload.granularity,
+            datetime.combine(payload.from_date, time.min),
+            datetime.combine(payload.to_date, time.min),
+            payload.rows, workspace_repo, costs_repo)
+        return JSONResponse(content=collected, status_code=status.HTTP_202_ACCEPTED)
+    except SubscriptionNotSupported:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=strings.API_GET_COSTS_SUBSCRIPTION_NOT_SUPPORTED)
+    except Exception:
+        logger.exception("Failed to ingest exported Azure TRE costs")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=strings.API_INGEST_COSTS_INTERNAL_SERVER_ERROR)
 
 
 @costs_internal_router.post("/internal/costs/refresh", name=strings.API_REFRESH_COSTS,

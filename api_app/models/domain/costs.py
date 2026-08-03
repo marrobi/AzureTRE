@@ -131,6 +131,28 @@ class CostItem(BaseModel):
     costs: List[CostRow]
 
 
+class ExportedCostRow(BaseModel):
+    """A single aggregated row read from a Cost Management export CSV.
+
+    ``tag`` is a single ``"name":"value"`` pair (the same shape the Cost Management Query API
+    emits when grouping by Tag) or an empty string for resources carrying no TRE tag, so
+    exported rows can be persisted and read back exactly like query-derived rows.
+    """
+    date: int
+    resource_group: str
+    tag: str = ""
+    cost: float
+    currency: str
+
+
+class CostIngestRequest(BaseModel):
+    """Payload posted by the Cost Processor after running a Cost Management export."""
+    from_date: date
+    to_date: date
+    granularity: GranularityEnum = GranularityEnum.daily
+    rows: List[ExportedCostRow] = []
+
+
 class CostReport(BaseModel):
     core_services: List[CostRow]
     shared_services: List[CostItem]
