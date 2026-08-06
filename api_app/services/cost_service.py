@@ -182,15 +182,27 @@ class CostService:
 
         query_result_dict = self.__query_result_to_dict(summarized_result, granularity)
 
-        cost_report = CostReport(core_services=[], shared_services=[], workspaces=[])
+        cost_report = CostReport(core_services=[], shared_services=[], workspaces=[], unattributed=[])
 
         cost_report.core_services = self.__extract_cost_rows_by_tag(
             granularity, query_result_dict, CostService.TRE_CORE_SERVICE_ID_TAG, tre_id)
 
-        cost_report.shared_services = await self.__get_shared_services_costs(
-            granularity, query_result_dict, shared_services_repo)
+        #  include deleted resources so their historical costs are still attributed
+        shared_services = await shared_services_repo.get_shared_services()
+        workspaces = await workspace_repo.get_workspaces()
 
-        cost_report.workspaces = await self.__get_workspaces_costs(granularity, query_result_dict, workspace_repo)
+        cost_report.shared_services = [
+            self.__extract_cost_item(shared_service, granularity, query_result_dict, CostService.TRE_SHARED_SERVICE_ID_TAG)
+            for shared_service in shared_services]
+
+        cost_report.workspaces = [
+            self.__extract_cost_item(workspace, granularity, query_result_dict, CostService.TRE_WORKSPACE_ID_TAG)
+            for workspace in workspaces]
+
+        cost_report.unattributed = self.__get_unattributed_costs(
+            granularity, query_result_dict,
+            {workspace.id for workspace in workspaces},
+            {shared_service.id for shared_service in shared_services})
 
         return cost_report
 
@@ -223,13 +235,18 @@ class CostService:
         #  if no resource groups are found with the tag, they may be in another subscription
         #  so we need to get the workspace subscription id and query the resource groups again
         if not resource_groups_dict:
+            #  the workspace (or its resource groups) may be deleted, or live in another
+            #  subscription. Include deleted so a decommissioned workspace's historical costs are
+            #  still reported, and read workspace_subscription_id defensively (it is only present
+            #  for workspaces deployed to a separate subscription).
             try:
-                workspace = await workspace_repo.get_workspace_by_id(workspace_id)
-                subscription_id = workspace.properties["workspace_subscription_id"]
-                resource_groups_dict = self.get_resource_groups_by_tag(self.TRE_WORKSPACE_ID_TAG, workspace_id, subscription_id)
-
+                workspace = await workspace_repo.get_workspace_by_id(workspace_id, include_deleted=True)
             except EntityDoesNotExist:
                 raise WorkspaceDoesNotExist(f"workspace_id [{workspace_id}] does not exist")
+            workspace_subscription_id = workspace.properties.get("workspace_subscription_id")
+            if workspace_subscription_id:
+                subscription_id = workspace_subscription_id
+                resource_groups_dict = self.get_resource_groups_by_tag(self.TRE_WORKSPACE_ID_TAG, workspace_id, subscription_id)
 
         query_result = await self.query_costs(CostService.TRE_WORKSPACE_ID_TAG, workspace_id, granularity, from_date, to_date, list(resource_groups_dict.keys()), subscription_id, costs_repo)
 
@@ -239,7 +256,7 @@ class CostService:
         try:
             #  check if workspace is already loaded
             if 'workspace' not in locals() or workspace is None:
-                workspace = await workspace_repo.get_workspace_by_id(workspace_id)
+                workspace = await workspace_repo.get_workspace_by_id(workspace_id, include_deleted=True)
             workspace_cost_report: WorkspaceCostReport = WorkspaceCostReport(
                 id=workspace_id,
                 name=self.__get_resource_name(workspace),
@@ -326,20 +343,51 @@ class CostService:
             costs=self.__extract_cost_rows_by_tag(granularity, query_result_dict, tag, resource.id)
         )
 
-    async def __get_workspaces_costs(self, granularity, query_result_dict, workspace_repo):
-        return [self.__extract_cost_item(workspace, granularity, query_result_dict, CostService.TRE_WORKSPACE_ID_TAG)
-                for workspace in await workspace_repo.get_active_workspaces()]
+    @staticmethod
+    def __tag_id(tag_key: str, tag_name: str) -> Optional[str]:
+        """Return the id from a ``"tag_name":"id"`` query-result key, or None if it is a different tag."""
+        prefix = '"{}":"'.format(tag_name)
+        if tag_key.startswith(prefix) and tag_key.endswith('"'):
+            return tag_key[len(prefix):-1]
+        return None
 
-    async def __get_shared_services_costs(self, granularity, query_result_dict, shared_services_repo):
-        return [self.__extract_cost_item(shared_service, granularity, query_result_dict,
-                                         CostService.TRE_SHARED_SERVICE_ID_TAG)
-                for shared_service in await shared_services_repo.get_active_shared_services()]
+    def __get_unattributed_costs(self, granularity, query_result_dict, workspace_ids, shared_service_ids) -> List[CostRow]:
+        """Cost tagged with a TRE workspace/shared-service id that has no database record.
+
+        Captures resources that are gone from the database entirely (a hard-deleted workspace or a
+        redeployed shared service) so their historical cost is surfaced as one 'unattributed' line
+        instead of silently dropped. Only the two ids the core report attributes are considered, so
+        a resource's cost is never both attributed and counted here."""
+        rows = []
+        for tag_key, tag_rows in query_result_dict.items():
+            workspace_id = self.__tag_id(tag_key, self.TRE_WORKSPACE_ID_TAG)
+            shared_service_id = self.__tag_id(tag_key, self.TRE_SHARED_SERVICE_ID_TAG)
+            if (workspace_id is not None and workspace_id not in workspace_ids) \
+                    or (shared_service_id is not None and shared_service_id not in shared_service_ids):
+                rows.extend(tag_rows)
+        return self.__rows_to_cost_rows(granularity, rows)
+
+    def __rows_to_cost_rows(self, granularity, rows) -> List[CostRow]:
+        """Aggregate raw query-result rows into a CostRow list, summing by date and currency."""
+        aggregated: Dict[Tuple, float] = {}
+        for row in rows:
+            if granularity == GranularityEnum.none:
+                cost = row[ResultColumn.Cost.value]
+                currency = row[ResultColumn.Currency.value]
+                cost_date = None
+            else:
+                cost = row[ResultColumnDaily.Cost.value]
+                currency = row[ResultColumnDaily.Currency.value]
+                cost_date = self.__parse_cost_management_date_value(row[ResultColumnDaily.Date.value])
+            aggregated[(cost_date, currency)] = aggregated.get((cost_date, currency), 0.0) + cost
+        return [self.__create_cost_row(cost, currency, cost_date)
+                for (cost_date, currency), cost in aggregated.items()]
 
     async def __get_workspace_services_costs(self, granularity, query_result_dict,
                                              workspace_services_repo: WorkspaceServiceRepository,
                                              user_resource_repo: UserResourceRepository, workspace_id: str):
         workspace_services_costs = []
-        workspace_services_list = await workspace_services_repo.get_active_workspace_services_for_workspace(workspace_id)
+        workspace_services_list = await workspace_services_repo.get_workspace_services_for_workspace(workspace_id)
         for workspace_service in workspace_services_list:
             workspace_service_cost_item = WorkspaceServiceCostItem(
                 id=workspace_service.id,
@@ -357,7 +405,8 @@ class CostService:
                                                           for user_resource in
                                                           await user_resource_repo.get_user_resources_for_workspace_service(
                                                               workspace_id,
-                                                              workspace_service.id)]
+                                                              workspace_service.id,
+                                                              include_deleted=True)]
 
             workspace_services_costs.append(workspace_service_cost_item)
         return workspace_services_costs
@@ -687,12 +736,19 @@ class CostService:
         """
         wanted_tag = f'"{tag_name}":"{tag_value}"'
         resource_group_set = {rg.lower() for rg in resource_groups}
+        # The TRE-wide (tre_id) period owns every TRE-tagged resource, so keep child-tag rows
+        # (e.g. tre_workspace_id) even when the resource's group has since been deleted and is no
+        # longer in the tre_id resource-group list; otherwise a deleted workspace's costs are lost.
+        tre_wide = tag_name == self.TRE_ID_TAG
         columns = [QueryColumn(name=name, type=column_type) for name, column_type in
                    self.__export_result_columns(granularity)]
 
         aggregated: Dict[tuple, float] = {}
         for row in rows:
-            if row.tag != wanted_tag and row.resource_group.lower() not in resource_group_set:
+            in_scope = (row.tag == wanted_tag
+                        or row.resource_group.lower() in resource_group_set
+                        or (tre_wide and row.tag.startswith('"tre_')))
+            if not in_scope:
                 continue
             if granularity == GranularityEnum.none:
                 key = (row.resource_group, row.tag, row.currency)
@@ -808,10 +864,15 @@ class CostService:
         query_aggregation_dict["totalCost"] = query_aggregation
         tag_query_filter: QueryFilter = QueryFilter(
             tags=QueryComparisonExpression(name=tag_name, operator="In", values=[tag_value]))
-        rg_query_filter: QueryFilter = QueryFilter(
-            dimensions=QueryComparisonExpression(name="ResourceGroup", operator="In", values=resource_groups)
-        )
-        query_filter: QueryFilter = QueryFilter(or_property=[tag_query_filter, rg_query_filter])
+        if resource_groups:
+            rg_query_filter: QueryFilter = QueryFilter(
+                dimensions=QueryComparisonExpression(name="ResourceGroup", operator="In", values=resource_groups)
+            )
+            query_filter: QueryFilter = QueryFilter(or_property=[tag_query_filter, rg_query_filter])
+        else:
+            # A deleted resource has no current resource groups; filter on the tag alone so its
+            # historical costs are still returned (Cost Management rejects an empty ResourceGroup "In").
+            query_filter = tag_query_filter
         query_grouping_list = list()
         query_grouping_list.append(rg_query_grouping)
         query_grouping_list.append(tag_query_grouping)

@@ -67,11 +67,16 @@ class UserResourceRepository(ResourceRepository):
 
         return user_resource, template
 
-    async def get_user_resources_for_workspace_service(self, workspace_id: str, service_id: str) -> List[UserResource]:
+    async def get_user_resources_for_workspace_service(self, workspace_id: str, service_id: str, include_deleted: bool = False) -> List[UserResource]:
         """
-        returns a list of "non-deleted" user resources linked to this workspace service
+        returns a list of user resources linked to this workspace service. By default only
+        "non-deleted" resources are returned; cost reporting passes include_deleted=True so
+        historical costs of decommissioned user resources are still attributed.
         """
-        query, parameters = self.active_user_resources_query(str(workspace_id), str(service_id))
+        if include_deleted:
+            query, parameters = self.user_resources_query(str(workspace_id), str(service_id))
+        else:
+            query, parameters = self.active_user_resources_query(str(workspace_id), str(service_id))
         user_resources = await self.query(query=query, parameters=parameters)
         return parse_obj_as(List[UserResource], user_resources)
 

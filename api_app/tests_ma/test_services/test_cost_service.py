@@ -476,6 +476,23 @@ async def test_build_query_definition_makes_to_date_inclusive_end_of_day(client_
 
 
 @pytest.mark.asyncio
+@patch('services.cost_service.CostManagementClient')
+async def test_build_query_definition_filters_on_tag_only_when_no_resource_groups(client_mock):
+    # A deleted resource has no current resource groups; the query must filter on the tag alone -
+    # Cost Management rejects an empty ResourceGroup "In" filter (BadRequest).
+    cost_service = CostService()
+
+    query_definition = cost_service.build_query_definition(
+        GranularityEnum.daily, datetime(2022, 6, 1), datetime(2022, 6, 30),
+        CostService.TRE_WORKSPACE_ID_TAG, "deleted-ws", [])
+
+    query_filter = query_definition.dataset.filter
+    assert query_filter.or_property is None
+    assert query_filter.tags.name == CostService.TRE_WORKSPACE_ID_TAG
+    assert query_filter.tags.values == ["deleted-ws"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("from_date,to_date", [(None, None), (None, datetime(2022, 1, 1)), (datetime(2022, 1, 1), None)])
 @patch('services.cost_service.CostManagementClient')
 async def test_split_query_period_returns_single_period_for_month_to_date(client_mock, from_date, to_date):
@@ -776,6 +793,8 @@ def __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_
                   resourceType=ResourceType.Workspace, templateVersion="1", _etag="x",
                   properties={'display_name': 'the workspace display name2'})
     ])
+    #  cost reports read all (including deleted) workspaces via get_workspaces
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
 
 
 def __set_workspace_repo_mock_get_active_workspaces_return_value_without_display_name(workspace_repo_mock):
@@ -785,6 +804,7 @@ def __set_workspace_repo_mock_get_active_workspaces_return_value_without_display
         Workspace(id='d680d6b7-d1d9-411c-9101-0793da980c81', templateName='tre-workspace-base',
                   resourceType=ResourceType.Workspace, templateVersion="1", _etag="x")
     ])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
 
 
 def __set_shared_service_repo_mock_return_value(shared_service_repo_mock):
@@ -796,6 +816,7 @@ def __set_shared_service_repo_mock_return_value(shared_service_repo_mock):
                       templateName="tre-shared-service-gitea", templateVersion="1", _etag="x",
                       properties={'display_name': 'Shared service tre-shared-service-gitea'})
     ])
+    shared_service_repo_mock.get_shared_services = shared_service_repo_mock.get_active_shared_services
 
 
 def __set_shared_service_repo_mock_return_value_without_display_name(shared_service_repo_mock):
@@ -805,6 +826,7 @@ def __set_shared_service_repo_mock_return_value_without_display_name(shared_serv
         SharedService(id='f16d0324-9027-4448-b69b-2d48d925e6c0', resourceType=ResourceType.SharedService,
                       templateName="tre-shared-service-gitea", templateVersion="1", _etag="x")
     ])
+    shared_service_repo_mock.get_shared_services = shared_service_repo_mock.get_active_shared_services
 
 
 def __set_workspace_repo_mock_get_workspace_by_id_return_value(workspace_repo_mock):
@@ -825,6 +847,7 @@ def __set_workspace_service_repo_mock_return_value(workspace_service_repo_mock):
                          templateName="tre-service-azureml", templateVersion="1", _etag="x",
                          properties={'display_name': 'Azure ML'})
     ])
+    workspace_service_repo_mock.get_workspace_services_for_workspace = workspace_service_repo_mock.get_active_workspace_services_for_workspace
 
 
 def __set_user_resource_repo_mock_return_value(user_resource_repo_mock):
@@ -905,6 +928,100 @@ async def test_query_tre_workspace_costs_with_granularity_none_returns_correct_w
     assert workspace_cost_report.workspace_services[1].user_resources[1].name == "Compute Instance 2"
     assert len(workspace_cost_report.workspace_services[1].user_resources[1].costs) == 1
     assert workspace_cost_report.workspace_services[1].user_resources[1].costs[0].cost == 4.1
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_reports_include_deleted_resources(get_resource_groups_by_tag_mock,
+                                                                 client_mock,
+                                                                 workspace_repo_mock,
+                                                                 shared_service_repo_mock):
+    # Deleted workspaces/shared services still incurred cost, so the report reads them via
+    # get_workspaces / get_shared_services (which include deleted) rather than the active-only variants.
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
+
+    cost_service = CostService()
+    await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, datetime.now(), datetime.now(),
+        workspace_repo_mock, shared_service_repo_mock)
+
+    workspace_repo_mock.get_workspaces.assert_awaited()
+    shared_service_repo_mock.get_shared_services.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('db.repositories.shared_services.SharedServiceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_costs_surfaces_costs_of_resources_not_in_database(get_resource_groups_by_tag_mock,
+                                                                           client_mock,
+                                                                           shared_service_repo_mock,
+                                                                           workspace_repo_mock):
+    # Cost tagged with a workspace / shared-service id that has no database record (e.g. a
+    # hard-deleted workspace or redeployed shared service) must appear in the 'unattributed'
+    # bucket, while known resources' costs must not leak into it.
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)  # ids 19b7ce24, d680d6b7
+    __set_shared_service_repo_mock_return_value(shared_service_repo_mock)              # ids 848e8eb5, f16d0324
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+
+    qr = QueryResult()
+    qr.columns = [QueryColumn(name="PreTaxCost", type="Number"), QueryColumn(name="ResourceGroup", type="String"),
+                  QueryColumn(name="Tag", type="String"), QueryColumn(name="Currency", type="String")]
+    qr.rows = [
+        [1.8, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],  # known workspace
+        [61.22, 'rg-guy22', '"tre_shared_service_id":"d68e1c19-gone-shared-service"', 'USD'],  # deleted shared service
+        [15.5, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-workspace-id"', 'USD'],  # deleted workspace
+        [7.0, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-workspace-id"', 'ILS'],  # deleted workspace, other currency
+    ]
+    client_mock.return_value.query.usage.return_value = qr
+
+    cost_service = CostService()
+    report = await cost_service.query_tre_costs(
+        "guy22", GranularityEnum.none, datetime.now(), datetime.now(), workspace_repo_mock, shared_service_repo_mock)
+
+    unattributed = {row.currency: row.cost for row in report.unattributed}
+    assert unattributed["USD"] == pytest.approx(61.22 + 15.5)
+    assert unattributed["ILS"] == pytest.approx(7.0)
+    # the known workspace's cost is attributed to it and never counted as unattributed
+    known_workspace = next(w for w in report.workspaces if w.id == "19b7ce24-aa35-438c-adf6-37e6762911a6")
+    assert known_workspace.costs[0].cost == 1.8
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.user_resources.UserResourceRepository')
+@patch('db.repositories.workspace_services.WorkspaceServiceRepository')
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_query_tre_workspace_costs_without_subscription_id_does_not_raise(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock,
+        workspace_services_repo_mock, user_resource_repo_mock):
+    # A deleted workspace whose resource group no longer exists returns no resource groups and has no
+    # workspace_subscription_id property; the report must still build (previously raised KeyError -> 500)
+    # and the workspace must be fetched including deleted so its historical costs are still reported.
+    get_resource_groups_by_tag_mock.return_value = {}
+    workspace_repo_mock.get_workspace_by_id = AsyncMock(return_value=Workspace(
+        id='19b7ce24-aa35-438c-adf6-37e6762911a6', templateName='tre-workspace-base',
+        resourceType=ResourceType.Workspace, templateVersion="1", _etag="x",
+        properties={'display_name': 'deleted workspace'}))
+    workspace_services_repo_mock.get_workspace_services_for_workspace = AsyncMock(return_value=[])
+    client_mock.return_value.query.usage.return_value = QueryResult(rows=[], columns=[])
+
+    cost_service = CostService()
+    report = await cost_service.query_tre_workspace_costs(
+        "19b7ce24-aa35-438c-adf6-37e6762911a6", GranularityEnum.none, datetime.now(), datetime.now(),
+        workspace_repo_mock, workspace_services_repo_mock, user_resource_repo_mock)
+
+    assert report.id == "19b7ce24-aa35-438c-adf6-37e6762911a6"
+    assert report.name == "deleted workspace"
+    assert workspace_repo_mock.get_workspace_by_id.await_args.kwargs.get("include_deleted") is True
 
 
 @pytest.mark.asyncio
@@ -1142,6 +1259,7 @@ async def test_subscription_id_includes_default_and_workspace_ids(get_resource_g
         Workspace(id='ws3', templateName='t3', resourceType=ResourceType.Workspace, templateVersion="1", _etag="x", properties={"workspace_subscription_id": "sub-3"}),
         Workspace(id='ws4', templateName='t4', resourceType=ResourceType.Workspace, templateVersion="1", _etag="x", properties={"workspace_subscription_id": "sub-2"}),  # duplicate
     ])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
     get_resource_groups_by_tag_mock.return_value = {}
     client_mock.return_value.query.usage.return_value = QueryResult(rows=[], columns=[])
@@ -1169,6 +1287,7 @@ async def test_subscription_id_skips_workspaces_without_id(get_resource_groups_b
         Workspace(id='ws1', templateName='t1', resourceType=ResourceType.Workspace, templateVersion="1", _etag="x", properties={}),
         Workspace(id='ws2', templateName='t2', resourceType=ResourceType.Workspace, templateVersion="1", _etag="x", properties={}),
     ])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
     get_resource_groups_by_tag_mock.return_value = {}
     client_mock.return_value.query.usage.return_value = QueryResult(rows=[], columns=[])
@@ -1604,6 +1723,39 @@ async def test_ingest_export_costs_persists_query_api_row_shape(
     assert kwargs["from_date"] == "2022-05-01"
     assert kwargs["to_date"] == "2022-05-31"
     assert [10.0, 20220501, 'rg-guy22', '"tre_id":"guy22"', 'USD'] in kwargs["rows"]
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_ingest_export_costs_keeps_tre_tagged_rows_from_deleted_resource_groups(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    # A deleted workspace's resource group is no longer in the tre_id resource-group list, but its
+    # tre_workspace_id-tagged cost still belongs to the TRE and must be kept in the TRE-wide period
+    # (otherwise export-seeded months under-report workspaces whose resource group has been removed).
+    workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[])
+    get_resource_groups_by_tag_mock.return_value = {'rg-guy22': '"tre_id":"guy22"'}  # only the core RG still exists
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    rows = [
+        ExportedCostRow(date=20220501, resource_group='rg-guy22', tag='"tre_core_service_id":"guy22"', cost=10.0, currency='USD'),
+        # deleted workspace: its RG is not in the current tre_id RG list, but it is tre_workspace_id-tagged
+        ExportedCostRow(date=20220501, resource_group='rg-guy22-ws-gone', tag='"tre_workspace_id":"deleted-ws"', cost=15.5, currency='USD'),
+        # unrelated non-TRE cost must still be excluded
+        ExportedCostRow(date=20220501, resource_group='rg-someone-else', tag='"owner":"other"', cost=99.0, currency='USD'),
+    ]
+
+    cost_service = CostService()
+    await cost_service.ingest_export_costs(
+        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
+        rows, workspace_repo_mock, costs_repo)
+
+    persisted = costs_repo.save_cost_query_result.await_args.kwargs["rows"]
+    # the deleted workspace's tagged cost is retained even though its resource group is gone
+    assert [15.5, 20220501, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-ws"', 'USD'] in persisted
+    # non-TRE cost is still excluded
+    assert all(row[2] != 'rg-someone-else' for row in persisted)
 
 
 @pytest.mark.asyncio

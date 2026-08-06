@@ -52,6 +52,15 @@ class WorkspaceServiceRepository(ResourceRepository):
         workspace_services = await self.query(query=query, parameters=parameters)
         return parse_obj_as(List[WorkspaceService], workspace_services)
 
+    async def get_workspace_services_for_workspace(self, workspace_id: str) -> List[WorkspaceService]:
+        """
+        returns list of all workspace services (including deleted) linked to this workspace, used by
+        cost reporting so historical costs of decommissioned services are still attributed.
+        """
+        query, parameters = WorkspaceServiceRepository.workspace_services_query(str(workspace_id))
+        workspace_services = await self.query(query=query, parameters=parameters)
+        return parse_obj_as(List[WorkspaceService], workspace_services)
+
     async def get_deployed_workspace_service_by_id(self, workspace_id: str, service_id: str, operations_repo: OperationRepository) -> WorkspaceService:
         workspace_service = await self.get_workspace_service_by_id(workspace_id, service_id)
 

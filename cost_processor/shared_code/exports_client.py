@@ -13,6 +13,7 @@ refreshed many times a day and an export run can take hours to produce a file.
 
 import csv
 import io
+import json
 import logging
 import os
 import time
@@ -27,7 +28,9 @@ from azure.mgmt.costmanagement.models import (
     ExportDefinition,
     ExportDeliveryDestination,
     ExportDeliveryInfo,
+    ExportSchedule,
     ExportTimePeriod,
+    SystemAssignedServiceIdentity,
 )
 from azure.storage.blob import BlobServiceClient
 
@@ -51,8 +54,12 @@ BACKFILL_MAX_RUNTIME_SECONDS = 3600 * 5
 # Cost Management only retains ~13 months of data, so walking further back never returns rows.
 BACKFILL_MAX_MONTHS_LIMIT = 13
 
-_RUNNING_STATUSES = {"queued", "inprogress", "inprogress ", "running", "new"}
-_SUCCESS_STATUSES = {"completed"}
+_RUNNING_STATUSES = {"queued", "inprogress", "running", "new"}
+# The newer Exports API reports a delivered run as "DataReady" (not in the SDK enum); older/other
+# shapes use "Completed". Both mean the CSV/manifest has been written and can be downloaded.
+_SUCCESS_STATUSES = {"completed", "dataready"}
+# A run for a month with no cost data ends in one of these; it is a valid empty result, not a failure.
+_EMPTY_STATUSES = {"datanotavailable", "newdatanotavailable"}
 
 
 class ExportRunFailed(Exception):
@@ -61,6 +68,16 @@ class ExportRunFailed(Exception):
 
 def _export_scope() -> str:
     return "/subscriptions/{}".format(os.environ["AZURE_SUBSCRIPTION_ID"])
+
+
+def _export_location() -> str:
+    """Region for the export's managed identity. Required for managed-identity-based delivery."""
+    return os.environ["COST_EXPORT_LOCATION"]
+
+
+def _root_folder_path(period_start: date) -> str:
+    """Blob folder the month's export is delivered under (also the prefix we read it back from)."""
+    return "{}/{:%Y-%m}".format(os.environ["TRE_ID"], period_start)
 
 
 def _export_name(period_start: date) -> str:
@@ -85,12 +102,22 @@ def build_export(period_start: date, period_end: date) -> Export:
     a recently-closed month.
     """
     return Export(
+        # The destination storage account has shared-key access disabled, so Cost Management must
+        # deliver the CSV using the export's own system-assigned identity (granted Storage Blob Data
+        # Contributor on the container when the export is created). location is required for that MI.
+        identity=SystemAssignedServiceIdentity(type="SystemAssigned"),
+        location=_export_location(),
         format="Csv",
-        partition_data=False,
+        # Managed-identity delivery requires partitioned output, so a run writes one or more
+        # partition CSVs plus a _manifest.json under a per-run folder instead of a single file.
+        partition_data=True,
+        # The API requires a schedule; an Inactive one means the export never runs on a recurrence
+        # and is only produced when we execute it on demand.
+        schedule=ExportSchedule(status="Inactive"),
         delivery_info=ExportDeliveryInfo(
             destination=ExportDeliveryDestination(
                 container=os.environ.get("COST_EXPORT_CONTAINER", DEFAULT_EXPORT_CONTAINER),
-                root_folder_path="{}/{:%Y-%m}".format(os.environ["TRE_ID"], period_start),
+                root_folder_path=_root_folder_path(period_start),
                 resource_id=os.environ["COST_EXPORT_STORAGE_ACCOUNT_ID"],
             )
         ),
@@ -108,6 +135,8 @@ def build_export(period_start: date, period_end: date) -> Export:
 
 def _run_status(run) -> str:
     status = getattr(run, "status", "") or ""
+    # SDK 5.x returns an ExecutionStatus enum whose str() is "ExecutionStatus.QUEUED"; use its value.
+    status = getattr(status, "value", status)
     return str(status).strip().lower()
 
 
@@ -129,7 +158,7 @@ def wait_for_export_run(client: CostManagementClient, scope: str, export_name: s
         latest = runs[-1] if runs else None
         if latest is not None:
             status = _run_status(latest)
-            if status in _SUCCESS_STATUSES:
+            if status in _SUCCESS_STATUSES or status in _EMPTY_STATUSES:
                 return latest
             if status and status not in _RUNNING_STATUSES:
                 raise ExportRunFailed(f"export '{export_name}' run finished with status '{latest.status}'")
@@ -138,18 +167,41 @@ def wait_for_export_run(client: CostManagementClient, scope: str, export_name: s
         time.sleep(poll_seconds)
 
 
-def download_export_csv(blob_service_client: BlobServiceClient, file_name: str) -> str:
-    """Download the CSV a completed export run wrote.
+def _strip_header(csv_text: str) -> str:
+    """Drop the header line so partition CSVs can be concatenated under a single header."""
+    _, _, rest = csv_text.partition("\n")
+    return rest
 
-    ``file_name`` from the run history is container-qualified (``<container>/<path>``), so the
-    leading container segment is stripped before addressing the blob.
+
+def download_export_csv(blob_service_client: BlobServiceClient, root_folder_path: str,
+                        export_name: str, submitted_after: datetime) -> str:
+    """Return the CSV a completed export run wrote.
+
+    Managed-identity delivery requires ``partitionData``, so the run history no longer carries a
+    file name; instead a run writes one or more partition CSVs plus a ``_manifest.json`` under a
+    per-run folder. The manifest for the run just executed (the newest one written at or after
+    ``submitted_after``) lists the partition blobs, which are downloaded and concatenated under a
+    single header. Returns an empty string when the run delivered no file (an empty month).
     """
     container = os.environ.get("COST_EXPORT_CONTAINER", DEFAULT_EXPORT_CONTAINER)
-    blob_path = file_name.lstrip("/")
-    if blob_path.lower().startswith(container.lower() + "/"):
-        blob_path = blob_path[len(container) + 1:]
-    blob_client = blob_service_client.get_blob_client(container=container, blob=blob_path)
-    return blob_client.download_blob(encoding="utf-8-sig").readall()
+    container_client = blob_service_client.get_container_client(container)
+    prefix = "{}/{}/".format(root_folder_path.strip("/"), export_name)
+    # The manifest is named "manifest.json" by the newer Exports API (older shapes used
+    # "_manifest.json"); match either so delivery is found regardless of manifest version.
+    manifests = [blob for blob in container_client.list_blobs(name_starts_with=prefix)
+                 if blob.name.endswith("/manifest.json") or blob.name.endswith("/_manifest.json")]
+    fresh = [blob for blob in manifests
+             if blob.last_modified is None or blob.last_modified >= submitted_after]
+    candidates = fresh or manifests
+    if not candidates:
+        return ""
+    latest = max(candidates, key=lambda blob: blob.last_modified or submitted_after)
+    manifest = json.loads(container_client.download_blob(latest.name).readall())
+    parts = []
+    for index, blob in enumerate(manifest.get("blobs", [])):
+        text = container_client.download_blob(blob["blobName"], encoding="utf-8-sig").readall()
+        parts.append(text if index == 0 else _strip_header(text))
+    return "".join(parts)
 
 
 def _first_column(row: Dict[str, str], candidates: Iterable[str]) -> Optional[str]:
@@ -266,19 +318,21 @@ def export_month(period_start: date, period_end: date,
     blob_service_client = blob_service_client or get_blob_service_client()
     scope = _export_scope()
     export_name = _export_name(period_start)
+    root_folder_path = _root_folder_path(period_start)
 
     logging.info("Creating cost export '%s' for %s..%s", export_name, period_start, period_end)
     client.exports.create_or_update(scope, export_name, build_export(period_start, period_end))
 
     submitted_at = datetime.now(timezone.utc)
     client.exports.execute(scope, export_name)
-    run = wait_for_export_run(client, scope, export_name, submitted_at)
+    wait_for_export_run(client, scope, export_name, submitted_at)
 
-    if not run.file_name:
+    csv_text = download_export_csv(blob_service_client, root_folder_path, export_name, submitted_at)
+    if not csv_text:
         logging.info("Cost export '%s' produced no file; treating month as empty.", export_name)
         rows: List[dict] = []
     else:
-        rows = aggregate_export_rows(download_export_csv(blob_service_client, run.file_name))
+        rows = aggregate_export_rows(csv_text)
 
     result = ingest_rows(period_start, period_end, rows)
     logging.info("Ingested %s aggregated row(s) for %s..%s: %s", len(rows), period_start, period_end, result)

@@ -70,6 +70,16 @@ class SharedServiceRepository(ResourceRepository):
         shared_services = await self.query(query=query, parameters=parameters)
         return parse_obj_as(List[SharedService], shared_services)
 
+    async def get_shared_services(self) -> List[SharedService]:
+        """
+        returns list of all shared services, including deleted ones (used by cost reporting so
+        historical costs of decommissioned shared services are still attributed).
+        """
+        query = 'SELECT * FROM c WHERE c.resourceType = @resourceType'
+        parameters = [{'name': '@resourceType', 'value': ResourceType.SharedService}]
+        shared_services = await self.query(query=query, parameters=parameters)
+        return parse_obj_as(List[SharedService], shared_services)
+
     def get_shared_service_spec_params(self):
         return self.get_resource_base_spec_params()
 

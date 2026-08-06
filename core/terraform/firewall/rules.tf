@@ -48,6 +48,29 @@ resource "azurerm_firewall_policy_rule_collection_group" "core" {
     }
   }
 
+  network_rule_collection {
+    name     = "nrc-processor-subnet"
+    priority = 204
+    action   = "Allow"
+
+    rule {
+      name = "azure-services"
+      protocols = [
+        "TCP"
+      ]
+      # The Cost Processor calls the Cost Management / ARM API (management.azure.com) for both the
+      # Query API refresh and the one-time Exports; neither endpoint has a private endpoint.
+      destination_addresses = [
+        "AzureActiveDirectory",
+        "AzureResourceManager"
+      ]
+      destination_ports = [
+        "443"
+      ]
+      source_ip_groups = [var.processor_ip_group_id]
+    }
+  }
+
   application_rule_collection {
     name     = "arc-resource-processor-subnet"
     priority = 301

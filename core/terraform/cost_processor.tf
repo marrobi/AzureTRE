@@ -40,7 +40,10 @@ resource "azurerm_storage_account" "sa_cost_processor_func_app" {
   local_user_enabled               = false
   shared_access_key_enabled        = false
   public_network_access_enabled    = true
-  tags                             = local.tre_core_tags
+  # Cost Management delivers export CSVs from outside the VNet via the trusted-services bypass, so
+  # public network access must stay enabled (network_rules still Deny everything except AzureServices).
+  # SecurityControl=Ignore exempts it from the policy that would otherwise force public access off.
+  tags = merge(local.tre_core_tags, { SecurityControl = "Ignore" })
 
   network_rules {
     default_action = var.enable_local_debugging ? "Allow" : "Deny"
@@ -101,13 +104,39 @@ resource "azurerm_role_assignment" "cost_processor_exports_blob_reader" {
 }
 
 # Creating or updating an export makes Cost Management assign Storage Blob Data Contributor to
-# the export's own system-assigned identity on the destination container, using the caller's
-# privilege - so the caller needs to be able to write role assignments at that scope.
+# the export's own system-assigned identity at the destination storage account, using the caller's
+# privilege - so the caller needs to be able to write role assignments at the account scope.
 resource "azurerm_role_assignment" "cost_processor_exports_rbac_admin" {
-  scope                            = azurerm_storage_container.cost_exports.resource_manager_id
+  scope                            = azurerm_storage_account.sa_cost_processor_func_app.id
   role_definition_name             = "Role Based Access Control Administrator"
   principal_id                     = azurerm_user_assigned_identity.cost_processor_id.principal_id
   skip_service_principal_aad_check = true
+
+  # Constrain this delegated RBAC-admin grant so the identity can only assign/remove the single
+  # Storage Blob Data Contributor role (ba92f5b4-2d11-453d-a403-e96b0029c9fe) Cost Management needs
+  # for export delivery - not arbitrary roles - limiting the blast radius if the identity is misused.
+  condition_version = "2.0"
+  condition         = <<-EOT
+    (
+     (
+      !(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})
+     )
+     OR
+     (
+      @Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {ba92f5b4-2d11-453d-a403-e96b0029c9fe}
+     )
+    )
+    AND
+    (
+     (
+      !(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})
+     )
+     OR
+     (
+      @Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {ba92f5b4-2d11-453d-a403-e96b0029c9fe}
+     )
+    )
+  EOT
 }
 
 resource "azurerm_linux_function_app" "cost_processor_function_app" {
@@ -139,6 +168,7 @@ resource "azurerm_linux_function_app" "cost_processor_function_app" {
     "COST_EXPORT_STORAGE_ACCOUNT"                     = azurerm_storage_account.sa_cost_processor_func_app.name
     "COST_EXPORT_STORAGE_ACCOUNT_ID"                  = azurerm_storage_account.sa_cost_processor_func_app.id
     "COST_EXPORT_CONTAINER"                           = azurerm_storage_container.cost_exports.name
+    "COST_EXPORT_LOCATION"                            = azurerm_resource_group.core.location
     "ARM_ENVIRONMENT"                                 = var.arm_environment
     "COST_PROCESSOR_CURRENT_MONTH_SCHEDULE"           = var.cost_processor_current_month_schedule
     "COST_PROCESSOR_PREVIOUS_MONTH_SCHEDULE"          = var.cost_processor_previous_month_schedule

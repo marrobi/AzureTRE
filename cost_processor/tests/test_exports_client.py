@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+import json
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -15,6 +16,7 @@ EXPORT_ENV = {
     "COST_EXPORT_STORAGE_ACCOUNT": "stcostpmytre",
     "COST_EXPORT_STORAGE_ACCOUNT_ID": "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/stcostpmytre",
     "COST_EXPORT_CONTAINER": "cost-exports",
+    "COST_EXPORT_LOCATION": "westeurope",
 }
 
 
@@ -33,20 +35,53 @@ def _history(*runs):
     return history
 
 
+def _manifest_blob(name, last_modified=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)):
+    blob = MagicMock()
+    blob.name = name
+    blob.last_modified = last_modified
+    return blob
+
+
+def _container_client_with_export(manifest_blobs, manifest_json, csv_by_blob):
+    """Build a container client whose list_blobs/download_blob serve a partitioned export."""
+    container_client = MagicMock()
+    container_client.list_blobs.return_value = manifest_blobs
+
+    def download(name, **kwargs):
+        result = MagicMock()
+        result.readall.return_value = manifest_json if name.endswith("manifest.json") else csv_by_blob[name]
+        return result
+
+    container_client.download_blob.side_effect = download
+    return container_client
+
+
 @patch.dict("os.environ", EXPORT_ENV)
 def test_build_export_requests_one_month_daily_actual_cost_csv():
     export = exports_client.build_export(date(2026, 6, 1), date(2026, 6, 30))
 
     assert export.format == "Csv"
-    assert export.partition_data is False
+    assert export.partition_data is True
     assert export.definition.type == "ActualCost"
     assert export.definition.timeframe == "Custom"
     assert export.definition.data_set.granularity == "Daily"
-    assert export.definition.time_period.from_property == datetime(2026, 6, 1)
-    assert export.definition.time_period.to == datetime(2026, 6, 30)
+    assert export.definition.time_period.from_property == datetime(2026, 6, 1, tzinfo=timezone.utc)
+    assert export.definition.time_period.to == datetime(2026, 6, 30, tzinfo=timezone.utc)
     assert export.delivery_info.destination.container == "cost-exports"
     assert export.delivery_info.destination.root_folder_path == "mytre/2026-06"
     assert export.delivery_info.destination.resource_id == EXPORT_ENV["COST_EXPORT_STORAGE_ACCOUNT_ID"]
+
+
+@patch.dict("os.environ", EXPORT_ENV)
+def test_build_export_uses_managed_identity_delivery():
+    # The destination account has shared-key access disabled, so the export must be created with a
+    # system-assigned managed identity (and a location) for Cost Management to deliver the CSV.
+    export = exports_client.build_export(date(2026, 6, 1), date(2026, 6, 30))
+
+    assert export.identity.type == "SystemAssigned"
+    assert export.location == "westeurope"
+    # A one-time export still requires a schedule; Inactive means it only runs when executed.
+    assert export.schedule.status == "Inactive"
 
 
 @patch.dict("os.environ", EXPORT_ENV)
@@ -123,17 +158,41 @@ def test_aggregate_export_rows_handles_alternative_column_names():
 
 
 @patch.dict("os.environ", EXPORT_ENV)
-def test_download_export_csv_strips_container_prefix_from_run_file_name():
-    blob_client = MagicMock()
-    blob_client.download_blob.return_value.readall.return_value = "csv"
+def test_download_export_csv_reads_partitions_from_the_latest_manifest():
+    prefix = "mytre/2026-06/tre-mytre-costs-202606"
+    older = _manifest_blob(prefix + "/run1/manifest.json", datetime(2026, 6, 1, tzinfo=timezone.utc))
+    newer = _manifest_blob(prefix + "/run2/manifest.json", datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc))
+    manifest = json.dumps({"blobs": [
+        {"blobName": prefix + "/run2/part_0_0001.csv"},
+        {"blobName": prefix + "/run2/part_0_0002.csv"},
+    ]})
+    csv_by_blob = {
+        prefix + "/run2/part_0_0001.csv": "Date,Cost\n2026-06-01,1\n",
+        prefix + "/run2/part_0_0002.csv": "Date,Cost\n2026-06-02,2\n",
+    }
+    container_client = _container_client_with_export([older, newer], manifest, csv_by_blob)
     blob_service_client = MagicMock()
-    blob_service_client.get_blob_client.return_value = blob_client
+    blob_service_client.get_container_client.return_value = container_client
+
+    text = exports_client.download_export_csv(
+        blob_service_client, "mytre/2026-06", "tre-mytre-costs-202606",
+        datetime(2026, 6, 15, tzinfo=timezone.utc))
+
+    # the newer run's manifest was chosen and its partitions concatenated under one header
+    container_client.download_blob.assert_any_call(newer.name)
+    assert text == "Date,Cost\n2026-06-01,1\n2026-06-02,2\n"
+
+
+@patch.dict("os.environ", EXPORT_ENV)
+def test_download_export_csv_returns_empty_when_no_file_was_delivered():
+    container_client = MagicMock()
+    container_client.list_blobs.return_value = []
+    blob_service_client = MagicMock()
+    blob_service_client.get_container_client.return_value = container_client
 
     assert exports_client.download_export_csv(
-        blob_service_client, "cost-exports/mytre/2026-06/part_0_0001.csv") == "csv"
-
-    blob_service_client.get_blob_client.assert_called_once_with(
-        container="cost-exports", blob="mytre/2026-06/part_0_0001.csv")
+        blob_service_client, "mytre/2026-06", "tre-mytre-costs-202606",
+        datetime(2026, 6, 15, tzinfo=timezone.utc)) == ""
 
 
 @patch.dict("os.environ", EXPORT_ENV)
@@ -209,6 +268,53 @@ def test_wait_for_export_run_raises_on_failed_status(sleep_mock):
 
 
 @patch("shared_code.exports_client.time.sleep")
+def test_wait_for_export_run_treats_enum_status_as_running(sleep_mock):
+    # SDK 5.x reports status as an ExecutionStatus enum (str() -> "ExecutionStatus.QUEUED"), which
+    # must be recognised as still-running via its value rather than raising as an unknown status.
+    from azure.mgmt.costmanagement.models import ExecutionStatus
+    client = MagicMock()
+    client.exports.get_execution_history.side_effect = [
+        _history(_run(status=ExecutionStatus.QUEUED, file_name=None)),
+        _history(_run(status=ExecutionStatus.COMPLETED)),
+    ]
+
+    run = exports_client.wait_for_export_run(
+        client, "/subscriptions/sub-id", "an-export", datetime(2026, 7, 1, tzinfo=timezone.utc))
+
+    assert run.status == ExecutionStatus.COMPLETED
+    sleep_mock.assert_called_once()
+
+
+@patch("shared_code.exports_client.time.sleep")
+def test_wait_for_export_run_treats_dataready_as_success(sleep_mock):
+    # The newer Exports API reports a delivered run as "DataReady" (absent from the SDK enum), which
+    # must be treated as a successful terminal status rather than raising.
+    client = MagicMock()
+    client.exports.get_execution_history.return_value = _history(
+        _run(status="DataReady", submitted_time=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)))
+
+    run = exports_client.wait_for_export_run(
+        client, "/subscriptions/sub-id", "an-export", datetime(2026, 7, 1, tzinfo=timezone.utc))
+
+    assert exports_client._run_status(run) == "dataready"
+
+
+@patch("shared_code.exports_client.time.sleep")
+def test_wait_for_export_run_returns_on_empty_data_status(sleep_mock):
+    # A month with no cost data ends in DataNotAvailable/NewDataNotAvailable; that is a valid empty
+    # result (no manifest written), not a failure, so the run is returned for empty handling.
+    client = MagicMock()
+    client.exports.get_execution_history.return_value = _history(
+        _run(status="DataNotAvailable", file_name=None,
+             submitted_time=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)))
+
+    run = exports_client.wait_for_export_run(
+        client, "/subscriptions/sub-id", "an-export", datetime(2026, 7, 1, tzinfo=timezone.utc))
+
+    assert exports_client._run_status(run) == "datanotavailable"
+
+
+@patch("shared_code.exports_client.time.sleep")
 @patch("shared_code.exports_client.time.monotonic")
 def test_wait_for_export_run_times_out(monotonic_mock, sleep_mock):
     monotonic_mock.side_effect = [0, 10_000, 10_000]
@@ -226,10 +332,15 @@ def test_wait_for_export_run_times_out(monotonic_mock, sleep_mock):
 def test_export_month_creates_runs_downloads_and_ingests(wait_mock, ingest_mock):
     wait_mock.return_value = _run()
     client = MagicMock()
-    blob_service_client = MagicMock()
-    blob_service_client.get_blob_client.return_value.download_blob.return_value.readall.return_value = (
+    prefix = "mytre/2026-06/tre-mytre-costs-202606"
+    manifest = json.dumps({"blobs": [{"blobName": prefix + "/run/000001.csv"}]})
+    csv_by_blob = {prefix + "/run/000001.csv": (
         "Date,ResourceGroup,Tags,CostInBillingCurrency,BillingCurrency\n"
-        "2026-06-01,rg-core,,7,GBP\n")
+        "2026-06-01,rg-core,,7,GBP\n")}
+    container_client = _container_client_with_export(
+        [_manifest_blob(prefix + "/run/_manifest.json")], manifest, csv_by_blob)
+    blob_service_client = MagicMock()
+    blob_service_client.get_container_client.return_value = container_client
 
     result = exports_client.export_month(date(2026, 6, 1), date(2026, 6, 30), client, blob_service_client)
 
@@ -246,10 +357,12 @@ def test_export_month_creates_runs_downloads_and_ingests(wait_mock, ingest_mock)
 @patch.dict("os.environ", EXPORT_ENV)
 @patch("shared_code.exports_client.ingest_rows", return_value={})
 @patch("shared_code.exports_client.wait_for_export_run")
-def test_export_month_treats_run_without_a_file_as_an_empty_month(wait_mock, ingest_mock):
-    wait_mock.return_value = _run(file_name=None)
+def test_export_month_treats_a_run_with_no_delivered_file_as_an_empty_month(wait_mock, ingest_mock):
+    wait_mock.return_value = _run()
+    blob_service_client = MagicMock()
+    blob_service_client.get_container_client.return_value.list_blobs.return_value = []
 
-    result = exports_client.export_month(date(2026, 6, 1), date(2026, 6, 30), MagicMock(), MagicMock())
+    result = exports_client.export_month(date(2026, 6, 1), date(2026, 6, 30), MagicMock(), blob_service_client)
 
     assert result["rows"] == 0
     assert ingest_mock.call_args[0][2] == []

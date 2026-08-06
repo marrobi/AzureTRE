@@ -49,7 +49,8 @@ def generate_cost_report_dict_example(granularity: GranularityEnum):
                          generate_cost_item_dict_example("Firewall", granularity)],
         workspaces=[generate_cost_item_dict_example("Workspace 1", granularity),
                     generate_cost_item_dict_example("Workspace 2", granularity),
-                    generate_cost_item_dict_example("Workspace 3", granularity)]
+                    generate_cost_item_dict_example("Workspace 3", granularity)],
+        unattributed=[generate_cost_row_dict_example(granularity, CurrencyEnum.USD)]
     )
 
     if granularity == GranularityEnum.daily:
@@ -157,6 +158,9 @@ class CostReport(BaseModel):
     core_services: List[CostRow]
     shared_services: List[CostItem]
     workspaces: List[CostItem]
+    # Cost tagged with a TRE workspace/shared-service id that no longer has a database record
+    # (e.g. a hard-deleted workspace or a redeployed shared service), so it is not silently dropped.
+    unattributed: List[CostRow] = []
 
 
 class WorkspaceServiceCostItem(CostItem):

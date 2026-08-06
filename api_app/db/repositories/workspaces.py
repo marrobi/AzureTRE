@@ -69,11 +69,14 @@ class WorkspaceRepository(ResourceRepository):
 
         return workspace
 
-    async def get_workspace_by_id(self, workspace_id: str) -> Workspace:
+    async def get_workspace_by_id(self, workspace_id: str, include_deleted: bool = False) -> Workspace:
         query, parameters = self.workspaces_query_string()
-        query += ' AND c.id = @workspaceId AND c.deploymentStatus != @deletedStatus'
+        query += ' AND c.id = @workspaceId'
         parameters.append({'name': '@workspaceId', 'value': str(workspace_id)})
-        parameters.append({'name': '@deletedStatus', 'value': Status.Deleted})
+        # Cost reports need deleted workspaces so their historical costs are still attributed.
+        if not include_deleted:
+            query += ' AND c.deploymentStatus != @deletedStatus'
+            parameters.append({'name': '@deletedStatus', 'value': Status.Deleted})
         workspaces = await self.query(query=query, parameters=parameters)
         if not workspaces:
             raise EntityDoesNotExist

@@ -166,6 +166,14 @@ resource "azurerm_ip_group" "processor" {
   lifecycle { ignore_changes = [tags] }
 }
 
+# The resource label was renamed from "airlock_processor" to "processor" while the
+# Azure resource name (ipg-airlock-processor) is unchanged. Move the existing state
+# so upgrades don't attempt a destroy/recreate of the same-named IP group.
+moved {
+  from = azurerm_ip_group.airlock_processor
+  to   = azurerm_ip_group.processor
+}
+
 module "terraform_azurerm_environment_configuration" {
   source          = "git::https://github.com/microsoft/terraform-azurerm-environment-configuration.git?ref=0.7.0"
   arm_environment = var.arm_environment
