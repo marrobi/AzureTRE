@@ -83,6 +83,27 @@ def _retry_after_seconds(response, default: int = 60) -> int:
         return default
 
 
+def get_subscription_ids() -> list:
+    """Subscriptions TRE costs are incurred in, core first.
+
+    A Cost Management export only ever covers one subscription, and workspaces can be deployed to
+    their own, so the API (which owns the workspace records) is asked which ones to export.
+    """
+    api_url = os.environ["TRE_API_URL"].rstrip("/")
+    token = get_access_token(os.environ["API_CLIENT_ID"])
+    response = requests.get(
+        f"{api_url}/api/internal/costs/subscriptions",
+        headers={"Authorization": "Bearer " + token},
+        timeout=DEFAULT_HTTP_TIMEOUT,
+    )
+    response.raise_for_status()
+    subscription_ids = (response.json() or {}).get("subscription_ids") or []
+    core_subscription_id = os.environ["AZURE_SUBSCRIPTION_ID"]
+    if core_subscription_id not in subscription_ids:
+        subscription_ids = [core_subscription_id] + list(subscription_ids)
+    return list(subscription_ids)
+
+
 def refresh_current_month() -> dict:
     """Refresh the still-settling current month (month-to-date).
 

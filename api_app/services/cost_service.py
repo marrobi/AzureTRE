@@ -1,9 +1,10 @@
 from datetime import datetime, date, timedelta, UTC
 import asyncio
+import hashlib
+from collections import OrderedDict
 from enum import Enum
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple, Union
-import pandas as pd
 
 from azure.mgmt.costmanagement import CostManagementClient
 from azure.mgmt.costmanagement.models import QueryGrouping, QueryAggregation, QueryDataset, QueryDefinition, \
@@ -81,7 +82,7 @@ class CostCacheItem():
 class CostService:
     scope: str
     client: CostManagementClient
-    cache: Dict[str, CostCacheItem]
+    cache: "OrderedDict[str, CostCacheItem]"
     TRE_ID_TAG: str = "tre_id"
     TRE_CORE_SERVICE_ID_TAG: str = "tre_core_service_id"
     TRE_WORKSPACE_ID_TAG: str = "tre_workspace_id"
@@ -92,10 +93,19 @@ class CostService:
     RATE_LIMIT_RETRY_AFTER_HEADER_KEY: str = "x-ms-ratelimit-microsoft.costmanagement-entity-retry-after"
     SERVICE_UNAVAILABLE_RETRY_AFTER_HEADER_KEY: str = "Retry-After"
     CACHE_TTL: timedelta = timedelta(hours=2)
+    # The cache is keyed per scope and day, so an unbounded dict would grow with every distinct
+    # day ever reported on. Bound it and evict least-recently-used entries instead: this comfortably
+    # holds a year of daily entries for the TRE-wide scope plus a few hundred workspaces.
+    CACHE_MAX_ITEMS: int = 4096
     # Azure keeps re-rating the most recent days for a short window, so a period is only treated
     # as final (frozen in the collection and never re-queried) once its last day is at least this
     # many days in the past - otherwise idempotent refresh could freeze still-settling data.
     COST_DATA_SETTLING_DAYS: int = 4
+    # How long a collected but still-settling day may be served from the collection before it is
+    # re-queried. Keeping this at (a little over) the current-month refresh interval means reports
+    # are served from the collection rather than repeatedly querying (and being throttled by)
+    # Cost Management, without ever returning a figure older than one refresh cycle.
+    SETTLING_DAY_MAX_AGE: timedelta = timedelta(hours=8)
     # Cap how many live Cost Management queries run concurrently: month-aligned splitting can
     # produce many sub-periods for a long cold range, and Cost Management throttles bursts.
     LIVE_QUERY_CONCURRENCY: int = 4
@@ -105,7 +115,7 @@ class CostService:
         self.client = CostManagementClient(credential=credentials.get_credential())
         self.__resource_clients = {}
         self.get_resource_management_client(config.SUBSCRIPTION_ID)
-        self.cache = {}
+        self.cache = OrderedDict()
 
     def get_resource_management_client(self, subscription_id: Optional[str] = None) -> ResourceManagementClient:
         if subscription_id is None:
@@ -129,7 +139,7 @@ class CostService:
         Returns:
             result (Union[QueryResult, None]): cost query result or None if not found or expired.
         """
-        cached_item: CostCacheItem = self.cache.get(key, None)
+        cached_item: Optional[CostCacheItem] = self.cache.get(key, None)
 
         # return None if key doesn't exist
         if cached_item is None:
@@ -141,23 +151,21 @@ class CostService:
             self.cache.pop(key)
             return None
 
+        # keep recently read days at the end so eviction drops the least recently used first
+        self.cache.move_to_end(key)
         return cached_item.result
 
-    def clear_expired_cache_items(self) -> None:
-        """Clears all expired cache items."""
-        expired_keys = [key for key in self.cache.keys() if datetime.now() > self.cache[key].ttl]
-        for key in expired_keys:
-            self.cache.pop(key)
-
     def cache_result(self, key: str, result: QueryResult, timedelta: timedelta) -> None:
-        """Add cost result to cache.
+        """Add cost result to cache, evicting the least recently used entry when full.
 
         Args:
             key (str) : key of the cached item in cache.
             result (QueryResult) : cost query result to cache.
         """
         self.cache[key] = CostCacheItem(result, datetime.now() + timedelta)
-        self.clear_expired_cache_items()
+        self.cache.move_to_end(key)
+        while len(self.cache) > CostService.CACHE_MAX_ITEMS:
+            self.cache.popitem(last=False)
 
     async def query_tre_costs(self, tre_id, granularity: GranularityEnum, from_date: datetime, to_date: datetime,
                               workspace_repo: WorkspaceRepository,
@@ -209,7 +217,8 @@ class CostService:
     async def __get_workspace_subscription_ids(self, workspace_repo: WorkspaceRepository) -> list:
         #  we currently have to query ALL workspace resources to get the subscription ids to calculate costs for
         #  this may be able to change if we store subscriptions in config as per this issue: https://github.com/microsoft/AzureTRE/issues/4528
-        workspaces = await workspace_repo.get_active_workspaces()
+        #  deleted workspaces are included so cost they incurred in their own subscription is still reported
+        workspaces = await workspace_repo.get_workspaces()
         subscription_ids = []
         for workspace in workspaces:
             #  check if the property exists and is not empty
@@ -288,46 +297,44 @@ class CostService:
         if len(query_result.rows) == 0:
             return []
 
-        # convert to pandas DataFrame
-        df = pd.DataFrame.from_records(query_result.rows)
-        columns = []
-        for i in range(len(query_result.columns)):
-            columns.append(query_result.columns[i].name)
-        df.columns = columns
+        column_index = {column.name: index for index, column in enumerate(query_result.columns)}
+        cost_index = column_index["PreTaxCost"]
+        tag_index = column_index["Tag"]
+        resource_group_index = column_index["ResourceGroup"]
+        # group by everything except the cost, which is summed
+        key_indexes = [column_index[name] for name in
+                       (["ResourceGroup", "Tag", "Currency"] if granularity == GranularityEnum.none
+                        else ["UsageDate", "ResourceGroup", "Tag", "Currency"])]
 
-        # fill tags for untagged resources using the resource group's TRE tag as a fallback
-        untagged_resource_groups = list(df.loc[df["Tag"] == "", "ResourceGroup"].unique())
-        for rg in untagged_resource_groups:
-            tag = resource_groups_dict.get(rg)
-            if tag is not None:
-                df.loc[(df["Tag"] == "") & (df["ResourceGroup"] == rg), "Tag"] = tag
-            else:
-                # Resource group is not tagged with a TRE tag.  This can happen when an Azure
-                # service creates a secondary or managed resource group (e.g. Azure ML, Databricks)
-                # that inherits no TRE tags, or when the cost collection contains stale rows from a
-                # resource group that has since been removed or re-tagged.  Log a warning so
-                # operators are aware; the rows are left unattributed and will not appear in any
-                # workspace or service cost breakdown.
-                logger.warning(
-                    f"Resource group '{rg}' has untagged costs but is not in the TRE resource "
-                    "groups list. These costs will not be attributed to a workspace or service."
-                )
+        unattributable_resource_groups = set()
+        aggregated: Dict[tuple, float] = {}
+        for row in query_result.rows:
+            tag = row[tag_index]
+            if not tag:
+                # fill the tag for untagged resources from the resource group's TRE tag
+                resource_group = row[resource_group_index]
+                tag = resource_groups_dict.get(resource_group)
+                if tag is None:
+                    # The resource group carries no TRE tag. This happens when an Azure service
+                    # creates a secondary or managed resource group (e.g. Azure ML, Databricks)
+                    # that inherits no TRE tags, or when the collection holds rows from a resource
+                    # group that has since been removed or re-tagged. The rows stay unattributed
+                    # and will not appear in any workspace or service breakdown.
+                    unattributable_resource_groups.add(resource_group)
+                    tag = ""
+                row = list(row)
+                row[tag_index] = tag
+            key = tuple(row[index] for index in key_indexes)
+            aggregated[key] = aggregated.get(key, 0.0) + row[cost_index]
 
-        # group by
-        if granularity == GranularityEnum.none:
-            c = ["ResourceGroup", "Tag", "Currency"]
-        else:
-            c = ["UsageDate", "ResourceGroup", "Tag", "Currency"]
+        for resource_group in sorted(unattributable_resource_groups):
+            logger.warning(
+                f"Resource group '{resource_group}' has untagged costs but is not in the TRE "
+                "resource groups list. These costs will not be attributed to a workspace or service."
+            )
 
-        df = df.groupby(c).agg({'PreTaxCost': 'sum'})
-
-        # reset index and reorder columns
-        df.reset_index(inplace=True)
-        c.insert(0, "PreTaxCost")
-        df = df[c]
-
-        # convert to list of rows
-        return df.values.tolist()
+        # sorted so a report's rows are deterministic regardless of collection/query order
+        return [[cost, *key] for key, cost in sorted(aggregated.items())]
 
     def __get_resource_name(self, resource: Resource):
         key = "display_name"
@@ -432,45 +439,9 @@ class CostService:
 
         return cost_rows
 
-    def split_query_period(self, from_date: Optional[datetime], to_date: Optional[datetime]) -> List[Tuple[Optional[datetime], Optional[datetime]]]:
-        """Split a report period into calendar-month-aligned sub-periods (see #2350).
-
-        Aligning to whole months means read reports share the same period keys as the
-        month-aligned data the Cost Processor persists (the current/previous-month refresh and
-        the history backfill), so once a month is in the collection every report reuses it
-        instead of re-querying Azure. Interior sub-periods are always whole calendar months
-        (stable, reusable keys); the first and last may be partial when the requested range does
-        not start or end on a month boundary. Whole months are also always well within Cost
-        Management's one-year-per-query limit."""
-        # month to date report - no custom period, single query
-        if from_date is None or to_date is None:
-            return [(from_date, to_date)]
-
-        periods = []
-        period_start = from_date
-        while period_start <= to_date:
-            # a sub-period never crosses a month boundary, so it lines up with stored month data
-            period_end = min(self.__end_of_month(period_start), to_date)
-            periods.append((period_start, period_end))
-            # next period starts the following day to avoid double-counting
-            period_start = period_end + timedelta(days=1)
-        return periods
-
-    @staticmethod
-    def __end_of_month(value: datetime) -> datetime:
-        first_of_next_month = (value.replace(day=1) + timedelta(days=32)).replace(day=1)
-        return first_of_next_month - timedelta(days=1)
-
     @staticmethod
     def __end_of_day(value: datetime) -> datetime:
         return value.replace(hour=23, minute=59, second=59, microsecond=0)
-
-    def build_query_cache_key(self, tag_name: str, tag_value: str, granularity: GranularityEnum,
-                              from_date: Optional[datetime], to_date: Optional[datetime],
-                              resource_groups: list, scope: str) -> str:
-        return (f"{tag_name}_{tag_value}_granularity{granularity}"
-                f"_from_date{from_date}_to_date{to_date}"
-                f"_scope{scope}_rgs{'_'.join(resource_groups)}")
 
     async def query_costs(self, tag_name: str, tag_value: str,
                           granularity: GranularityEnum, from_date: Optional[datetime],
@@ -481,75 +452,154 @@ class CostService:
 
         scope = "/subscriptions/{}".format(subscription_id) if subscription_id else self.scope
 
-        # Monthly reports are derived by aggregating the (cached) Daily data rather than
-        # issuing a separate Cost Management query: this reuses the durable Daily collection,
-        # keeps Monthly and Daily totals reconciled, and avoids extra Azure round-trips (#2350).
+        # Cost data is only ever collected and stored at Daily granularity; Monthly and
+        # ungranular reports are derived from those days. One collection therefore serves every
+        # granularity, all three always reconcile, and no extra Azure round-trip is needed (#2350).
+        daily_result = await self.__query_daily_costs(
+            tag_name, tag_value, from_date, to_date, resource_groups, scope, costs_repo)
+
+        if granularity == GranularityEnum.daily:
+            return daily_result
         if granularity == GranularityEnum.monthly:
-            daily_result = await self.query_costs(
-                tag_name, tag_value, GranularityEnum.daily, from_date, to_date,
-                resource_groups, subscription_id, costs_repo)
             return self.__aggregate_daily_to_monthly(daily_result)
+        return self.__aggregate_daily_to_ungranular(daily_result)
 
-        periods = self.split_query_period(from_date, to_date)
+    async def __query_daily_costs(self, tag_name: str, tag_value: str, from_date: Optional[datetime],
+                                  to_date: Optional[datetime], resource_groups: list, scope: str,
+                                  costs_repo: Optional[CostsRepository]) -> QueryResult:
+        """Return the Daily rows for the report range, reusing collected days where possible.
 
-        # First resolve each period from the in-memory cache or the durable collection.
-        # These are cheap; anything still missing needs a live Cost Management query.
-        resolved: List[Optional[QueryResult]] = []
-        cache_keys: List[str] = []
-        for period_from_date, period_to_date in periods:
-            cache_key = self.build_query_cache_key(
-                tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
-            cache_keys.append(cache_key)
+        Finalised days come from the durable collection; any remaining days are queried live in
+        month-aligned batches (Cost Management limits a query to one year) and each one is then
+        persisted, so the next report reuses them.
+        """
+        first_day, last_day = self.__report_day_range(from_date, to_date)
 
-            # 1) in-memory cache
-            period_result = self.get_cached_result(cache_key)
+        rows_by_day: Dict[date, List[list]] = {}
+        total_days = (last_day - first_day).days + 1
+        scope_key = self.__scope_cache_key(tag_name, tag_value, resource_groups, scope)
 
-            # 2) durable cost collection (finalised periods only)
-            if period_result is None and costs_repo is not None:
-                period_result = await self.__get_period_from_collection(
-                    costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date, scope)
-                if period_result is not None:
-                    self.cache_result(cache_key, period_result, CostService.CACHE_TTL)
-            resolved.append(period_result)
+        # 1) in-memory cache, held per day so overlapping report ranges reuse the same days
+        for day in self.__days_in_range(first_day, last_day):
+            cached_rows = self.get_cached_result(f"{scope_key}_day{day.isoformat()}")
+            if cached_rows is not None:
+                rows_by_day[day] = cached_rows
 
-        # 3) Run the outstanding live Cost Management queries off the event loop and
-        #    concurrently. The SDK client is synchronous, so calling it inline would block
-        #    the event loop for the whole (often tens of seconds) query - long enough for the
-        #    App Gateway health probe to fail and the backend to be marked unhealthy (see #2).
-        #    to_thread keeps the loop responsive; gather also parallelises split sub-periods.
-        live_indexes = [i for i, result in enumerate(resolved) if result is None]
-        if live_indexes:
-            # Bound how many live Cost Management queries run at once: month-aligned splitting can
-            # produce many sub-periods for a long cold range, and Cost Management throttles bursts.
-            semaphore = asyncio.Semaphore(CostService.LIVE_QUERY_CONCURRENCY)
+        # 2) durable collection. A finalised day is immutable and always reused; a still-settling
+        #    day is reused only while it is fresh, so the background refresh keeps current-month
+        #    reports off Cost Management without ever serving a stale figure.
+        if costs_repo is not None and len(rows_by_day) < total_days:
+            collected = await costs_repo.get_cost_days(
+                config.TRE_ID, scope, tag_name, tag_value, first_day.isoformat(), last_day.isoformat())
+            for collected_day in collected:
+                day = date.fromisoformat(collected_day.usage_date)
+                if day in rows_by_day or not self.__is_collected_day_usable(collected_day):
+                    continue
+                rows_by_day[day] = [list(r) for r in collected_day.rows]
 
-            async def __run_live_query(index: int) -> QueryResult:
-                async with semaphore:
-                    return await asyncio.to_thread(
-                        self.query_costs_period, tag_name, tag_value, granularity,
-                        periods[index][0], periods[index][1], resource_groups, scope)
+        # 3) anything still missing needs a live Cost Management query
+        missing_days = [day for day in self.__days_in_range(first_day, last_day) if day not in rows_by_day]
+        if missing_days:
+            live_rows = await self.__query_live_daily_rows(
+                tag_name, tag_value, missing_days, resource_groups, scope)
+            for day in missing_days:
+                rows_by_day[day] = live_rows.get(day, [])
+            if costs_repo is not None:
+                await self.__persist_days(
+                    costs_repo, tag_name, tag_value, scope,
+                    {day: rows_by_day[day] for day in missing_days})
 
-            live_results = await asyncio.gather(*[__run_live_query(i) for i in live_indexes])
-            for i, period_result in zip(live_indexes, live_results):
-                resolved[i] = period_result
-                self.cache_result(cache_keys[i], period_result, CostService.CACHE_TTL)
-                if costs_repo is not None:
-                    await self.__persist_period(
-                        costs_repo, tag_name, tag_value, granularity, periods[i][0], periods[i][1],
-                        resource_groups, scope, period_result,
-                        final=self.__is_period_final(periods[i][1]))
+        for day, day_rows in rows_by_day.items():
+            self.cache_result(f"{scope_key}_day{day.isoformat()}", day_rows, CostService.CACHE_TTL)
 
-        merged_result: Optional[QueryResult] = None
-        for period_result in resolved:
-            if merged_result is None:
-                # fresh QueryResult so cached period results are never mutated while merging
-                merged_result = QueryResult(columns=period_result.columns, rows=list(period_result.rows))
+        merged_rows = [row for day in sorted(rows_by_day) for row in rows_by_day[day]]
+        return QueryResult(columns=self.__daily_columns(), rows=merged_rows)
+
+    @staticmethod
+    def __is_collected_day_usable(collected_day) -> bool:
+        """A finalised day never changes; a still-settling one is only reused while fresh."""
+        if collected_day.final:
+            return True
+        try:
+            collected_at = datetime.fromisoformat(collected_day.collected_at)
+        except ValueError:
+            return False
+        return datetime.now(UTC) - collected_at < CostService.SETTLING_DAY_MAX_AGE
+
+    @staticmethod
+    def __scope_cache_key(tag_name: str, tag_value: str, resource_groups: list, scope: str) -> str:
+        """Cache key prefix for a scope; the resource-group list is hashed as it can be very long."""
+        resource_group_digest = hashlib.sha256("_".join(sorted(resource_groups)).encode("utf-8")).hexdigest()[:16]
+        return f"{tag_name}_{tag_value}_scope{scope}_rgs{resource_group_digest}"
+
+    async def __query_live_daily_rows(self, tag_name: str, tag_value: str, days: List[date],
+                                      resource_groups: list, scope: str) -> Dict[date, List[list]]:
+        """Query Cost Management for the given days and bucket the returned rows by day.
+
+        Runs off the event loop and concurrently: the SDK client is synchronous, so calling it
+        inline would block the loop for the whole (often tens of seconds) query - long enough for
+        the App Gateway health probe to fail and the backend to be marked unhealthy (see #2).
+        Concurrency is bounded because Cost Management throttles bursts.
+        """
+        ranges = self.__contiguous_month_ranges(days)
+        semaphore = asyncio.Semaphore(CostService.LIVE_QUERY_CONCURRENCY)
+
+        async def __run_live_query(range_start: date, range_end: date) -> QueryResult:
+            async with semaphore:
+                return await asyncio.to_thread(
+                    self.query_costs_period, tag_name, tag_value, GranularityEnum.daily,
+                    datetime.combine(range_start, datetime.min.time()),
+                    datetime.combine(range_end, datetime.min.time()),
+                    resource_groups, scope)
+
+        results = await asyncio.gather(*[__run_live_query(start, end) for start, end in ranges])
+
+        rows_by_day: Dict[date, List[list]] = {}
+        for result in results:
+            for row in (result.rows or []):
+                day = self.__parse_cost_management_date_value(row[ResultColumnDaily.Date.value])
+                rows_by_day.setdefault(day, []).append(list(row))
+        return rows_by_day
+
+    @staticmethod
+    def __report_day_range(from_date: Optional[datetime], to_date: Optional[datetime]) -> Tuple[date, date]:
+        """Inclusive day range for a report; no dates means month to date."""
+        if from_date is None or to_date is None:
+            today = datetime.now(UTC).date()
+            return today.replace(day=1), today
+        return from_date.date(), to_date.date()
+
+    @staticmethod
+    def __days_in_range(first_day: date, last_day: date) -> List[date]:
+        return [first_day + timedelta(days=offset) for offset in range((last_day - first_day).days + 1)]
+
+    @staticmethod
+    def __contiguous_month_ranges(days: List[date]) -> List[Tuple[date, date]]:
+        """Group days into runs of consecutive days that never cross a calendar month boundary."""
+        ranges: List[List[date]] = []
+        for day in sorted(days):
+            if ranges and day == ranges[-1][1] + timedelta(days=1) and (day.year, day.month) == (
+                    ranges[-1][1].year, ranges[-1][1].month):
+                ranges[-1][1] = day
             else:
-                if period_result.columns and not merged_result.columns:
-                    merged_result.columns = period_result.columns
-                merged_result.rows.extend(period_result.rows)
+                ranges.append([day, day])
+        return [(start, end) for start, end in ranges]
 
-        return merged_result
+    def __daily_columns(self) -> List[QueryColumn]:
+        return [QueryColumn(name=name, type=column_type)
+                for name, column_type in self.__export_result_columns(GranularityEnum.daily)]
+
+    def __aggregate_daily_to_ungranular(self, daily_result: QueryResult) -> QueryResult:
+        """Roll a Daily result up to a single row per resource group / tag / currency."""
+        columns = [QueryColumn(name=name, type=column_type)
+                   for name, column_type in self.__export_result_columns(GranularityEnum.none)]
+        aggregated: Dict[tuple, float] = {}
+        for row in (daily_result.rows or []):
+            key = (row[ResultColumnDaily.ResourceGroup.value],
+                   row[ResultColumnDaily.Tag.value],
+                   row[ResultColumnDaily.Currency.value])
+            aggregated[key] = aggregated.get(key, 0.0) + row[ResultColumnDaily.Cost.value]
+        return QueryResult(columns=columns, rows=[[cost, *key] for key, cost in sorted(aggregated.items())])
 
     def __aggregate_daily_to_monthly(self, daily_result: QueryResult) -> QueryResult:
         """Roll a Daily result up to one row per calendar month.
@@ -559,72 +609,37 @@ class CostService:
         and Daily always reconcile and Monthly needs no separate Azure query (#2350).
         """
         columns = daily_result.columns
-        if not daily_result.rows:
-            return QueryResult(columns=columns, rows=[])
-
-        column_names = [column.name for column in columns]
-        df = pd.DataFrame.from_records(list(daily_result.rows), columns=column_names)
-        # UsageDate is an integer YYYYMMDD; collapse it to the first of its month (YYYYMM01).
-        df["UsageDate"] = (df["UsageDate"] // 100) * 100 + 1
-        grouped = df.groupby(
-            ["UsageDate", "ResourceGroup", "Tag", "Currency"], as_index=False).agg({"PreTaxCost": "sum"})
-        ordered = grouped[["PreTaxCost", "UsageDate", "ResourceGroup", "Tag", "Currency"]]
-        return QueryResult(columns=columns, rows=ordered.values.tolist())
+        aggregated: Dict[tuple, float] = {}
+        for row in (daily_result.rows or []):
+            # UsageDate is an integer YYYYMMDD; collapse it to the first of its month (YYYYMM01).
+            key = ((row[ResultColumnDaily.Date.value] // 100) * 100 + 1,
+                   row[ResultColumnDaily.ResourceGroup.value],
+                   row[ResultColumnDaily.Tag.value],
+                   row[ResultColumnDaily.Currency.value])
+            aggregated[key] = aggregated.get(key, 0.0) + row[ResultColumnDaily.Cost.value]
+        return QueryResult(columns=columns, rows=[[cost, *key] for key, cost in sorted(aggregated.items())])
 
     @staticmethod
-    def __serialize_date(value: Optional[datetime]) -> Optional[str]:
-        return value.date().isoformat() if value is not None else None
+    def __is_day_final(usage_date: date) -> bool:
+        """A day is final only once Azure has finished re-rating it.
 
-    @staticmethod
-    def __is_period_final(period_to_date: Optional[datetime]) -> bool:
-        """A period is final only once Azure has finished re-rating it.
-
-        Month-to-date (no end date) is never final, and a period is only frozen once its last
-        day is at least COST_DATA_SETTLING_DAYS in the past: the most recent days keep changing
-        for a short settling window, and because refresh is idempotent a period frozen too early
-        would keep serving still-incomplete data."""
-        if period_to_date is None:
-            return False
-        # Use UTC consistently with the UTC collected_at timestamp so a period near midnight in a
-        # non-UTC deployment is not finalised a day early.
+        The most recent days keep changing for a short settling window, and because refresh is
+        idempotent a day frozen too early would keep serving still-incomplete data. UTC is used
+        consistently with the UTC collected_at timestamp so a day is not finalised early in a
+        non-UTC deployment."""
         today = datetime.now(UTC).date()
-        return period_to_date.date() < today - timedelta(days=CostService.COST_DATA_SETTLING_DAYS)
+        return usage_date < today - timedelta(days=CostService.COST_DATA_SETTLING_DAYS)
 
-    @staticmethod
-    def __serialize_columns(columns) -> List[dict]:
-        return [{"name": c.name, "type": c.type} for c in (columns or [])]
-
-    async def __get_period_from_collection(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
-                                           granularity: GranularityEnum, from_date: Optional[datetime],
-                                           to_date: Optional[datetime], scope: str) -> Optional[QueryResult]:
-        persisted = await costs_repo.get_cost_query_result(
-            config.TRE_ID, scope, tag_name, tag_value, granularity,
-            self.__serialize_date(from_date), self.__serialize_date(to_date))
-        if persisted is None:
-            return None
-        # Only finalised periods are served from the collection; the still-settling current
-        # month is always re-queried live.
-        if not persisted.final:
-            return None
-        columns = [QueryColumn(name=c["name"], type=c["type"]) for c in persisted.columns]
-        return QueryResult(columns=columns, rows=[list(r) for r in persisted.rows])
-
-    async def __persist_period(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
-                               granularity: GranularityEnum, from_date: Optional[datetime],
-                               to_date: Optional[datetime], resource_groups: list, scope: str,
-                               period_result: QueryResult, final: bool) -> None:
-        await costs_repo.save_cost_query_result(
-            tre_id=config.TRE_ID,
-            scope=scope,
-            tag_name=tag_name,
-            tag_value=tag_value,
-            granularity=granularity,
-            from_date=self.__serialize_date(from_date),
-            to_date=self.__serialize_date(to_date),
-            resource_groups=list(resource_groups),
-            columns=self.__serialize_columns(period_result.columns),
-            rows=[list(r) for r in (period_result.rows or [])],
-            final=final)
+    async def __persist_days(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
+                             scope: str, rows_by_day: Dict[date, List[list]]) -> None:
+        """Write the days as transactional batches (one per month partition)."""
+        days = [
+            costs_repo.build_cost_day(
+                tre_id=config.TRE_ID, scope=scope, tag_name=tag_name, tag_value=tag_value,
+                usage_date=usage_date.isoformat(), rows=[list(r) for r in (rows or [])],
+                final=self.__is_day_final(usage_date))
+            for usage_date, rows in sorted(rows_by_day.items())]
+        await costs_repo.save_cost_days(days)
 
     async def refresh_costs(self, tre_id: str, granularity: GranularityEnum, from_date: Optional[datetime],
                             to_date: Optional[datetime], workspace_repo: WorkspaceRepository,
@@ -673,7 +688,8 @@ class CostService:
     async def ingest_export_costs(self, tre_id: str, granularity: GranularityEnum, from_date: datetime,
                                   to_date: datetime, rows: List[ExportedCostRow],
                                   workspace_repo: WorkspaceRepository,
-                                  costs_repo: CostsRepository) -> dict:
+                                  costs_repo: CostsRepository,
+                                  subscription_id: Optional[str] = None) -> dict:
         """Persist rows produced by a Cost Management export into the cost collection.
 
         Closed months are seeded/finalised from one-time Cost Management *exports* rather than
@@ -681,50 +697,106 @@ class CostService:
         an export returns the whole month in a single CSV, which avoids the Query API's
         one-year-per-request limit and its aggressive throttling of repeated historical queries.
 
-        The exported rows are bucketed into exactly the same period keys the read path looks up
-        - the TRE-wide ``tre_id`` scope and one per active workspace's ``tre_workspace_id`` scope
-        - applying the same "tag matches OR resource group belongs to this scope" filter the
-        Query API applies, so a period ingested from an export is indistinguishable from one
-        collected by ``refresh_costs``.
+        An export covers a single subscription, so the rows are only ever attributed to that
+        subscription's scopes: the TRE-wide ``tre_id`` scope and the ``tre_workspace_id`` scope of
+        each workspace that lives in it. Attributing them to every subscription the TRE spans
+        would duplicate the exported subscription's costs once per subscription.
+
+        The exported rows are bucketed into exactly the same period keys the read path looks up,
+        applying the same "tag matches OR resource group belongs to this scope" filter the Query
+        API applies, so a period ingested from an export is indistinguishable from one collected
+        by ``refresh_costs``.
 
         The period is persisted as final: exports are only ever run for closed months.
         """
-        subscription_ids = {config.SUBSCRIPTION_ID}
-        subscription_ids.update(await self.__get_workspace_subscription_ids(workspace_repo))
+        subscription_id = subscription_id or config.SUBSCRIPTION_ID
+        scope = "/subscriptions/{}".format(subscription_id)
 
-        collected = 0
-        total_rows = 0
+        resource_groups = list(self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id).keys())
+        total_rows = await self.__ingest_tag_period(
+            costs_repo, self.TRE_ID_TAG, tre_id, granularity, from_date, to_date,
+            resource_groups, scope, rows)
+        collected = 1
 
-        for subscription_id in subscription_ids:
-            resource_groups = list(self.get_resource_groups_by_tag(self.TRE_ID_TAG, tre_id, subscription_id).keys())
-            scope = "/subscriptions/{}".format(subscription_id)
-            persisted = await self.__ingest_tag_period(
-                costs_repo, self.TRE_ID_TAG, tre_id, granularity, from_date, to_date,
-                resource_groups, scope, rows)
-            collected += 1
-            total_rows += persisted
-
+        row_index = self.__index_export_rows(rows)
         for workspace in await workspace_repo.get_active_workspaces():
-            resource_groups, scope = self.__resolve_workspace_resource_groups(workspace)
-            if not resource_groups:
+            workspace_resource_groups, workspace_scope = self.__resolve_workspace_resource_groups(workspace)
+            # only workspaces billed to the subscription this export covers
+            if not workspace_resource_groups or workspace_scope != scope:
                 continue
             persisted = await self.__ingest_tag_period(
                 costs_repo, self.TRE_WORKSPACE_ID_TAG, workspace.id, granularity, from_date, to_date,
-                resource_groups, scope, rows)
+                workspace_resource_groups, workspace_scope,
+                self.__export_rows_for_scope(row_index, rows, self.TRE_WORKSPACE_ID_TAG,
+                                             workspace.id, workspace_resource_groups))
             collected += 1
             total_rows += persisted
 
         return {"collected_periods": collected, "total_rows": total_rows}
 
+    async def get_subscription_ids(self, workspace_repo: WorkspaceRepository) -> List[str]:
+        """Every subscription TRE costs can be incurred in, core first.
+
+        The Cost Processor runs one export per subscription, so it asks the API which ones exist
+        rather than duplicating the workspace lookup.
+        """
+        subscription_ids = [config.SUBSCRIPTION_ID]
+        for subscription_id in await self.__get_workspace_subscription_ids(workspace_repo):
+            if subscription_id not in subscription_ids:
+                subscription_ids.append(subscription_id)
+        return subscription_ids
+
+    @staticmethod
+    def __index_export_rows(rows: List[ExportedCostRow]) -> Tuple[Dict[str, List[int]], Dict[str, List[int]]]:
+        """Index exported rows by tag and by resource group.
+
+        An export can carry hundreds of thousands of rows, and every scope (the TRE plus one per
+        workspace) filters that same list, so filtering per scope is O(rows x workspaces).
+        Indexing once makes each workspace scope proportional to its own rows instead.
+        """
+        by_tag: Dict[str, List[int]] = {}
+        by_resource_group: Dict[str, List[int]] = {}
+        for position, row in enumerate(rows):
+            by_tag.setdefault(row.tag, []).append(position)
+            by_resource_group.setdefault(row.resource_group.lower(), []).append(position)
+        return by_tag, by_resource_group
+
+    @staticmethod
+    def __export_rows_for_scope(index: Tuple[Dict[str, List[int]], Dict[str, List[int]]],
+                                rows: List[ExportedCostRow], tag_name: str, tag_value: str,
+                                resource_groups: list) -> List[ExportedCostRow]:
+        """The rows a non-TRE-wide scope could possibly match, in their original order.
+
+        A superset of what ``__export_rows_to_query_result`` keeps - it still applies the real
+        filter - so this only narrows the work, it does not decide what is in scope.
+        """
+        by_tag, by_resource_group = index
+        positions = set(by_tag.get(f'"{tag_name}":"{tag_value}"', ()))
+        for resource_group in resource_groups:
+            positions.update(by_resource_group.get(resource_group.lower(), ()))
+        return [rows[position] for position in sorted(positions)]
+
     async def __ingest_tag_period(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
                                   granularity: GranularityEnum, from_date: datetime, to_date: datetime,
                                   resource_groups: list, scope: str,
                                   rows: List[ExportedCostRow]) -> int:
-        query_result = self.__export_rows_to_query_result(granularity, tag_name, tag_value, resource_groups, rows)
-        await self.__persist_period(
-            costs_repo, tag_name, tag_value, granularity, from_date, to_date,
-            resource_groups, scope, query_result, final=True)
-        return len(query_result.rows)
+        """Persist the exported rows for this scope as one document per day of the period.
+
+        Days the export returned no rows for are still written (as empty) so a month with idle
+        days is not re-queried live forever.
+        """
+        query_result = self.__export_rows_to_query_result(
+            GranularityEnum.daily, tag_name, tag_value, resource_groups, rows)
+
+        rows_by_day: Dict[date, List[list]] = {}
+        for row in query_result.rows:
+            day = self.__parse_cost_management_date_value(row[ResultColumnDaily.Date.value])
+            rows_by_day.setdefault(day, []).append(list(row))
+
+        period_days = {day: rows_by_day.get(day, [])
+                       for day in self.__days_in_range(from_date.date(), to_date.date())}
+        await self.__persist_days(costs_repo, tag_name, tag_value, scope, period_days)
+        return sum(len(day_rows) for day_rows in period_days.values())
 
     def __export_rows_to_query_result(self, granularity: GranularityEnum, tag_name: str, tag_value: str,
                                       resource_groups: list, rows: List[ExportedCostRow]) -> QueryResult:
@@ -756,7 +828,7 @@ class CostService:
                 key = (row.date, row.resource_group, row.tag, row.currency)
             aggregated[key] = aggregated.get(key, 0.0) + row.cost
 
-        result_rows = [[cost, *key] for key, cost in aggregated.items()]
+        result_rows = [[cost, *key] for key, cost in sorted(aggregated.items())]
         return QueryResult(columns=columns, rows=result_rows)
 
     @staticmethod
@@ -789,26 +861,32 @@ class CostService:
     async def __refresh_tag_periods(self, costs_repo: CostsRepository, tag_name: str, tag_value: str,
                                     granularity: GranularityEnum, from_date: Optional[datetime],
                                     to_date: Optional[datetime], resource_groups: list, scope: str) -> Tuple[int, int]:
-        collected = 0
-        total_rows = 0
-        for period_from_date, period_to_date in self.split_query_period(from_date, to_date):
-            # Idempotent: a period already finalised in the collection is reused rather than
-            # re-queried, so repeated/backfill refreshes don't hit Cost Management again.
-            period_result = await self.__get_period_from_collection(
-                costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date, scope)
-            if period_result is None:
-                # Offload the blocking (synchronous) Cost Management SDK call to a worker
-                # thread so it doesn't starve the asyncio event loop (which would make the
-                # health probe fail and the platform return 500 for a long-running refresh).
-                period_result = await asyncio.to_thread(
-                    self.query_costs_period,
-                    tag_name, tag_value, granularity, period_from_date, period_to_date, resource_groups, scope)
-                await self.__persist_period(
-                    costs_repo, tag_name, tag_value, granularity, period_from_date, period_to_date,
-                    resource_groups, scope, period_result, final=self.__is_period_final(period_to_date))
-            collected += 1
-            total_rows += len(period_result.rows or [])
-        return collected, total_rows
+        """Collect and persist the requested range one day at a time.
+
+        Idempotent: days already finalised in the collection are reused rather than re-queried,
+        so repeated/backfill refreshes don't hit Cost Management again. Still-settling days are
+        always re-collected - keeping them fresh is the point of the current-month refresh.
+        """
+        first_day, last_day = self.__report_day_range(from_date, to_date)
+        collected_rows: Dict[date, List[list]] = {}
+        collected = await costs_repo.get_cost_days(
+            config.TRE_ID, scope, tag_name, tag_value, first_day.isoformat(), last_day.isoformat())
+        for collected_day in collected:
+            if collected_day.final:
+                collected_rows[date.fromisoformat(collected_day.usage_date)] = [list(r) for r in collected_day.rows]
+
+        missing_days = [day for day in self.__days_in_range(first_day, last_day) if day not in collected_rows]
+        if missing_days:
+            live_rows = await self.__query_live_daily_rows(
+                tag_name, tag_value, missing_days, resource_groups, scope)
+            for day in missing_days:
+                collected_rows[day] = live_rows.get(day, [])
+            await self.__persist_days(
+                costs_repo, tag_name, tag_value, scope,
+                {day: collected_rows[day] for day in missing_days})
+
+        total_rows = sum(len(rows) for rows in collected_rows.values())
+        return len(collected_rows), total_rows
 
     def query_costs_period(self, tag_name: str, tag_value: str,
                            granularity: GranularityEnum, from_date: Optional[datetime],

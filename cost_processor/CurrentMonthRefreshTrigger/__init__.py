@@ -11,5 +11,11 @@ def main(timer: func.TimerRequest) -> None:
         logging.info("The current-month cost refresh timer is past due.")
 
     logging.info("Refreshing current-month cost data.")
-    result = api_client.refresh_current_month()
+    try:
+        result = api_client.refresh_current_month()
+    except api_client.CostRefreshThrottled as throttled:
+        # The next scheduled run picks this up; failing the invocation would only add noise.
+        logging.warning("Current-month cost refresh throttled, retry after %ss; "
+                        "skipping until the next scheduled run.", throttled.retry_after)
+        return
     logging.info("Current-month cost refresh complete: %s", result)

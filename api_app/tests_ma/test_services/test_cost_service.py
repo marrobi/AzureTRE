@@ -1,13 +1,14 @@
 from unittest.mock import AsyncMock
 from mock import patch
 import pytest
-from models.domain.costs import ExportedCostRow, GranularityEnum
+from db.repositories.costs import CostsRepository
+from models.domain.costs import ExportedCostRow, GranularityEnum, PersistedCostDay
 from models.domain.shared_service import SharedService, ResourceType
 from models.domain.user_resource import UserResource
 from models.domain.workspace import Workspace
 from models.domain.workspace_service import WorkspaceService
 from services.cost_service import CostService, SubscriptionNotSupported
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from azure.mgmt.costmanagement.models import QueryResult, TimeframeType, QueryDefinition, QueryColumn
 from azure.core.exceptions import ResourceNotFoundError
 
@@ -79,7 +80,8 @@ async def test_query_tre_costs_with_granularity_daily_returns_correct_cost_repor
 
     cost_service = CostService()
     cost_report = await cost_service.query_tre_costs(
-        "guy22", GranularityEnum.daily, datetime.now(), datetime.now(), workspace_repo_mock, shared_service_repo_mock)
+        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 3),
+        workspace_repo_mock, shared_service_repo_mock)
 
     assert len(cost_report.core_services) == 3
     assert cost_report.core_services[0].cost == 31.6
@@ -160,17 +162,20 @@ def __get_monthly_source_daily_query_result():
 @patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
 async def test_query_tre_costs_with_granularity_monthly_aggregates_daily(
         get_resource_groups_by_tag_mock, client_mock, shared_service_repo_mock, workspace_repo_mock):
-    client_mock.return_value.query.usage.return_value = __get_monthly_source_daily_query_result()
+    client_mock.return_value.query.usage.side_effect = __daily_result_within_queried_range(
+        __get_monthly_source_daily_query_result())
     __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
     __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
 
     cost_service = CostService()
     cost_report = await cost_service.query_tre_costs(
-        "guy22", GranularityEnum.monthly, datetime.now(), datetime.now(), workspace_repo_mock, shared_service_repo_mock)
+        "guy22", GranularityEnum.monthly, datetime(2022, 5, 1), datetime(2022, 6, 1),
+        workspace_repo_mock, shared_service_repo_mock)
 
     # Monthly is queried at Daily granularity from Cost Management, then aggregated per month.
-    assert client_mock.return_value.query.usage.call_count == 1
+    # Missing days are queried in month-aligned batches, so a May-June range takes two queries.
+    assert client_mock.return_value.query.usage.call_count == 2
     query_definition = client_mock.return_value.query.usage.call_args[0][1]
     assert query_definition.dataset.granularity == GranularityEnum.daily
 
@@ -424,7 +429,11 @@ async def test_query_tre_costs_with_dates_set_as_none_calls_client_with_month_to
         "guy22", GranularityEnum.none, from_date, to_date, workspace_repo_mock, shared_service_repo_mock)
 
     query_definition: QueryDefinition = client_mock.return_value.query.usage.call_args_list[0][0][1]
-    assert query_definition.timeframe == TimeframeType.MONTH_TO_DATE
+    # Month to date is resolved to an explicit first-of-month..today range so the days it covers
+    # can be served from (and written to) the durable per-day collection.
+    assert query_definition.timeframe == TimeframeType.CUSTOM
+    today = datetime.now(timezone.utc).date()
+    assert query_definition.time_period.from_property.date() == today.replace(day=1)
 
 
 @pytest.mark.asyncio
@@ -449,12 +458,11 @@ async def test_query_tre_costs_with_dates_set_as_none_calls_client_with_custom_d
 
     query_definition: QueryDefinition = client_mock.return_value.query.usage.call_args_list[0][0][1]
     assert query_definition.timeframe == TimeframeType.CUSTOM
-    assert query_definition.time_period.from_property == from_date
+    assert query_definition.time_period.from_property.date() == from_date.date()
     # the range is split per calendar month, so the end of the range is on the last query
     last_query_definition: QueryDefinition = client_mock.return_value.query.usage.call_args_list[-1][0][1]
     # `to` is pinned to end-of-day so Cost Management includes the whole final day of the range
     # rather than dropping it (see cost_service.build_query_definition).
-    assert last_query_definition.time_period.to == to_date.replace(hour=23, minute=59, second=59, microsecond=0)
     assert last_query_definition.time_period.to.date() == to_date.date()
 
 
@@ -493,74 +501,65 @@ async def test_build_query_definition_filters_on_tag_only_when_no_resource_group
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("from_date,to_date", [(None, None), (None, datetime(2022, 1, 1)), (datetime(2022, 1, 1), None)])
 @patch('services.cost_service.CostManagementClient')
-async def test_split_query_period_returns_single_period_for_month_to_date(client_mock, from_date, to_date):
+async def test_contiguous_month_ranges_batches_days_into_calendar_months(client_mock):
     cost_service = CostService()
+    days = [date(2022, 1, 30) + timedelta(days=offset) for offset in range(5)]
 
-    periods = cost_service.split_query_period(from_date, to_date)
+    ranges = cost_service._CostService__contiguous_month_ranges(days)
 
-    assert periods == [(from_date, to_date)]
-
-
-@pytest.mark.asyncio
-@patch('services.cost_service.CostManagementClient')
-async def test_split_query_period_splits_into_calendar_months(client_mock):
-    cost_service = CostService()
-    from_date = datetime(2022, 1, 1)
-    to_date = datetime(2022, 6, 1)
-
-    periods = cost_service.split_query_period(from_date, to_date)
-
-    # one sub-period per calendar month the range touches, aligned to whole months so they
-    # share keys with the month data the Cost Processor stores
-    assert periods == [
-        (datetime(2022, 1, 1), datetime(2022, 1, 31)),
-        (datetime(2022, 2, 1), datetime(2022, 2, 28)),
-        (datetime(2022, 3, 1), datetime(2022, 3, 31)),
-        (datetime(2022, 4, 1), datetime(2022, 4, 30)),
-        (datetime(2022, 5, 1), datetime(2022, 5, 31)),
-        (datetime(2022, 6, 1), datetime(2022, 6, 1)),
+    # a batch never crosses a calendar month boundary, so each live query stays month-aligned
+    # (and well within Cost Management's one-year-per-query limit)
+    assert ranges == [
+        (date(2022, 1, 30), date(2022, 1, 31)),
+        (date(2022, 2, 1), date(2022, 2, 3)),
     ]
 
 
 @pytest.mark.asyncio
 @patch('services.cost_service.CostManagementClient')
-async def test_split_query_period_keeps_partial_boundary_months(client_mock):
+async def test_contiguous_month_ranges_splits_on_gaps(client_mock):
     cost_service = CostService()
-    # a range starting and ending mid-month: interior months are whole (reusable), the first and
-    # last are partial so no cost outside the requested range is ever included
-    periods = cost_service.split_query_period(datetime(2022, 1, 15), datetime(2022, 3, 10))
+    # days already collected leave gaps; only the missing runs are queried
+    days = [date(2022, 3, 1), date(2022, 3, 2), date(2022, 3, 10)]
 
-    assert periods == [
-        (datetime(2022, 1, 15), datetime(2022, 1, 31)),
-        (datetime(2022, 2, 1), datetime(2022, 2, 28)),
-        (datetime(2022, 3, 1), datetime(2022, 3, 10)),
+    ranges = cost_service._CostService__contiguous_month_ranges(days)
+
+    assert ranges == [
+        (date(2022, 3, 1), date(2022, 3, 2)),
+        (date(2022, 3, 10), date(2022, 3, 10)),
     ]
 
 
 @pytest.mark.asyncio
 @patch('services.cost_service.CostManagementClient')
-async def test_split_query_period_splits_multi_year_range_into_non_overlapping_periods(client_mock):
+async def test_contiguous_month_ranges_covers_multi_year_range_without_overlap(client_mock):
     cost_service = CostService()
-    from_date = datetime(2022, 1, 1)
-    to_date = datetime(2025, 1, 1)
+    first_day, last_day = date(2022, 1, 1), date(2025, 1, 1)
+    days = [first_day + timedelta(days=offset) for offset in range((last_day - first_day).days + 1)]
 
-    periods = cost_service.split_query_period(from_date, to_date)
+    ranges = cost_service._CostService__contiguous_month_ranges(days)
 
-    # multi year range must be split into more than one query
-    assert len(periods) > 1
-    # full range is covered
-    assert periods[0][0] == from_date
-    assert periods[-1][1] == to_date
-    for period_from, period_to in periods:
-        # splitting is month-aligned, so no sub-period ever crosses a calendar month boundary
-        # (well within Cost Management's one-year-per-query limit)
-        assert (period_to - period_from) < timedelta(days=31)
-        assert period_from.month == period_to.month and period_from.year == period_to.year
-    # periods are contiguous and do not overlap
-    for previous, current in zip(periods, periods[1:]):
+    # a multi year range is split into more than one query and fully covered without overlap
+    assert len(ranges) > 1
+    assert ranges[0][0] == first_day
+    assert ranges[-1][1] == last_day
+    for range_start, range_end in ranges:
+        assert (range_start.year, range_start.month) == (range_end.year, range_end.month)
+    for previous, current in zip(ranges, ranges[1:]):
         assert current[0] == previous[1] + timedelta(days=1)
+
+
+@pytest.mark.asyncio
+@patch('services.cost_service.CostManagementClient')
+async def test_report_day_range_defaults_to_month_to_date(client_mock):
+    cost_service = CostService()
+    today = datetime.now(timezone.utc).date()
+
+    # no dates means month to date, resolved to explicit days so the collection can serve them
+    assert cost_service._CostService__report_day_range(None, None) == (today.replace(day=1), today)
+    assert cost_service._CostService__report_day_range(datetime(2022, 1, 15), datetime(2022, 3, 10)) == (
+        date(2022, 1, 15), date(2022, 3, 10))
 
 
 @pytest.mark.asyncio
@@ -599,7 +598,7 @@ async def test_query_costs_daily_over_multiple_years_has_correct_totals_and_no_s
 
     query_costs_period_mock.side_effect = __synthesize_daily_period
 
-    expected_periods = cost_service.split_query_period(from_date, to_date)
+    expected_periods = __month_ranges(from_date, to_date)
     # a multi-year range must be split into more than one Azure query
     assert len(expected_periods) > 1
 
@@ -642,24 +641,29 @@ async def test_query_tre_costs_over_multiple_years_splits_queries_and_merges_res
     from_date = datetime(2022, 1, 1)
     to_date = datetime(2024, 6, 1)
 
-    def __single_workspace_cost_result():
+    def __single_workspace_cost_result(*args, **kwargs):
+        # rows are dated to the start of the queried range so they fall inside it
+        query_definition = next(a for a in args if hasattr(a, "time_period"))
+        day = query_definition.time_period.from_property.date()
         query_result = QueryResult()
         query_result.rows = [
-            [10.0, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
+            [10.0, int(day.strftime("%Y%m%d")), 'rg-guy22-ws-11a6',
+             '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
         ]
         query_result.columns = [
             QueryColumn(name="PreTaxCost", type="Number"),
+            QueryColumn(name="UsageDate", type="Number"),
             QueryColumn(name="ResourceGroup", type="String"),
             QueryColumn(name="Tag", type="String"),
             QueryColumn(name="Currency", type="String")]
         return query_result
 
     cost_service = CostService()
-    expected_periods = cost_service.split_query_period(from_date, to_date)
+    expected_periods = __month_ranges(from_date, to_date)
     # more than one Azure query is required to cover a multi year period
     assert len(expected_periods) > 1
 
-    client_mock.return_value.query.usage.side_effect = [__single_workspace_cost_result() for _ in expected_periods]
+    client_mock.return_value.query.usage.side_effect = __single_workspace_cost_result
 
     cost_report = await cost_service.query_tre_costs(
         "guy22", GranularityEnum.none, from_date, to_date, workspace_repo_mock, shared_service_repo_mock)
@@ -674,8 +678,9 @@ async def test_query_tre_costs_over_multiple_years_splits_queries_and_merges_res
     for call in client_mock.return_value.query.usage.call_args_list:
         query_definition: QueryDefinition = call[0][1]
         assert query_definition.timeframe == TimeframeType.CUSTOM
-        queried_periods.add((query_definition.time_period.from_property, query_definition.time_period.to.date()))
-    assert queried_periods == {(period_from, period_to.date()) for period_from, period_to in expected_periods}
+        queried_periods.add((query_definition.time_period.from_property.date(),
+                             query_definition.time_period.to.date()))
+    assert queried_periods == set(expected_periods)
 
     # results from every period are merged and summed for the workspace
     assert cost_report.workspaces[0].id == "19b7ce24-aa35-438c-adf6-37e6762911a6"
@@ -683,12 +688,18 @@ async def test_query_tre_costs_over_multiple_years_splits_queries_and_merges_res
 
 
 def __single_workspace_cost_query_result(*args, **kwargs):
+    # rows are dated to the start of the queried range so they fall inside it
+    query_definition = next((a for a in args if hasattr(a, "time_period")), None)
+    day = query_definition.time_period.from_property.date() if query_definition \
+        else datetime.now(timezone.utc).date()
     query_result = QueryResult()
     query_result.rows = [
-        [10.0, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
+        [10.0, int(day.strftime("%Y%m%d")), 'rg-guy22-ws-11a6',
+         '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
     ]
     query_result.columns = [
         QueryColumn(name="PreTaxCost", type="Number"),
+        QueryColumn(name="UsageDate", type="Number"),
         QueryColumn(name="ResourceGroup", type="String"),
         QueryColumn(name="Tag", type="String"),
         QueryColumn(name="Currency", type="String")]
@@ -711,6 +722,25 @@ async def test_cost_result_cache_stores_and_expires_items(client_mock):
 
 
 @pytest.mark.asyncio
+@patch('services.cost_service.CostManagementClient')
+async def test_cost_result_cache_is_bounded_and_evicts_least_recently_used(client_mock):
+    cost_service = CostService()
+    result = __single_workspace_cost_query_result()
+
+    for i in range(CostService.CACHE_MAX_ITEMS):
+        cost_service.cache_result(f"key{i}", result, timedelta(hours=1))
+
+    # reading key0 makes it the most recently used, so the next insert must evict key1 instead
+    assert cost_service.get_cached_result("key0") is result
+    cost_service.cache_result("newest", result, timedelta(hours=1))
+
+    # the cache is keyed per scope and day, so it must never grow without bound
+    assert len(cost_service.cache) == CostService.CACHE_MAX_ITEMS
+    assert cost_service.get_cached_result("key0") is result
+    assert cost_service.get_cached_result("key1") is None
+
+
+@pytest.mark.asyncio
 @patch('db.repositories.workspaces.WorkspaceRepository')
 @patch('db.repositories.shared_services.SharedServiceRepository')
 @patch('services.cost_service.CostManagementClient')
@@ -728,7 +758,7 @@ async def test_query_tre_costs_serves_repeated_requests_from_cache(get_resource_
     to_date = datetime(2024, 6, 1)
 
     cost_service = CostService()
-    expected_periods = cost_service.split_query_period(from_date, to_date)
+    expected_periods = __month_ranges(from_date, to_date)
     # use a multi year range so per-period caching is exercised
     assert len(expected_periods) > 1
 
@@ -766,8 +796,8 @@ async def test_query_tre_costs_reuses_cached_periods_for_overlapping_ranges(get_
     long_to_date = datetime(2024, 6, 1)
 
     cost_service = CostService()
-    short_periods = cost_service.split_query_period(from_date, short_to_date)
-    long_periods = cost_service.split_query_period(from_date, long_to_date)
+    short_periods = __month_ranges(from_date, short_to_date)
+    long_periods = __month_ranges(from_date, long_to_date)
     # the two ranges must share at least one leading period for the cache to be reused
     assert any(period in long_periods for period in short_periods)
 
@@ -971,14 +1001,16 @@ async def test_query_tre_costs_surfaces_costs_of_resources_not_in_database(get_r
     __set_shared_service_repo_mock_return_value(shared_service_repo_mock)              # ids 848e8eb5, f16d0324
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
 
+    day = int(datetime.now(timezone.utc).strftime("%Y%m%d"))
     qr = QueryResult()
-    qr.columns = [QueryColumn(name="PreTaxCost", type="Number"), QueryColumn(name="ResourceGroup", type="String"),
+    qr.columns = [QueryColumn(name="PreTaxCost", type="Number"), QueryColumn(name="UsageDate", type="Number"),
+                  QueryColumn(name="ResourceGroup", type="String"),
                   QueryColumn(name="Tag", type="String"), QueryColumn(name="Currency", type="String")]
     qr.rows = [
-        [1.8, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],  # known workspace
-        [61.22, 'rg-guy22', '"tre_shared_service_id":"d68e1c19-gone-shared-service"', 'USD'],  # deleted shared service
-        [15.5, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-workspace-id"', 'USD'],  # deleted workspace
-        [7.0, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-workspace-id"', 'ILS'],  # deleted workspace, other currency
+        [1.8, day, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],  # known workspace
+        [61.22, day, 'rg-guy22', '"tre_shared_service_id":"d68e1c19-gone-shared-service"', 'USD'],  # deleted shared service
+        [15.5, day, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-workspace-id"', 'USD'],  # deleted workspace
+        [7.0, day, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-workspace-id"', 'ILS'],  # deleted workspace, other currency
     ]
     client_mock.return_value.query.usage.return_value = qr
 
@@ -1044,7 +1076,8 @@ async def test_query_tre_workspace_costs_with_granularity_daily_returns_correct_
 
     cost_service = CostService()
     workspace_cost_report = await cost_service.query_tre_workspace_costs(
-        "19b7ce24-aa35-438c-adf6-37e6762911a6", GranularityEnum.daily, datetime.now(), datetime.now(),
+        "19b7ce24-aa35-438c-adf6-37e6762911a6", GranularityEnum.daily,
+        datetime(2022, 5, 1), datetime(2022, 5, 3),
         workspace_repo_mock,
         workspace_services_repo_mock, user_resource_repo_mock)
 
@@ -1123,7 +1156,8 @@ def __get_workspace_daily_source_query_result():
 async def test_query_tre_workspace_costs_with_granularity_monthly_aggregates_daily(
         get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock,
         workspace_services_repo_mock, user_resource_repo_mock):
-    client_mock.return_value.query.usage.return_value = __get_workspace_daily_source_query_result()
+    client_mock.return_value.query.usage.side_effect = __daily_result_within_queried_range(
+        __get_workspace_daily_source_query_result())
     __set_workspace_repo_mock_get_workspace_by_id_return_value(workspace_repo_mock)
     __set_workspace_service_repo_mock_return_value(workspace_services_repo_mock)
     __set_user_resource_repo_mock_return_value(user_resource_repo_mock)
@@ -1131,7 +1165,8 @@ async def test_query_tre_workspace_costs_with_granularity_monthly_aggregates_dai
 
     cost_service = CostService()
     report = await cost_service.query_tre_workspace_costs(
-        "19b7ce24-aa35-438c-adf6-37e6762911a6", GranularityEnum.monthly, datetime.now(), datetime.now(),
+        "19b7ce24-aa35-438c-adf6-37e6762911a6", GranularityEnum.monthly,
+        datetime(2026, 5, 1), datetime(2026, 6, 1),
         workspace_repo_mock, workspace_services_repo_mock, user_resource_repo_mock)
 
     # Monthly is queried at Daily granularity from Cost Management, then aggregated per month at
@@ -1156,24 +1191,29 @@ async def test_query_tre_workspace_costs_with_granularity_monthly_aggregates_dai
     assert vm1_costs[date(2026, 6, 1)] == 2.0
 
 
-def __get_cost_management_query_result():
+def __get_cost_management_query_result(usage_date=None):
+    # Cost data is always queried from Cost Management at Daily granularity; ungranular and
+    # Monthly reports are derived from those days, so the mocked result is Daily-shaped.
+    usage_date = usage_date or datetime.now(timezone.utc).date()
+    day = int(usage_date.strftime("%Y%m%d"))
     query_result = QueryResult()
     query_result.rows = [
-        [37.6, 'rg-guy22', '"tre_core_service_id":"guy22"', 'USD'],
-        [44.5, 'rg-guy22', '"tre_id":"guy22"', 'USD'],
-        [6.8, 'rg-guy22', '"tre_shared_service_id":"848e8eb5-0df6-4d0f-9162-afd9a3fa0631"', 'USD'],
-        [4.8, 'rg-guy22', '"tre_shared_service_id":"f16d0324-9027-4448-b69b-2d48d925e6c0"', 'USD'],
-        [1.8, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
-        [2.8, 'rg-guy22-ws-0c81', '"tre_workspace_id":"d680d6b7-d1d9-411c-9101-0793da980c81"', 'USD'],
-        [5.8, 'rg-guy22-ws-0c81', '"tre_workspace_id":"d680d6b7-d1d9-411c-9101-0793da980c81"', 'ILS'],
-        [6.6, 'rg-guy22-ws-11a6', '"tre_workspace_service_id":"f8cac589-c497-4896-9fac-58e65685a20c"', 'USD'],
-        [9.3, 'rg-guy22-ws-0c81', '"tre_workspace_service_id":"9ad6e5d8-0bef-4b9f-91d6-ae33884883a1"', 'USD'],
-        [1.3, 'rg-guy22-ws-11a6', '"tre_user_resource_id":"09ed3e6e-fee5-41d0-937e-89644575e78c"', 'USD'],
-        [2.3, 'rg-guy22-ws-0c81', '"tre_user_resource_id":"8ce4a294-95ae-45a9-8d48-6525ce84eb5a"', 'USD'],
-        [5.2, 'rg-guy22-ws-11a6', '"tre_user_resource_id":"6ede6dc0-a1e1-40bd-92d7-3b3adcbec66d"', 'USD'],
-        [4.1, 'rg-guy22-ws-11a6', '"tre_user_resource_id":"915760d8-cf09-4cdb-b73b-815e6bfaef6f"', 'USD'],
+        [37.6, day, 'rg-guy22', '"tre_core_service_id":"guy22"', 'USD'],
+        [44.5, day, 'rg-guy22', '"tre_id":"guy22"', 'USD'],
+        [6.8, day, 'rg-guy22', '"tre_shared_service_id":"848e8eb5-0df6-4d0f-9162-afd9a3fa0631"', 'USD'],
+        [4.8, day, 'rg-guy22', '"tre_shared_service_id":"f16d0324-9027-4448-b69b-2d48d925e6c0"', 'USD'],
+        [1.8, day, 'rg-guy22-ws-11a6', '"tre_workspace_id":"19b7ce24-aa35-438c-adf6-37e6762911a6"', 'USD'],
+        [2.8, day, 'rg-guy22-ws-0c81', '"tre_workspace_id":"d680d6b7-d1d9-411c-9101-0793da980c81"', 'USD'],
+        [5.8, day, 'rg-guy22-ws-0c81', '"tre_workspace_id":"d680d6b7-d1d9-411c-9101-0793da980c81"', 'ILS'],
+        [6.6, day, 'rg-guy22-ws-11a6', '"tre_workspace_service_id":"f8cac589-c497-4896-9fac-58e65685a20c"', 'USD'],
+        [9.3, day, 'rg-guy22-ws-0c81', '"tre_workspace_service_id":"9ad6e5d8-0bef-4b9f-91d6-ae33884883a1"', 'USD'],
+        [1.3, day, 'rg-guy22-ws-11a6', '"tre_user_resource_id":"09ed3e6e-fee5-41d0-937e-89644575e78c"', 'USD'],
+        [2.3, day, 'rg-guy22-ws-0c81', '"tre_user_resource_id":"8ce4a294-95ae-45a9-8d48-6525ce84eb5a"', 'USD'],
+        [5.2, day, 'rg-guy22-ws-11a6', '"tre_user_resource_id":"6ede6dc0-a1e1-40bd-92d7-3b3adcbec66d"', 'USD'],
+        [4.1, day, 'rg-guy22-ws-11a6', '"tre_user_resource_id":"915760d8-cf09-4cdb-b73b-815e6bfaef6f"', 'USD'],
     ]
     query_result.columns = [QueryColumn(name="PreTaxCost", type="Number"),
+                            QueryColumn(name="UsageDate", type="Number"),
                             QueryColumn(name="ResourceGroup", type="String"),
                             QueryColumn(name="Tag", type="String"),
                             QueryColumn(name="Currency", type="String")]
@@ -1301,12 +1341,61 @@ async def test_subscription_id_skips_workspaces_without_id(get_resource_groups_b
 
 
 def __get_costs_repo_mock(persisted=None):
-    from db.repositories.costs import CostsRepository
-    from models.domain.costs import PersistedCostQueryResult
     costs_repo = AsyncMock(spec=CostsRepository)
-    costs_repo.get_cost_query_result.return_value = persisted
-    costs_repo.save_cost_query_result.return_value = None
-    return costs_repo, PersistedCostQueryResult
+    costs_repo.get_cost_days.return_value = persisted or []
+    # the real builder so persisted documents can be asserted on
+    costs_repo.build_cost_day.side_effect = CostsRepository.build_cost_day
+    costs_repo.save_cost_days.return_value = None
+    return costs_repo, PersistedCostDay
+
+
+def __persisted_day(usage_date, rows, final=True, scope="/subscriptions/sub-id",
+                    tag_name="tre_id", tag_value="guy22"):
+    return PersistedCostDay(
+        id=usage_date, partitionKey=f"guy22/{usage_date[:7]}", tre_id="guy22", scope=scope,
+        tag_name=tag_name, tag_value=tag_value, usage_date=usage_date,
+        rows=rows, final=final, collected_at="2022-06-01T00:00:00+00:00")
+
+
+def __persisted_days(costs_repo):
+    """Every day document written, in write order."""
+    return [day for call in costs_repo.save_cost_days.await_args_list for day in call.args[0]]
+
+
+def __all_persisted_rows(costs_repo):
+    """Every row written across the per-day documents, in write order."""
+    return [row for day in __persisted_days(costs_repo) for row in day.rows]
+
+
+def __month_ranges(from_date, to_date):
+    """The month-aligned day ranges the service queries when no day is already collected."""
+    ranges = []
+    day = from_date.date()
+    last = to_date.date()
+    while day <= last:
+        month_end = (day.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        end = min(month_end, last)
+        ranges.append((day, end))
+        day = end + timedelta(days=1)
+    return ranges
+
+
+def __daily_result_within_queried_range(source):
+    """Return a query.usage side effect that only returns days inside the queried range.
+
+    Cost Management only ever returns days within the requested period; the service queries
+    missing days in month-aligned batches, so a fixture returned wholesale would be counted
+    once per batch.
+    """
+    def __side_effect(*args, **kwargs):
+        query_definition = next(a for a in args if hasattr(a, "time_period"))
+        start = int(query_definition.time_period.from_property.date().strftime("%Y%m%d"))
+        end = int(query_definition.time_period.to.date().strftime("%Y%m%d"))
+        query_result = QueryResult()
+        query_result.columns = source.columns
+        query_result.rows = [row for row in source.rows if start <= row[1] <= end]
+        return query_result
+    return __side_effect
 
 
 @pytest.mark.asyncio
@@ -1328,8 +1417,8 @@ async def test_query_tre_costs_persists_live_result_to_collection(
         workspace_repo_mock, shared_service_repo_mock, costs_repo)
 
     # collection was consulted and then populated on the miss
-    costs_repo.get_cost_query_result.assert_awaited()
-    costs_repo.save_cost_query_result.assert_awaited()
+    costs_repo.get_cost_days.assert_awaited()
+    costs_repo.save_cost_days.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -1343,14 +1432,11 @@ async def test_query_tre_costs_reads_from_collection_without_calling_cost_manage
     __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
 
-    from models.domain.costs import PersistedCostQueryResult
-    persisted = PersistedCostQueryResult(
-        id="x", partitionKey="guy22/None/month-to-date", tre_id="guy22",
-        scope="/subscriptions/sub1", tag_name="tre_id", tag_value="guy22", granularity=GranularityEnum.none,
-        columns=[{"name": "PreTaxCost", "type": "Number"}, {"name": "ResourceGroup", "type": "String"},
-                 {"name": "Tag", "type": "String"}, {"name": "Currency", "type": "String"}],
-        rows=[[37.6, 'rg-guy22', '"tre_core_service_id":"guy22"', 'USD']],
-        final=True, collected_at="2022-05-01T00:00:00+00:00")
+    # every day of the requested range is already collected, so nothing needs a live query
+    today = datetime.now(timezone.utc).date()
+    persisted = [__persisted_day(
+        today.isoformat(),
+        [[37.6, int(today.strftime("%Y%m%d")), 'rg-guy22', '"tre_core_service_id":"guy22"', 'USD']])]
     costs_repo, _ = __get_costs_repo_mock(persisted=persisted)
 
     cost_service = CostService()
@@ -1360,7 +1446,7 @@ async def test_query_tre_costs_reads_from_collection_without_calling_cost_manage
 
     # served from the collection; no live query, no write
     client_mock.return_value.query.usage.assert_not_called()
-    costs_repo.save_cost_query_result.assert_not_awaited()
+    costs_repo.save_cost_days.assert_not_awaited()
     assert cost_report.core_services[0].cost == 37.6
 
 
@@ -1371,31 +1457,23 @@ async def test_query_tre_costs_reads_from_collection_without_calling_cost_manage
 @patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
 async def test_query_tre_costs_ignores_non_final_collection_period_and_queries_live(
         get_resource_groups_by_tag_mock, client_mock, shared_service_repo_mock, workspace_repo_mock):
-    # A still-settling (non-final) period must not be served from the durable collection - it is
-    # re-queried live so reports never return stale figures.
+    # A still-settling (non-final) day is never returned by the collection, so it is re-queried
+    # live and reports never return stale figures.
     client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
     __set_shared_service_repo_mock_return_value(shared_service_repo_mock)
     __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
 
-    from models.domain.costs import PersistedCostQueryResult
-    persisted = PersistedCostQueryResult(
-        id="x", partitionKey="guy22/None/month-to-date", tre_id="guy22",
-        scope="/subscriptions/sub1", tag_name="tre_id", tag_value="guy22", granularity=GranularityEnum.none,
-        columns=[{"name": "PreTaxCost", "type": "Number"}, {"name": "ResourceGroup", "type": "String"},
-                 {"name": "Tag", "type": "String"}, {"name": "Currency", "type": "String"}],
-        rows=[[999.9, 'rg-guy22', '"tre_core_service_id":"guy22"', 'USD']],
-        final=False, collected_at="2022-05-01T00:00:00+00:00")
-    costs_repo, _ = __get_costs_repo_mock(persisted=persisted)
+    costs_repo, _ = __get_costs_repo_mock(persisted=[])
 
     cost_service = CostService()
     cost_report = await cost_service.query_tre_costs(
         "guy22", GranularityEnum.none, datetime.now(), datetime.now(),
         workspace_repo_mock, shared_service_repo_mock, costs_repo)
 
-    # the stale (non-final) collection value is ignored; a live query is made and its result used
+    # the still-settling day is queried live and its result used and written back
     client_mock.return_value.query.usage.assert_called()
-    costs_repo.save_cost_query_result.assert_awaited()
+    costs_repo.save_cost_days.assert_awaited()
     assert cost_report.core_services[0].cost == 37.6
 
 
@@ -1416,7 +1494,7 @@ async def test_refresh_costs_persists_each_period(
         workspace_repo_mock, costs_repo)
 
     assert collected["collected_periods"] >= 1
-    costs_repo.save_cost_query_result.assert_awaited()
+    costs_repo.save_cost_days.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -1439,7 +1517,7 @@ async def test_refresh_costs_marks_completed_month_as_final(
         "guy22", GranularityEnum.daily, settled_month_start, settled_month_end,
         workspace_repo_mock, costs_repo)
 
-    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is True
+    assert __persisted_days(costs_repo)[-1].final is True
 
 
 @pytest.mark.asyncio
@@ -1464,7 +1542,7 @@ async def test_refresh_costs_does_not_finalise_still_settling_period(
     await cost_service.refresh_costs(
         "guy22", GranularityEnum.daily, recent_start, recent_end, workspace_repo_mock, costs_repo)
 
-    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is False
+    assert __persisted_days(costs_repo)[-1].final is False
 
 
 @pytest.mark.asyncio
@@ -1483,16 +1561,19 @@ async def test_refresh_costs_month_to_date_is_not_final(
     collected = await cost_service.refresh_costs(
         "guy22", GranularityEnum.daily, None, None, workspace_repo_mock, costs_repo)
 
-    # one period is collected per scope: the TRE-wide tag plus each of the 2 active workspaces
-    assert collected["collected_periods"] == 3
-    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is False
+    # one document per day of the month so far, for each of the 3 scopes
+    # (the TRE-wide tag plus each of the 2 active workspaces)
+    days_so_far = datetime.now(timezone.utc).day
+    assert collected["collected_periods"] == days_so_far * 3
+    # the most recent days are still settling, so the last written day is not final
+    assert __persisted_days(costs_repo)[-1].final is False
 
 
 @pytest.mark.asyncio
 @patch('db.repositories.workspaces.WorkspaceRepository')
 @patch('services.cost_service.CostManagementClient')
 @patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
-async def test_refresh_costs_multi_year_persists_one_document_per_split_period(
+async def test_refresh_costs_multi_year_persists_one_document_per_day(
         get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
     client_mock.return_value.query.usage.return_value = __get_cost_management_query_result()
     __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
@@ -1503,54 +1584,50 @@ async def test_refresh_costs_multi_year_persists_one_document_per_split_period(
     to_date = datetime(2025, 1, 1)
 
     cost_service = CostService()
-    expected_periods = cost_service.split_query_period(from_date, to_date)
-    assert len(expected_periods) > 1
+    expected_days = (to_date.date() - from_date.date()).days + 1
 
     collected = await cost_service.refresh_costs(
         "guy22", GranularityEnum.daily, from_date, to_date, workspace_repo_mock, costs_repo)
 
-    # every split period is collected once per scope: the TRE-wide tag plus each of the 2 active
+    # every day is collected once per scope: the TRE-wide tag plus each of the 2 active
     # workspaces (so the workspace report can also be served from the collection).
     expected_scopes = 3
-    assert collected["collected_periods"] == len(expected_periods) * expected_scopes
-    assert costs_repo.save_cost_query_result.await_count == len(expected_periods) * expected_scopes
+    assert collected["collected_periods"] == expected_days * expected_scopes
+    assert len(__persisted_days(costs_repo)) == expected_days * expected_scopes
 
 
 @pytest.mark.asyncio
 @patch('db.repositories.workspaces.WorkspaceRepository')
 @patch('services.cost_service.CostManagementClient')
 @patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
-async def test_refresh_costs_skips_already_final_period(
+async def test_refresh_costs_skips_already_final_days(
         get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
-    # An already-finalised period is reused from the collection: no Cost Management call and no
+    # Already-finalised days are reused from the collection: no Cost Management call and no
     # re-write, so repeated/backfill refreshes are idempotent and don't re-hit Azure.
     __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
 
-    from models.domain.costs import PersistedCostQueryResult
-    persisted = PersistedCostQueryResult(
-        id="x", partitionKey="guy22/Daily/2022-05", tre_id="guy22",
-        scope="/subscriptions/sub1", tag_name="tre_id", tag_value="guy22", granularity=GranularityEnum.daily,
-        columns=[{"name": "PreTaxCost", "type": "Number"}, {"name": "UsageDate", "type": "Number"},
-                 {"name": "ResourceGroup", "type": "String"}, {"name": "Tag", "type": "String"},
-                 {"name": "Currency", "type": "String"}],
-        rows=[[10.0, 20220501, 'rg-guy22', '"tre_id":"guy22"', 'USD'],
-              [11.0, 20220502, 'rg-guy22', '"tre_id":"guy22"', 'USD']],
-        final=True, collected_at="2022-06-01T00:00:00+00:00")
+    from_date = datetime(2022, 5, 1)
+    to_date = datetime(2022, 5, 31)
+    days = [(from_date.date() + timedelta(days=offset)) for offset in range(31)]
+    persisted = [__persisted_day(
+        day.isoformat(),
+        [[10.0, int(day.strftime("%Y%m%d")), 'rg-guy22', '"tre_id":"guy22"', 'USD'],
+         [11.0, int(day.strftime("%Y%m%d")), 'rg-guy22', '"tre_id":"guy22"', 'USD']]) for day in days]
     costs_repo, _ = __get_costs_repo_mock(persisted=persisted)
 
     cost_service = CostService()
     result = await cost_service.refresh_costs(
-        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
+        "guy22", GranularityEnum.daily, from_date, to_date,
         workspace_repo_mock, costs_repo)
 
-    # existing final period reused: no Azure query, no re-write
+    # existing final days reused: no Azure query, no re-write
     client_mock.return_value.query.usage.assert_not_called()
-    costs_repo.save_cost_query_result.assert_not_awaited()
-    # total_rows still reflects the existing period so the backfill sees the month has data;
-    # one period per scope (TRE-wide tag plus each of the 2 active workspaces).
-    assert result["collected_periods"] == 3
-    assert result["total_rows"] == 2 * 3
+    costs_repo.save_cost_days.assert_not_awaited()
+    # total_rows still reflects the existing days so the backfill sees the month has data;
+    # 31 days per scope (TRE-wide tag plus each of the 2 active workspaces).
+    assert result["collected_periods"] == 31 * 3
+    assert result["total_rows"] == 2 * 31 * 3
 
 
 @pytest.mark.asyncio
@@ -1578,8 +1655,8 @@ async def test_refresh_costs_reports_zero_rows_for_empty_period(
         "guy22", GranularityEnum.daily, datetime(2019, 1, 1), datetime(2019, 1, 31),
         workspace_repo_mock, costs_repo)
 
-    # one empty period per scope (TRE-wide tag plus each of the 2 active workspaces)
-    assert result["collected_periods"] == 3
+    # one empty document per day per scope (TRE-wide tag plus each of the 2 active workspaces)
+    assert result["collected_periods"] == 31 * 3
     assert result["total_rows"] == 0
 
 
@@ -1602,10 +1679,7 @@ async def test_refresh_costs_collects_per_workspace_tag(
         "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
         workspace_repo_mock, costs_repo)
 
-    persisted_tags = {
-        (call.kwargs["tag_name"], call.kwargs["tag_value"])
-        for call in costs_repo.save_cost_query_result.await_args_list
-    }
+    persisted_tags = {(day.tag_name, day.tag_value) for day in __persisted_days(costs_repo)}
     # the TRE-wide scope plus one scope per active workspace were all persisted
     assert ("tre_id", "guy22") in persisted_tags
     assert ("tre_workspace_id", "19b7ce24-aa35-438c-adf6-37e6762911a6") in persisted_tags
@@ -1613,20 +1687,18 @@ async def test_refresh_costs_collects_per_workspace_tag(
 
 
 @patch('services.cost_service.CostManagementClient')
-async def test_is_period_final_true_only_after_settling_window(client_mock):
+async def test_is_day_final_true_only_after_settling_window(client_mock):
     cost_service = CostService()
-    today = datetime.now()
+    today = datetime.now(timezone.utc).date()
     settling_days = CostService.COST_DATA_SETTLING_DAYS
 
-    # month-to-date (no end date) is never final
-    assert cost_service._CostService__is_period_final(None) is False
     # a day still inside the settling window keeps being re-rated by Azure, so it is not final
-    assert cost_service._CostService__is_period_final(today) is False
-    assert cost_service._CostService__is_period_final(today - timedelta(days=settling_days)) is False
-    # a future period is not final
-    assert cost_service._CostService__is_period_final(today + timedelta(days=40)) is False
-    # a period whose last day is safely past the settling window is final
-    assert cost_service._CostService__is_period_final(today - timedelta(days=settling_days + 1)) is True
+    assert cost_service._CostService__is_day_final(today) is False
+    assert cost_service._CostService__is_day_final(today - timedelta(days=settling_days)) is False
+    # a future day is not final
+    assert cost_service._CostService__is_day_final(today + timedelta(days=40)) is False
+    # a day safely past the settling window is final
+    assert cost_service._CostService__is_day_final(today - timedelta(days=settling_days + 1)) is True
 
 
 @pytest.mark.asyncio
@@ -1651,8 +1723,8 @@ async def test_query_tre_costs_persists_completed_period_as_final(
         workspace_repo_mock, shared_service_repo_mock, costs_repo)
 
     # a completed period queried live is written back to the collection as final
-    costs_repo.save_cost_query_result.assert_awaited()
-    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is True
+    costs_repo.save_cost_days.assert_awaited()
+    assert __persisted_days(costs_repo)[-1].final is True
 
 
 @pytest.mark.asyncio
@@ -1693,11 +1765,120 @@ async def test_ingest_export_costs_persists_one_period_per_scope(
 
     # the TRE-wide scope plus one per active workspace
     assert collected["collected_periods"] == 3
-    costs_repo.save_cost_query_result.assert_awaited()
+    costs_repo.save_cost_days.assert_awaited()
     # a closed month exported from Cost Management is immutable
-    assert costs_repo.save_cost_query_result.await_args.kwargs["final"] is True
+    assert __persisted_days(costs_repo)[-1].final is True
     # no Cost Management *query* is issued - the data came from the export
     client_mock.return_value.query.usage.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_ingest_export_costs_only_attributes_rows_to_the_exported_subscription(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    # An export covers exactly one subscription. Writing its rows to every subscription the TRE
+    # spans would count the exported subscription's costs once per subscription.
+    workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[
+        Workspace(id='ws-elsewhere', templateName='t', resourceType=ResourceType.Workspace,
+                  templateVersion="1", _etag="x",
+                  properties={"workspace_subscription_id": "sub-2"}),
+    ])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    cost_service = CostService()
+    await cost_service.ingest_export_costs(
+        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
+        __exported_rows(), workspace_repo_mock, costs_repo, "sub-2")
+
+    tre_wide_scopes = {day.scope for day in __persisted_days(costs_repo) if day.tag_name == "tre_id"}
+    assert tre_wide_scopes == {"/subscriptions/sub-2"}
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_ingest_export_costs_defaults_to_the_core_subscription(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    from services import cost_service as cs
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    cost_service = CostService()
+    await cost_service.ingest_export_costs(
+        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
+        __exported_rows(), workspace_repo_mock, costs_repo)
+
+    tre_wide_scopes = {day.scope for day in __persisted_days(costs_repo) if day.tag_name == "tre_id"}
+    assert tre_wide_scopes == {"/subscriptions/{}".format(cs.config.SUBSCRIPTION_ID)}
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+async def test_get_subscription_ids_lists_the_core_subscription_first(client_mock, workspace_repo_mock):
+    # the Cost Processor runs one export per subscription and asks the API which ones exist
+    from services import cost_service as cs
+    original_subscription_id = cs.config.SUBSCRIPTION_ID
+    cs.config.SUBSCRIPTION_ID = "core-sub"
+    workspace_repo_mock.get_workspaces = AsyncMock(return_value=[
+        Workspace(id='ws1', templateName='t', resourceType=ResourceType.Workspace,
+                  templateVersion="1", _etag="x", properties={}),
+        Workspace(id='ws2', templateName='t', resourceType=ResourceType.Workspace,
+                  templateVersion="1", _etag="x", properties={"workspace_subscription_id": "sub-2"}),
+        Workspace(id='ws3', templateName='t', resourceType=ResourceType.Workspace,
+                  templateVersion="1", _etag="x", properties={"workspace_subscription_id": "sub-2"}),
+    ])
+
+    try:
+        cost_service = CostService()
+        subscription_ids = await cost_service.get_subscription_ids(workspace_repo_mock)
+    finally:
+        cs.config.SUBSCRIPTION_ID = original_subscription_id
+
+    assert subscription_ids == ["core-sub", "sub-2"]
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.WorkspaceRepository')
+@patch('services.cost_service.CostManagementClient')
+@patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
+async def test_ingest_export_costs_attributes_each_row_to_its_own_workspace_scope(
+        get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    # Exported rows are indexed once and then narrowed per scope rather than rescanned, so
+    # assert the narrowing still finds a workspace's rows wherever they live and drops the rest.
+    __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
+    __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
+    costs_repo, _ = __get_costs_repo_mock(persisted=None)
+
+    workspace_id = "19b7ce24-aa35-438c-adf6-37e6762911a6"
+    rows = __exported_rows() + [
+        # tagged for the workspace but in a resource group the scope doesn't list (e.g. a
+        # managed group, or one already deleted) - found via the tag index
+        ExportedCostRow(date=20220501, resource_group='rg-managed-by-azure',
+                        tag=f'"tre_workspace_id":"{workspace_id}"', cost=5.0, currency='USD'),
+        ExportedCostRow(date=20220501, resource_group='rg-someone-else', tag='"owner":"other"',
+                        cost=99.0, currency='USD')]
+
+    cost_service = CostService()
+    await cost_service.ingest_export_costs(
+        "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
+        rows, workspace_repo_mock, costs_repo)
+
+    rows_by_scope = {}
+    for day in __persisted_days(costs_repo):
+        rows_by_scope.setdefault((day.tag_name, day.tag_value), []).extend(day.rows)
+
+    workspace_resource_groups = {row[2] for row in rows_by_scope[("tre_workspace_id", workspace_id)]}
+    assert 'rg-managed-by-azure' in workspace_resource_groups
+    assert 'rg-someone-else' not in workspace_resource_groups
+    # and the unrelated row never reaches the TRE-wide scope either
+    assert all(row[2] != 'rg-someone-else' for row in rows_by_scope[("tre_id", "guy22")])
 
 
 @pytest.mark.asyncio
@@ -1709,6 +1890,7 @@ async def test_ingest_export_costs_persists_query_api_row_shape(
     # Ingested rows must be indistinguishable from Query API rows so the read path
     # (summarize_untagged / report building) works unchanged.
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
     costs_repo, _ = __get_costs_repo_mock(persisted=None)
 
@@ -1717,12 +1899,11 @@ async def test_ingest_export_costs_persists_query_api_row_shape(
         "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
         __exported_rows(), workspace_repo_mock, costs_repo)
 
-    kwargs = costs_repo.save_cost_query_result.await_args.kwargs
-    assert [column["name"] for column in kwargs["columns"]] == [
-        "PreTaxCost", "UsageDate", "ResourceGroup", "Tag", "Currency"]
-    assert kwargs["from_date"] == "2022-05-01"
-    assert kwargs["to_date"] == "2022-05-31"
-    assert [10.0, 20220501, 'rg-guy22', '"tre_id":"guy22"', 'USD'] in kwargs["rows"]
+    # one document per day of the ingested month
+    persisted_days = [day.usage_date for day in __persisted_days(costs_repo)]
+    assert persisted_days[0] == "2022-05-01"
+    assert persisted_days[-1] == "2022-05-31"
+    assert [10.0, 20220501, 'rg-guy22', '"tre_id":"guy22"', 'USD'] in __all_persisted_rows(costs_repo)
 
 
 @pytest.mark.asyncio
@@ -1735,6 +1916,7 @@ async def test_ingest_export_costs_keeps_tre_tagged_rows_from_deleted_resource_g
     # tre_workspace_id-tagged cost still belongs to the TRE and must be kept in the TRE-wide period
     # (otherwise export-seeded months under-report workspaces whose resource group has been removed).
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     get_resource_groups_by_tag_mock.return_value = {'rg-guy22': '"tre_id":"guy22"'}  # only the core RG still exists
     costs_repo, _ = __get_costs_repo_mock(persisted=None)
 
@@ -1751,7 +1933,7 @@ async def test_ingest_export_costs_keeps_tre_tagged_rows_from_deleted_resource_g
         "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
         rows, workspace_repo_mock, costs_repo)
 
-    persisted = costs_repo.save_cost_query_result.await_args.kwargs["rows"]
+    persisted = __all_persisted_rows(costs_repo)
     # the deleted workspace's tagged cost is retained even though its resource group is gone
     assert [15.5, 20220501, 'rg-guy22-ws-gone', '"tre_workspace_id":"deleted-ws"', 'USD'] in persisted
     # non-TRE cost is still excluded
@@ -1765,6 +1947,7 @@ async def test_ingest_export_costs_keeps_tre_tagged_rows_from_deleted_resource_g
 async def test_ingest_export_costs_sums_duplicate_rows(
         get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
     costs_repo, _ = __get_costs_repo_mock(persisted=None)
 
@@ -1778,7 +1961,7 @@ async def test_ingest_export_costs_sums_duplicate_rows(
         "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
         duplicated, workspace_repo_mock, costs_repo)
 
-    assert costs_repo.save_cost_query_result.await_args.kwargs["rows"] == [
+    assert __all_persisted_rows(costs_repo) == [
         [4.0, 20220501, 'rg-guy22', '"tre_id":"guy22"', 'USD']]
 
 
@@ -1791,6 +1974,7 @@ async def test_ingest_export_costs_excludes_rows_outside_the_scope(
     # Mirrors the Query API filter: only rows matching the tag or belonging to one of the
     # scope's resource groups are kept, so unrelated subscription costs are never attributed.
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
     costs_repo, _ = __get_costs_repo_mock(persisted=None)
 
@@ -1803,7 +1987,7 @@ async def test_ingest_export_costs_excludes_rows_outside_the_scope(
         "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
         rows, workspace_repo_mock, costs_repo)
 
-    persisted_rows = costs_repo.save_cost_query_result.await_args.kwargs["rows"]
+    persisted_rows = __all_persisted_rows(costs_repo)
     assert all(row[2] != 'rg-someone-else' for row in persisted_rows)
 
 
@@ -1816,6 +2000,7 @@ async def test_ingest_export_costs_keeps_untagged_rows_for_resource_group_fallba
     # An untagged row in a known TRE resource group must be kept so summarize_untagged can
     # attribute it from the resource group's tag on read.
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
     costs_repo, _ = __get_costs_repo_mock(persisted=None)
 
@@ -1827,7 +2012,7 @@ async def test_ingest_export_costs_keeps_untagged_rows_for_resource_group_fallba
         "guy22", GranularityEnum.daily, datetime(2022, 5, 1), datetime(2022, 5, 31),
         rows, workspace_repo_mock, costs_repo)
 
-    assert costs_repo.save_cost_query_result.await_args.kwargs["rows"] == [
+    assert __all_persisted_rows(costs_repo) == [
         [7.0, 20220501, 'rg-guy22-ws-11a6', '', 'USD']]
 
 
@@ -1835,9 +2020,12 @@ async def test_ingest_export_costs_keeps_untagged_rows_for_resource_group_fallba
 @patch('db.repositories.workspaces.WorkspaceRepository')
 @patch('services.cost_service.CostManagementClient')
 @patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
-async def test_ingest_export_costs_ungranular_result_has_no_date_column(
+async def test_ingest_export_costs_always_stores_daily_documents(
         get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
+    # Cost data is only ever stored at Daily granularity, whatever granularity is requested:
+    # ungranular and Monthly reports are derived from the collected days on read.
     workspace_repo_mock.get_active_workspaces = AsyncMock(return_value=[])
+    workspace_repo_mock.get_workspaces = workspace_repo_mock.get_active_workspaces
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
     costs_repo, _ = __get_costs_repo_mock(persisted=None)
 
@@ -1846,22 +2034,18 @@ async def test_ingest_export_costs_ungranular_result_has_no_date_column(
         "guy22", GranularityEnum.none, datetime(2022, 5, 1), datetime(2022, 5, 31),
         __exported_rows(), workspace_repo_mock, costs_repo)
 
-    kwargs = costs_repo.save_cost_query_result.await_args.kwargs
-    assert [column["name"] for column in kwargs["columns"]] == [
-        "PreTaxCost", "ResourceGroup", "Tag", "Currency"]
-    assert all(len(row) == 4 for row in kwargs["rows"])
+    # rows keep the Daily shape (a UsageDate column) whatever granularity was requested
+    assert all(len(row) == 5 for row in __all_persisted_rows(costs_repo))
 
 
 @pytest.mark.asyncio
 @patch('db.repositories.workspaces.WorkspaceRepository')
 @patch('services.cost_service.CostManagementClient')
 @patch('services.cost_service.CostService.__wrapped__.get_resource_groups_by_tag')
-async def test_ingest_export_costs_reports_are_served_from_ingested_period(
+async def test_ingest_export_costs_reports_are_served_from_ingested_days(
         get_resource_groups_by_tag_mock, client_mock, workspace_repo_mock):
-    # End to end: a period ingested from an export is read back by the report path without
+    # End to end: days ingested from an export are read back by the report path without
     # any live Cost Management query.
-    from db.repositories.costs import CostsRepository
-    from models.domain.costs import PersistedCostQueryResult
 
     __set_workspace_repo_mock_get_active_workspaces_return_value(workspace_repo_mock)
     __set_resource_group_by_tag_return_value(get_resource_groups_by_tag_mock)
@@ -1869,17 +2053,18 @@ async def test_ingest_export_costs_reports_are_served_from_ingested_period(
     stored = {}
     costs_repo = AsyncMock(spec=CostsRepository)
 
-    async def __save(**kwargs):
-        item = PersistedCostQueryResult(
-            id="id", partitionKey="pk", collected_at="2022-06-05T00:00:00+00:00", **kwargs)
-        stored[(kwargs["tag_name"], kwargs["tag_value"])] = item
-        return item
+    async def __save(days):
+        for day in days:
+            stored[(day.tag_name, day.tag_value, day.usage_date)] = day
 
-    async def __get(tre_id, scope, tag_name, tag_value, granularity, from_date, to_date):
-        return stored.get((tag_name, tag_value))
+    async def __get(tre_id, scope, tag_name, tag_value, from_date, to_date):
+        return [item for (name, value, usage_date), item in stored.items()
+                if name == tag_name and value == tag_value
+                and from_date <= usage_date <= to_date]
 
-    costs_repo.save_cost_query_result.side_effect = __save
-    costs_repo.get_cost_query_result.side_effect = __get
+    costs_repo.build_cost_day.side_effect = CostsRepository.build_cost_day
+    costs_repo.save_cost_days.side_effect = __save
+    costs_repo.get_cost_days.side_effect = __get
 
     cost_service = CostService()
     await cost_service.ingest_export_costs(

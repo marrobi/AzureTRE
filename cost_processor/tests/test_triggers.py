@@ -5,7 +5,7 @@ import azure.functions as func
 from CurrentMonthRefreshTrigger import main as current_month_main
 from PreviousMonthRefreshTrigger import main as previous_month_main
 from BackfillTrigger import main as backfill_main
-from shared_code import exports_client
+from shared_code import api_client, exports_client
 
 
 def _timer(past_due: bool = False) -> func.TimerRequest:
@@ -29,6 +29,17 @@ def test_current_month_trigger_logs_when_past_due(refresh_mock):
 
     # past_due should not prevent the refresh from running
     current_month_main(_timer(past_due=True))
+
+    refresh_mock.assert_called_once_with()
+
+
+@patch("CurrentMonthRefreshTrigger.api_client.refresh_current_month")
+def test_current_month_trigger_swallows_throttling(refresh_mock):
+    # Cost Management throttles bursts; the next scheduled run picks the month up, so a 429
+    # must not fail the invocation.
+    refresh_mock.side_effect = api_client.CostRefreshThrottled(retry_after=60)
+
+    current_month_main(_timer())
 
     refresh_mock.assert_called_once_with()
 

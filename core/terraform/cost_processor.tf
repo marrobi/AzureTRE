@@ -89,9 +89,45 @@ resource "azurerm_storage_container" "cost_exports" {
   container_access_type = "private"
 }
 
+# Every export run writes a new per-run folder of partition CSVs, and the backfill/finalise timers
+# re-run exports daily, so delivered CSVs would otherwise accumulate forever. They are disposable
+# once ingested (the API holds the cost data), so age them out. The prefix deliberately targets
+# only the TRE's export folders - the backfill state blob and the function host's own containers
+# must not be touched.
+resource "azurerm_storage_management_policy" "cost_exports_retention" {
+  storage_account_id = azurerm_storage_account.sa_cost_processor_func_app.id
+
+  rule {
+    name    = "expire-delivered-cost-exports"
+    enabled = true
+
+    filters {
+      prefix_match = ["${local.cost_exports_container_name}/${var.tre_id}/"]
+      blob_types   = ["blockBlob"]
+    }
+
+    actions {
+      base_blob {
+        delete_after_days_since_modification_greater_than = var.cost_processor_export_retention_days
+      }
+    }
+  }
+}
+
 # Create/run Cost Management exports and read the cost data they are built from.
 resource "azurerm_role_assignment" "cost_processor_cost_management" {
   scope                = data.azurerm_subscription.current.id
+  role_definition_name = "Cost Management Contributor"
+  principal_id         = azurerm_user_assigned_identity.cost_processor_id.principal_id
+}
+
+# A Cost Management export only ever covers one subscription, so a TRE whose workspaces are
+# deployed to their own subscriptions needs the same grant in each of them, otherwise those
+# workspaces' costs can't be exported and are missing from reports. They aren't known to core
+# terraform, so they're supplied explicitly.
+resource "azurerm_role_assignment" "cost_processor_cost_management_workspace_subscriptions" {
+  for_each             = toset([for id in var.cost_processor_additional_subscription_ids : id if id != data.azurerm_subscription.current.subscription_id])
+  scope                = "/subscriptions/${each.value}"
   role_definition_name = "Cost Management Contributor"
   principal_id         = azurerm_user_assigned_identity.cost_processor_id.principal_id
 }

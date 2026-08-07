@@ -81,8 +81,20 @@ variable "cost_processor_backfill_stop_after_empty_months" {
 
 variable "cost_processor_backfill_max_runtime_seconds" {
   type        = number
-  description = "Wall-clock budget (seconds) for a single backfill run so a long-running run cannot tie up the single Cost Processor worker indefinitely; 0 means no limit. Cost Management export runs can take hours, so the remaining months are picked up on the next scheduled run"
+  description = "Wall-clock budget (seconds) for a single backfill run so a long-running run cannot tie up the single Cost Processor worker indefinitely; 0 means no limit. Cost Management export runs can take hours, so the backfill records how far back it reached and resumes from there on the next scheduled run"
   default     = 18000
+}
+
+variable "cost_processor_export_retention_days" {
+  type        = number
+  description = "How long delivered Cost Management export CSVs are kept in the cost-exports container before being deleted. The cost data itself lives in the API's database, so the CSVs only need to outlive the run that ingests them"
+  default     = 7
+}
+
+variable "cost_processor_additional_subscription_ids" {
+  type        = list(string)
+  description = "Subscriptions, besides the core one, that TRE workspaces are deployed to. The cost processor is granted Cost Management Contributor on each so it can export their costs; without this, workspaces in those subscriptions have no cost data"
+  default     = []
 }
 
 variable "core_app_service_plan_sku" {

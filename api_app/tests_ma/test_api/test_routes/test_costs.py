@@ -28,14 +28,14 @@ def test_validate_report_period_rejects_missing_from_date():
     with pytest.raises(HTTPException) as ex:
         validate_report_period(None, datetime(2022, 6, 1))
     assert ex.value.status_code == status.HTTP_400_BAD_REQUEST
-    assert ex.value.detail == strings.API_GET_COSTS_FROM_DATE_NEED_TO_BE_BEFORE_TO_DATE
+    assert ex.value.detail == strings.API_GET_COSTS_FROM_DATE_REQUIRED
 
 
 def test_validate_report_period_rejects_missing_to_date():
     with pytest.raises(HTTPException) as ex:
         validate_report_period(datetime(2022, 6, 1), None)
     assert ex.value.status_code == status.HTTP_400_BAD_REQUEST
-    assert ex.value.detail == strings.API_GET_COSTS_TO_DATE_NEED_TO_BE_LATER_THEN_FROM_DATE
+    assert ex.value.detail == strings.API_GET_COSTS_TO_DATE_REQUIRED
 
 
 @pytest.mark.parametrize("from_date,to_date", [
@@ -55,6 +55,7 @@ async def test_ingest_costs_persists_the_exported_period():
     cost_service.ingest_export_costs.return_value = {"collected_periods": 3, "total_rows": 9}
     payload = CostIngestRequest(
         from_date=date(2022, 5, 1), to_date=date(2022, 5, 31),
+        subscription_id="sub-2",
         rows=[ExportedCostRow(date=20220501, resource_group="rg", tag='"tre_id":"guy22"',
                               cost=1.0, currency="USD")])
 
@@ -66,21 +67,34 @@ async def test_ingest_costs_persists_the_exported_period():
     assert args[2] == datetime(2022, 5, 1)
     assert args[3] == datetime(2022, 5, 31)
     assert args[4] == payload.rows
+    # the export covered one subscription, so the rows are only attributed to that one
+    assert args[7] == "sub-2"
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("from_date,to_date", [
-    (date(2022, 6, 1), date(2022, 1, 1)),  # from after to
-    (date(2022, 6, 1), date(2022, 6, 1)),  # equal
-])
-async def test_ingest_costs_rejects_an_invalid_period(from_date, to_date):
+async def test_ingest_costs_accepts_a_single_day_period():
+    # the period is an inclusive range of days, so a one-day chunk of a large month is valid
+    cost_service = AsyncMock()
+    cost_service.ingest_export_costs.return_value = {"collected_periods": 1, "total_rows": 1}
+
+    response = await ingest_costs(
+        CostIngestRequest(from_date=date(2022, 5, 1), to_date=date(2022, 5, 1)),
+        cost_service, AsyncMock(), AsyncMock())
+
+    assert response.status_code == status.HTTP_202_ACCEPTED
+    cost_service.ingest_export_costs.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ingest_costs_rejects_an_invalid_period():
     cost_service = AsyncMock()
 
     with pytest.raises(HTTPException) as ex:
-        await ingest_costs(CostIngestRequest(from_date=from_date, to_date=to_date),
+        await ingest_costs(CostIngestRequest(from_date=date(2022, 6, 1), to_date=date(2022, 1, 1)),
                            cost_service, AsyncMock(), AsyncMock())
 
     assert ex.value.status_code == status.HTTP_400_BAD_REQUEST
+    assert ex.value.detail == strings.API_INGEST_COSTS_TO_DATE_BEFORE_FROM_DATE
     cost_service.ingest_export_costs.assert_not_awaited()
 
 

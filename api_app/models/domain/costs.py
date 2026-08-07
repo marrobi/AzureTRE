@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, date
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, conlist
 from enum import StrEnum
 import random
 import uuid
@@ -10,6 +10,11 @@ class GranularityEnum(StrEnum):
     daily = "Daily"
     monthly = "Monthly"
     none = "None"
+
+
+# Upper bound on the rows a single ingest request may carry. A calendar month of aggregated rows
+# for a large TRE is far below this; the limit exists so one request cannot exhaust API memory.
+MAX_INGEST_ROWS = 200_000
 
 
 class CurrencyEnum(StrEnum):
@@ -100,27 +105,26 @@ class CostRow(BaseModel):
 
 class CostItemType(StrEnum):
     """Discriminates item types in the cost collection (budgets/adjustments may be added later)."""
-    cost_query_result = "cost-query-result"
+    cost_day = "cost-day"
 
 
-class PersistedCostQueryResult(BaseModel):
-    """A single split Cost Management query period persisted in the cost collection.
+class PersistedCostDay(BaseModel):
+    """One day of collected Daily cost rows for a single scope, persisted in the cost collection.
 
-    Keyed by a deterministic id so repeated refreshes overwrite rather than duplicate;
-    ``final`` marks completed (immutable) months that never need re-querying.
+    A day is the unit of storage so any requested report period composes from whole days: this
+    keeps documents small (well inside Cosmos' 2MB item limit), lets the frequently re-run
+    current-month refresh rewrite only the days that changed, and means an arbitrary report range
+    never needs a document of its own. ``final`` marks a day Azure has finished re-rating, which
+    is never re-queried; a still-settling day is re-queried once ``collected_at`` goes stale.
     """
     id: str
     partitionKey: str
-    itemType: CostItemType = CostItemType.cost_query_result
+    itemType: CostItemType = CostItemType.cost_day
     tre_id: str
     scope: str
     tag_name: str
     tag_value: str
-    granularity: GranularityEnum
-    from_date: Optional[str] = None
-    to_date: Optional[str] = None
-    resource_groups: List[str] = []
-    columns: List[dict] = []
+    usage_date: str
     rows: List[list] = []
     final: bool = False
     collected_at: str
@@ -147,11 +151,19 @@ class ExportedCostRow(BaseModel):
 
 
 class CostIngestRequest(BaseModel):
-    """Payload posted by the Cost Processor after running a Cost Management export."""
+    """Payload posted by the Cost Processor after running a Cost Management export.
+
+    An export covers exactly one subscription, so ``subscription_id`` identifies which one the
+    rows belong to; without it the same rows would be attributed to every subscription the TRE
+    spans. It defaults to the core subscription so a single-subscription TRE needs no change.
+    ``rows`` is bounded so a single request cannot exhaust API memory; the Cost Processor splits
+    a month into contiguous day ranges that stay inside this limit.
+    """
     from_date: date
     to_date: date
     granularity: GranularityEnum = GranularityEnum.daily
-    rows: List[ExportedCostRow] = []
+    subscription_id: Optional[str] = None
+    rows: conlist(ExportedCostRow, max_items=MAX_INGEST_ROWS) = []
 
 
 class CostReport(BaseModel):

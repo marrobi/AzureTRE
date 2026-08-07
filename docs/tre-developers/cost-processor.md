@@ -106,8 +106,18 @@ The three timers run on a single-worker plan, so their default schedules are
 staggered (current-month on the hour, previous-month at 02:30, backfill at 04:00)
 to avoid three concurrent Cost Management sweeps competing on the one worker. The
 backfill also has a wall-clock budget (`COST_PROCESSOR_BACKFILL_MAX_RUNTIME_SECONDS`,
-default 5 hours; `0` disables it) so a run that stalls stops and resumes on its next
-schedule rather than tying up the worker indefinitely.
+default 5 hours; `0` disables it) so a run that stalls stops rather than tying up the
+worker indefinitely.
+
+Because a capped run rarely covers the whole history, the backfill records how far back
+it reached for each subscription in a `_state/backfill.json` blob in the `cost-exports`
+container and the next run continues from there. Without those cursors every run would
+restart at the previous month, re-export the months it already had, and never reach the
+oldest ones. A subscription is marked complete only when its own walk reaches the start
+of its data (or the retention limit). Subscriptions discovered later start their own
+walk, and a subscription the processor cannot access keeps its cursor unchanged so it
+can retry after access is granted. Newly closed months are picked up by the
+previous-month sweep.
 
 Completed months are marked final and never re-collected, so multi-year reports are
 served almost entirely from the collection; only the current month is refreshed,
@@ -140,18 +150,30 @@ for the frequently refreshed current month.
 
 For each closed month the processor:
 
-1. Creates (or updates) a **one-time** export named `tre-<tre_id>-costs-<YYYYMM>`
+1. Asks the API which subscriptions the TRE spans
+   (`GET /api/internal/costs/subscriptions`). An export only ever covers one
+   subscription, and workspaces can be deployed to their own, so each is exported
+   separately.
+2. Creates (or updates) a **one-time** export named `tre-<tre_id>-costs-<YYYYMM>`
    scoped to the subscription — `ActualCost` type, `Custom` timeframe covering the
-   calendar month, `Daily` granularity, delivering to the `cost-exports` container.
-   The name is deterministic, so re-running a month reuses the same export.
-2. Executes it and polls the run history until the run completes.
-3. Downloads the resulting CSV, aggregates it to one row per
+   calendar month, `Daily` granularity, delivering to `cost-exports` under a
+   per-subscription folder. The name is deterministic, so re-running a month reuses the
+   same export; the per-subscription folder keeps two subscriptions' deliveries apart.
+3. Executes it and polls the run history until the run completes. A run reporting
+   *no data* is an empty month and is ingested as zero rows. Otherwise the manifest
+   **written by that run** is used; an earlier run's manifest is never read, since every
+   run of a month reuses the same export name and reading a stale one would ingest a
+   previous run's costs as if they were current.
+4. Downloads the resulting CSV, aggregates it to one row per
    (date, resource group, TRE tag, currency) — exploding multi-tag resources into one
    row per tag, matching how the Query API groups by tag — and drops rows that carry no
    TRE tag and belong to no TRE resource group.
-4. POSTs the rows to `POST /api/internal/costs/ingest`, which persists them in exactly
-   the same shape as query-derived rows, for the TRE-wide scope and for each active
-   workspace's scope, marked **final**.
+5. POSTs the rows to `POST /api/internal/costs/ingest`, tagged with the subscription they
+   came from, which persists them in exactly the same shape as query-derived rows — for
+   that subscription's TRE-wide scope and for each of its workspaces — marked **final**.
+   A large month is posted as several contiguous day ranges so it stays inside the API's
+   per-request row cap. The split is always on a day boundary, because ingest replaces a
+   day's stored costs rather than merging into them.
 
 Because ingested periods are indistinguishable from queried ones, the read path,
 untagged-cost attribution and report builders are unchanged.
@@ -170,6 +192,18 @@ The Cost Processor's managed identity is granted:
 | Storage Blob Data Reader | `cost-exports` container | Read the exported CSVs |
 | Role Based Access Control Administrator | `cost-exports` container | Creating an export makes Cost Management assign `Storage Blob Data Contributor` to the export's own system-assigned identity on the destination container, **using the caller's privilege** |
 
+Workspaces deployed to their own subscription need `Cost Management Contributor` there
+too. Those subscriptions aren't known to core terraform, so list them in
+`cost_processor_additional_subscription_ids` to have the grant created. Until that is
+done the processor logs a warning and skips the subscription — the rest of the TRE's
+history is still collected, but those workspaces have no cost data.
+
+Delivered CSVs are disposable once ingested (the cost data lives in Cosmos), and every
+run writes a new folder, so a lifecycle policy deletes them after
+`cost_processor_export_retention_days` (default 7). The rule is prefixed to the TRE's
+export folders so it never touches the backfill cursor or the function host's own
+containers.
+
 ### Retention limit
 
 Cost Management retains roughly **13 months** of data, so a backfill can seed at most
@@ -179,14 +213,30 @@ months stay in the Cosmos collection indefinitely, so the reportable range grows
 
 ## Read path
 
-`GET /api/costs` and `GET /api/workspaces/{id}/costs` resolve each (split)
-sub-period from the cost collection first, but **only finalised** (immutable,
-completed-month) periods are served from it. Still-settling periods — the current
-month / month-to-date — are always resolved with a live Cost Management query
-(bounded by the short in-memory cache) so reports never return stale current-month
-figures. If a requested finalised period has not yet been collected, the API
-falls back to a single live query and persists the result, so the endpoints
-remain correct on a cold start while avoiding Cost Management on the common path.
+Cost data is only ever collected and stored at **daily** granularity, as one document
+per day per scope. Monthly and ungranular reports are derived from those days on read,
+so a single collection serves every granularity and all three always reconcile.
+
+Day documents are partitioned by `tre_id/YYYY-MM`, so a month's days for a scope share a
+partition. Reads issue one partition-scoped query per month the range spans (never a
+cross-partition scan) and writes go out as one transactional batch per partition, split
+when a batch would exceed Cosmos' 100-operation or 2MB limits.
+
+`GET /api/costs` and `GET /api/workspaces/{id}/costs` resolve each day of the requested
+range from the cost collection first:
+
+* A **finalised** day is immutable, so it is always served from the collection.
+* A **still-settling** day (the current month) is served from the collection only while
+  it is fresher than `SETTLING_DAY_MAX_AGE` (8 hours, a little over the current-month
+  refresh interval). That keeps current-month reports off Cost Management — which
+  throttles aggressively — without ever serving a figure older than one refresh cycle.
+* Any day that is missing or stale is queried live in month-aligned batches and then
+  persisted, so the endpoints remain correct on a cold start.
+
+Because a report range composes from whole days, an arbitrary range never needs a stored
+document of its own and overlapping report ranges reuse the same days. A bounded,
+least-recently-used in-memory cache in front of this holds individual days, so repeated
+and overlapping reports within the TTL avoid both Cosmos and Cost Management.
 
 ## Out of scope / future work
 
