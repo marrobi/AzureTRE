@@ -4,4 +4,4 @@ from fastapi.responses import PlainTextResponse
 
 
 def http_error_handler(_: Request, exc: HTTPException) -> PlainTextResponse:
-    return PlainTextResponse(exc.detail, status_code=exc.status_code)
+    return PlainTextResponse(exc.detail, status_code=exc.status_code, headers=exc.headers)

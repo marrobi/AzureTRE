@@ -21,6 +21,7 @@ ENHANCEMENTS:
 * Bound the API's in-memory cost cache with least-recently-used eviction. It is keyed per scope and day, so it previously grew without limit and was rescanned in full on every write ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 
 BUG FIXES:
+* Return a `WWW-Authenticate: Bearer` challenge header on `401` responses from the API's authentication dependency (including the internal cost endpoints), so unauthenticated requests get an RFC 6750-compliant challenge instead of a bare `401`. The shared HTTP error handler now also propagates `HTTPException` headers instead of dropping them ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Track cost history backfill progress independently for each subscription. A skipped workspace subscription no longer inherits progress from successful subscriptions, and a subscription discovered after the core backfill completes now receives its own historical backfill ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Attribute an ingested Cost Management export only to the subscription it covered, and run one export per subscription the TRE spans. The export covers a single subscription, so ingesting its rows against every subscription counted the exported subscription's costs once per subscription, while workspaces deployed to their own subscription had no cost data at all. Subscriptions are discovered from a new internal API endpoint, and `cost_processor_additional_subscription_ids` grants the processor the Cost Management access each one needs ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
 * Resume the cost history backfill from the month the previous run reached, recorded in the `cost-exports` container. A run is capped by a wall-clock budget, so restarting at the previous month every time meant it re-exported the newest months on every schedule and could never reach the oldest ones ([#2350](https://github.com/microsoft/AzureTRE/issues/2350))
@@ -1154,7 +1155,7 @@ COMPONENTS:
 
 **BREAKING CHANGES & MIGRATIONS**:
 * A migration for OperationSteps in Operation objects was added ([#3358](https://github.com/microsoft/AzureTRE/pull/3358))
-* Some Github _secrets_ have moved to be _environment variables_ - `LOCATION` and a few optional others will need to be redefined as listed in [configure-core-variables](https://microsoft.github.io/AzureTRE/latest/tre-admins/setup-instructions/cicd-pre-deployment-steps/#configure-core-variables) ([#3084](https://github.com/microsoft/AzureTRE/pull/3084))
+* Some Github *secrets* have moved to be *environment variables* - `LOCATION` and a few optional others will need to be redefined as listed in [configure-core-variables](https://microsoft.github.io/AzureTRE/latest/tre-admins/setup-instructions/cicd-pre-deployment-steps/#configure-core-variables) ([#3084](https://github.com/microsoft/AzureTRE/pull/3084))
 
 FEATURES:
 * (UI) Added upgrade button to resources that have pending template upgrades ([#3387](https://github.com/microsoft/AzureTRE/pull/3387))
@@ -1232,7 +1233,7 @@ FEATURES:
 
 ENHANCEMENTS:
 * Add support for referencing IP Groups from the Core Resource Group in firewall rules created via the pipeline ([#3089](https://github.com/microsoft/AzureTRE/pull/3089))
-* Support for _Azure Firewall Basic_ SKU ([#3107](https://github.com/microsoft/AzureTRE/pull/3107)). This SKU doesn't support deallocation and for most non 24/7 scenarios will be more expensive than the Standard SKU.
+* Support for *Azure Firewall Basic* SKU ([#3107](https://github.com/microsoft/AzureTRE/pull/3107)). This SKU doesn't support deallocation and for most non 24/7 scenarios will be more expensive than the Standard SKU.
 * Update Azure Machine Learning Workspace Service to support "no public IP" compute. This is a full rework so upgrades of existing Azure ML Workspace Service deployments are not supported. Requires `v0.8.0` or later of the TRE project. ([#3052](https://github.com/microsoft/AzureTRE/pull/3052))
 * Move non-core DNS zones out of the network module to reduce dependencies ([#3119](https://github.com/microsoft/AzureTRE/pull/3119))
 * Review VMs are being cleaned up when an Airlock request is canceled ([#3130](https://github.com/microsoft/AzureTRE/pull/3130))
@@ -1245,7 +1246,7 @@ BUG FIXES:
 * Reauth CLI if TRE endpoint has changed ([#3137](https://github.com/microsoft/AzureTRE/pull/3137))
 * Added Migration for Airlock requests that were created prior to version 0.5.0 ([#3152](https://github.com/microsoft/AzureTRE/pull/3152))
 * Temporarily use the remote bundle for `check-params` target ([#3149](https://github.com/microsoft/AzureTRE/pull/3149))
-* Workspace module dependency to resolve _AnotherOperationInProgress_ errors ([#3194](https://github.com/microsoft/AzureTRE/pull/3194))
+* Workspace module dependency to resolve *AnotherOperationInProgress* errors ([#3194](https://github.com/microsoft/AzureTRE/pull/3194))
 * Skip Certs shared service E2E on Friday & Saturday due to LetsEncrypt limits ([#3203](https://github.com/microsoft/AzureTRE/pull/3203))
 * Create Workspace AppInsights via AzAPI provider due to an issue with AzureRM ([#3207](https://github.com/microsoft/AzureTRE/pull/3207))
 * 'Workspace Owner' is now able to access Airlock request's SAS URL even if the request is not in review ([#3208](https://github.com/microsoft/AzureTRE/pull/3208))
@@ -1664,7 +1665,7 @@ BUG FIXES:
 
 * Azure monitor resourced provided by Terraform and don't allow ingestion over internet ([#2375](https://github.com/microsoft/AzureTRE/pull/2375))
 * Enable route table on the Airlock Processor subnet ([#2414](https://github.com/microsoft/AzureTRE/pull/2414))
-* Support for _Standard_ app service plan SKUs ([#2415](https://github.com/microsoft/AzureTRE/pull/2415))
+* Support for *Standard* app service plan SKUs ([#2415](https://github.com/microsoft/AzureTRE/pull/2415))
 * Fix Azure ML Workspace deletion ([#2452](https://github.com/microsoft/AzureTRE/pull/2452))
 * Get all pages in MS Graph queries ([#2492](https://github.com/microsoft/AzureTRE/pull/2492))
 
@@ -1711,7 +1712,7 @@ ENHANCEMENTS:
 
 BUG FIXES:
 
-* Airlock processor creates SAS tokens with _user delegated key_ ([#2382](https://github.com/microsoft/AzureTRE/pull/2382))
+* Airlock processor creates SAS tokens with *user delegated key* ([#2382](https://github.com/microsoft/AzureTRE/pull/2382))
 * Script updates to work with deployment repo structure ([#2385](https://github.com/microsoft/AzureTRE/pull/2385))
 
 ## 0.4.0 (July 27, 2022)

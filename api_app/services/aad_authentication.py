@@ -59,7 +59,14 @@ class AzureADAuthorization(AccessService):
 
     async def __call__(self, request: Request) -> User:
 
-        token: str = await super(AzureADAuthorization, self).__call__(request)
+        try:
+            token: str = await super(AzureADAuthorization, self).__call__(request)
+        except HTTPException as e:
+            # RFC 6750: a 401 must carry a WWW-Authenticate challenge; the base OAuth2 scheme omits it.
+            if e.status_code == status.HTTP_401_UNAUTHORIZED and "WWW-Authenticate" not in (e.headers or {}):
+                raise HTTPException(status_code=e.status_code, detail=e.detail,
+                                    headers={**(e.headers or {}), "WWW-Authenticate": "Bearer"})
+            raise
 
         # Service-to-service (app-only) authorisation by client id.
         if self.require_client_id is not None:
@@ -166,14 +173,14 @@ class AzureADAuthorization(AccessService):
         try:
             decoded_token = self._decode_token(token, config.API_AUDIENCE)
         except jwt.exceptions.InvalidSignatureError:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.INVALID_SIGNATURE)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.INVALID_SIGNATURE, headers={"WWW-Authenticate": "Bearer"})
         except jwt.exceptions.ExpiredSignatureError:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.EXPIRED_SIGNATURE)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.EXPIRED_SIGNATURE, headers={"WWW-Authenticate": "Bearer"})
         except jwt.exceptions.InvalidTokenError:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.INVALID_TOKEN)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.INVALID_TOKEN, headers={"WWW-Authenticate": "Bearer"})
         except Exception as e:
             logger.debug(e)
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.AUTH_UNABLE_TO_VALIDATE_TOKEN)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=strings.AUTH_UNABLE_TO_VALIDATE_TOKEN, headers={"WWW-Authenticate": "Bearer"})
 
         # Reject delegated (user) tokens - only accept app-only tokens for service auth.
         if decoded_token.get('scp'):

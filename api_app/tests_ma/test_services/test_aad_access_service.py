@@ -1,6 +1,7 @@
 import pytest
 from mock import call, patch
 
+import jwt
 from fastapi import HTTPException, status
 
 from models.domain.authentication import User, RoleAssignment
@@ -886,3 +887,13 @@ def test_validate_service_identity_denies_when_no_client_id_configured():
     with pytest.raises(HTTPException) as ex:
         access_service._validate_service_identity("token")
     assert ex.value.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_validate_service_identity_401_carries_www_authenticate_challenge():
+    access_service = AzureADAuthorization(require_client_id="cost-processor-client-id")
+    with patch("services.aad_authentication.AzureADAuthorization._decode_token",
+               side_effect=jwt.exceptions.InvalidTokenError):
+        with pytest.raises(HTTPException) as ex:
+            access_service._validate_service_identity("token")
+    assert ex.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert ex.value.headers.get("WWW-Authenticate") == "Bearer"
