@@ -132,6 +132,10 @@ class WorkspaceRepository(ResourceRepository):
         # Falls back to the core TRE region when not supplied.
         requested_azure_location = workspace_input.properties.get("azure_location")
 
+        # When an allow-list of locations is configured, reject any location outside it.
+        if requested_azure_location and config.LOCATION_OPTIONS and requested_azure_location not in config.LOCATION_OPTIONS:
+            raise InvalidInput(f"The requested 'azure_location' ({requested_azure_location}) is not in the list of allowed locations: {config.LOCATION_OPTIONS}.")
+
         # we don't want something in the input to overwrite the system parameters,
         # so dict.update can't work. Priorities from right to left.
         resource_spec_parameters = {**workspace_input.properties,

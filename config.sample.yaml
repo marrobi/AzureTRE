@@ -3,6 +3,12 @@
 # run `make auth` to setup the Auth.
 tre_id: __CHANGE_ME__
 location: __CHANGE_ME__
+# Optional. Restrict the Azure regions that workspaces can be deployed to.
+# When set, the UI shows a dropdown and the API rejects any other region.
+# When omitted, any region is allowed and workspaces default to the core TRE region above.
+# location_options:
+#   - __CHANGE_ME__
+#   - __CHANGE_ME__
 management:
   mgmt_resource_group_name: __CHANGE_ME__
   mgmt_storage_account_name: __CHANGE_ME__
