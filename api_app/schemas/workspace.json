@@ -31,6 +31,7 @@
       "type": "string",
       "title": "Azure location (region)",
       "description": "Azure region to deploy the workspace and its services to. Leave blank to use the same region as the core TRE.",
+      "pattern": "^[a-z0-9]*$",
       "updateable": false
     }
   }
