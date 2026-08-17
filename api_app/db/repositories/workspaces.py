@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import asyncio
 from azure.mgmt.storage.aio import StorageManagementClient
 
@@ -199,7 +199,7 @@ class WorkspaceRepository(ResourceRepository):
         workspace_template = await resource_template_repo.get_template_by_name_and_version(workspace.templateName, workspace.templateVersion, ResourceType.Workspace)
         return await self.patch_resource(workspace, workspace_patch, workspace_template, etag, resource_template_repo, resource_history_repo, user, strings.RESOURCE_ACTION_UPDATE, force_version_update)
 
-    def get_workspace_spec_params(self, full_workspace_id: str, azure_location: str = None):
+    def get_workspace_spec_params(self, full_workspace_id: str, azure_location: Optional[str] = None):
         params = self.get_resource_base_spec_params()
         params.update({
             # Allow the workspace to be deployed to a different Azure region than the
