@@ -137,43 +137,63 @@ def test_aggregate_export_rows_emits_one_row_per_tag_and_sums_duplicates():
         "Date,ResourceGroup,Tags,CostInBillingCurrency,BillingCurrency\n"
         '2026-06-01,rg-ws1,"""tre_id"": ""mytre"",""tre_workspace_id"": ""ws1""",10,GBP\n'
         '2026-06-01,rg-ws1,"""tre_id"": ""mytre"",""tre_workspace_id"": ""ws1""",5,GBP\n'
-        "2026-06-02,rg-core,,2.5,GBP\n"
+        '2026-06-02,rg-core,"""tre_id"": ""mytre""",2.5,GBP\n'
     )
 
-    rows = exports_client.aggregate_export_rows(csv_text)
+    rows = exports_client.aggregate_export_rows(csv_text, "mytre")
 
     by_key = {(r["date"], r["resource_group"], r["tag"]): r for r in rows}
     # the two rows for the same day/tag are summed rather than duplicated
     assert by_key[(20260601, "rg-ws1", '"tre_id":"mytre"')]["cost"] == 15
     assert by_key[(20260601, "rg-ws1", '"tre_workspace_id":"ws1"')]["cost"] == 15
-    # an untagged resource keeps an empty tag so the API can attribute it from its resource group
-    assert by_key[(20260602, "rg-core", "")]["cost"] == 2.5
+    assert by_key[(20260602, "rg-core", '"tre_id":"mytre"')]["cost"] == 2.5
     assert all(row["currency"] == "GBP" for row in rows)
+
+
+def test_aggregate_export_rows_excludes_other_tres_and_untagged_resources():
+    # The export covers the whole subscription; only this TRE's tre_id-tagged resources count.
+    csv_text = (
+        "Date,ResourceGroup,Tags,CostInBillingCurrency,BillingCurrency\n"
+        '2026-06-01,rg-ws1,"""tre_id"": ""mytre"",""tre_workspace_id"": ""ws1""",10,GBP\n'
+        '2026-06-01,rg-other,"""tre_id"": ""othertre"",""tre_workspace_id"": ""wsX""",99,GBP\n'
+        "2026-06-01,rg-managed,,42,GBP\n"
+    )
+
+    rows = exports_client.aggregate_export_rows(csv_text, "mytre")
+
+    tags = {r["tag"] for r in rows}
+    # other TRE's workspace tag and the untagged managed RG must not leak in
+    assert '"tre_workspace_id":"wsX"' not in tags
+    assert '"tre_id":"othertre"' not in tags
+    assert all(r["cost"] != 42 and r["cost"] != 99 for r in rows)
+    assert {'"tre_id":"mytre"', '"tre_workspace_id":"ws1"'} == tags
 
 
 def test_aggregate_export_rows_skips_rows_without_a_usable_date_or_cost():
     csv_text = (
         "Date,ResourceGroup,Tags,CostInBillingCurrency,BillingCurrency\n"
-        ",rg-core,,10,GBP\n"
-        "not-a-date,rg-core,,10,GBP\n"
-        "2026-06-01,rg-core,,not-a-number,GBP\n"
-        "2026-06-01,rg-core,,1,GBP\n"
+        ',rg-core,"""tre_id"": ""mytre""",10,GBP\n'
+        'not-a-date,rg-core,"""tre_id"": ""mytre""",10,GBP\n'
+        '2026-06-01,rg-core,"""tre_id"": ""mytre""",not-a-number,GBP\n'
+        '2026-06-01,rg-core,"""tre_id"": ""mytre""",1,GBP\n'
     )
 
-    rows = exports_client.aggregate_export_rows(csv_text)
+    rows = exports_client.aggregate_export_rows(csv_text, "mytre")
 
-    assert rows == [{"date": 20260601, "resource_group": "rg-core", "tag": "", "currency": "GBP", "cost": 1.0}]
+    assert rows == [{"date": 20260601, "resource_group": "rg-core",
+                     "tag": '"tre_id":"mytre"', "currency": "GBP", "cost": 1.0}]
 
 
 def test_aggregate_export_rows_handles_alternative_column_names():
     csv_text = (
         "UsageDate,ResourceGroupName,tags,PreTaxCost,Currency\n"
-        "20260601,rg-core,,3,USD\n"
+        '20260601,rg-core,"""tre_id"": ""mytre""",3,USD\n'
     )
 
-    rows = exports_client.aggregate_export_rows(csv_text)
+    rows = exports_client.aggregate_export_rows(csv_text, "mytre")
 
-    assert rows == [{"date": 20260601, "resource_group": "rg-core", "tag": "", "currency": "USD", "cost": 3.0}]
+    assert rows == [{"date": 20260601, "resource_group": "rg-core",
+                     "tag": '"tre_id":"mytre"', "currency": "USD", "cost": 3.0}]
 
 
 @patch.dict("os.environ", EXPORT_ENV)
@@ -443,7 +463,7 @@ def test_export_month_creates_runs_downloads_and_ingests(wait_mock, ingest_mock,
     manifest = json.dumps({"blobs": [{"blobName": prefix + "/run/000001.csv"}]})
     csv_by_blob = {prefix + "/run/000001.csv": (
         "Date,ResourceGroup,Tags,CostInBillingCurrency,BillingCurrency\n"
-        "2026-06-01,rg-core,,7,GBP\n")}
+        '2026-06-01,rg-core,"""tre_id"": ""mytre""",7,GBP\n')}
     container_client = _container_client_with_export(
         # written by the run this test performs, so it is newer than the run's submission time
         [_manifest_blob(prefix + "/run/_manifest.json", datetime.now(timezone.utc) + timedelta(minutes=5))],
@@ -459,7 +479,7 @@ def test_export_month_creates_runs_downloads_and_ingests(wait_mock, ingest_mock,
     assert export_name == "tre-mytre-costs-202606"
     client.exports.execute.assert_called_once_with("/subscriptions/sub-id", "tre-mytre-costs-202606")
     assert ingest_mock.call_args[0][2] == [
-        {"date": 20260601, "resource_group": "rg-core", "tag": "", "currency": "GBP", "cost": 7.0}]
+        {"date": 20260601, "resource_group": "rg-core", "tag": '"tre_id":"mytre"', "currency": "GBP", "cost": 7.0}]
     assert result["rows"] == 1
 
 

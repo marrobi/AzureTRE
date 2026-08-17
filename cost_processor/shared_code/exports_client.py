@@ -332,15 +332,20 @@ def parse_tags(raw: Optional[str]) -> List[str]:
     return tags
 
 
-def aggregate_export_rows(csv_lines: Iterable[str]) -> List[dict]:
+def aggregate_export_rows(csv_lines: Iterable[str], tre_id: str) -> List[dict]:
     """Aggregate an export CSV into the rows the API ingest endpoint expects.
 
     Takes an iterable of CSV lines (streamed straight from blob storage) so a large month is
     never held in memory. One row is emitted per (date, resource group, tag, currency); a
     resource carrying several TRE tags contributes a row per tag, exactly as the Query API's
-    "group by Tag" does, and an untagged resource contributes a single row with an empty tag
-    which the API attributes from its resource group.
+    "group by Tag" does.
+
+    The export covers a whole subscription, which may host several TREs, so only resources
+    tagged with *this* TRE's ``tre_id`` are aggregated. A resource that does not carry this
+    ``tre_id`` belongs to another TRE (or to nothing we can attribute), so it is skipped
+    rather than counted against this TRE.
     """
+    tre_id_tag = '"tre_id":"{}"'.format(tre_id)
     aggregated: Dict[Tuple[int, str, str, str], float] = {}
     # a bare string would be iterated character by character and silently yield nothing
     if isinstance(csv_lines, str):
@@ -356,7 +361,9 @@ def aggregate_export_rows(csv_lines: Iterable[str]) -> List[dict]:
             continue
         resource_group = _first_column(row, _RESOURCE_GROUP_COLUMNS) or ""
         currency = _first_column(row, _CURRENCY_COLUMNS) or ""
-        tags = parse_tags(_first_column(row, _TAG_COLUMNS)) or [""]
+        tags = parse_tags(_first_column(row, _TAG_COLUMNS))
+        if tre_id_tag not in tags:
+            continue
         for tag in tags:
             key = (usage_date, resource_group, tag, currency)
             aggregated[key] = aggregated.get(key, 0.0) + cost
@@ -487,7 +494,7 @@ def export_subscription_month(subscription_id: str, period_start: date, period_e
         rows: List[dict] = []
     else:
         csv_lines = download_export_csv(blob_service_client, root_folder_path, export_name, submitted_at)
-        rows = aggregate_export_rows(csv_lines)
+        rows = aggregate_export_rows(csv_lines, os.environ["TRE_ID"])
 
     result = ingest_rows(period_start, period_end, rows, subscription_id)
     logging.info("Ingested %s aggregated row(s) for %s..%s in %s: %s",

@@ -811,6 +811,9 @@ class CostService:
         # The TRE-wide (tre_id) period owns every TRE-tagged resource, so keep child-tag rows
         # (e.g. tre_workspace_id) even when the resource's group has since been deleted and is no
         # longer in the tre_id resource-group list; otherwise a deleted workspace's costs are lost.
+        # The Cost Processor only ingests rows for resources tagged with this tre_id, so these
+        # child-tag rows all belong to this TRE (a shared subscription's other TREs are excluded
+        # at aggregation time, not here where a row no longer carries its owning tre_id).
         tre_wide = tag_name == self.TRE_ID_TAG
         columns = [QueryColumn(name=name, type=column_type) for name, column_type in
                    self.__export_result_columns(granularity)]
