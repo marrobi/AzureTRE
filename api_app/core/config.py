@@ -1,4 +1,5 @@
 from typing import List
+import json
 import warnings
 from starlette.config import Config
 from _version import __version__
@@ -18,6 +19,10 @@ API_DESCRIPTION = "Welcome to the Azure TRE API - for more information about tem
 
 # Resource Info
 RESOURCE_LOCATION: str = config("RESOURCE_LOCATION", default="")
+# Optional allow-list of Azure regions that workspaces may be deployed to.
+# Passed from config.yaml through terraform as a JSON-encoded list. When empty,
+# any location is accepted and workspaces default to the core TRE region.
+LOCATION_OPTIONS: List[str] = config("LOCATION_OPTIONS", cast=lambda v: json.loads(v) if v else [], default="[]")
 TRE_ID: str = config("TRE_ID", default="")
 CORE_ADDRESS_SPACE: str = config("CORE_ADDRESS_SPACE", default="")
 TRE_ADDRESS_SPACE: str = config("TRE_ADDRESS_SPACE", default="")

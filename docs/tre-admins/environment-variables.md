@@ -8,6 +8,7 @@
 | <div style="width: 330px">Environment variable name</div> | Description |
 | ------------------------- | ----------- |
 | `LOCATION` | The Azure location (region) for all resources. |
+| `LOCATION_OPTIONS` | *Optional.* A list of Azure regions that workspaces may be deployed to. When set, the API and UI restrict the workspace `Azure location (region)` choice to these values; when omitted, any region is allowed and workspaces default to the core TRE region. |
 | `MGMT_RESOURCE_GROUP_NAME` | The shared resource group for all management resources, including the storage account. |
 | `MGMT_STORAGE_ACCOUNT_NAME` | The name of the storage account to hold the Terraform state and other deployment artifacts. |
 | `TERRAFORM_STATE_CONTAINER_NAME` | The name of the blob container to hold the Terraform state *Default value is `tfstate`.* |

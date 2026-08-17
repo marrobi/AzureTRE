@@ -6,9 +6,17 @@
   "type": "object",
   "properties": {
     "location": {
-      "description": "The Azure location (region) for all resources.",
+      "description": "The Azure location (region) short name for all resources, e.g. 'westeurope'. Must be a lowercase Azure region short name (letters and digits only, no spaces or capitals).",
       "type": "string",
-      "pattern": "[a-z]+"
+      "pattern": "^[a-z0-9]+$"
+    },
+    "location_options": {
+      "description": "Optional list of Azure region short names that workspaces may be deployed to (e.g. ['westeurope', 'northeurope']). When set, the API and UI restrict the workspace 'Azure location (region)' choice to these values. When empty or omitted, any location is accepted and workspaces default to the core TRE region.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+$"
+      }
     },
     "tre_id": {
       "description": "TRE unique identifier",

@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import asyncio
 from azure.mgmt.storage.aio import StorageManagementClient
 
@@ -128,6 +128,14 @@ class WorkspaceRepository(ResourceRepository):
         auto_app_registration_param = {"register_aad_application": self.automatically_create_application_registration(workspace_input.properties)}
         workspace_owner_param = {"workspace_owner_object_id": self.get_workspace_owner(workspace_input.properties, workspace_owner_object_id)}
 
+        # Allow the requester to choose the Azure region to deploy the workspace to.
+        # Falls back to the core TRE region when not supplied.
+        requested_azure_location = workspace_input.properties.get("azure_location")
+
+        # When an allow-list of locations is configured, reject any location outside it.
+        if requested_azure_location and config.LOCATION_OPTIONS and requested_azure_location not in config.LOCATION_OPTIONS:
+            raise InvalidInput(f"The requested 'azure_location' ({requested_azure_location}) is not in the list of allowed locations: {config.LOCATION_OPTIONS}.")
+
         # we don't want something in the input to overwrite the system parameters,
         # so dict.update can't work. Priorities from right to left.
         resource_spec_parameters = {**workspace_input.properties,
@@ -136,7 +144,7 @@ class WorkspaceRepository(ResourceRepository):
                                     **auto_app_registration_param,
                                     **workspace_owner_param,
                                     **auth_info,
-                                    **self.get_workspace_spec_params(full_workspace_id)}
+                                    **self.get_workspace_spec_params(full_workspace_id, requested_azure_location)}
 
         workspace = Workspace(
             id=full_workspace_id,
@@ -195,10 +203,12 @@ class WorkspaceRepository(ResourceRepository):
         workspace_template = await resource_template_repo.get_template_by_name_and_version(workspace.templateName, workspace.templateVersion, ResourceType.Workspace)
         return await self.patch_resource(workspace, workspace_patch, workspace_template, etag, resource_template_repo, resource_history_repo, user, strings.RESOURCE_ACTION_UPDATE, force_version_update)
 
-    def get_workspace_spec_params(self, full_workspace_id: str):
+    def get_workspace_spec_params(self, full_workspace_id: str, azure_location: Optional[str] = None):
         params = self.get_resource_base_spec_params()
         params.update({
-            "azure_location": config.RESOURCE_LOCATION,
+            # Allow the workspace to be deployed to a different Azure region than the
+            # core TRE. Default to the core TRE region when a location isn't supplied.
+            "azure_location": azure_location if azure_location else config.RESOURCE_LOCATION,
             "workspace_id": full_workspace_id[-4:],  # TODO: remove with #729
         })
         return params

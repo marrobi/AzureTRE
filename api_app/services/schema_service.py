@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from typing import List, Dict, Tuple
 
+from core import config
+
 
 def get_system_properties(id_field: str = "workspace_id"):
     return {
@@ -79,7 +81,25 @@ def enrich_workspace_template(template, is_update: bool = False) -> dict:
     """
     workspace_default_properties = read_schema('workspace.json')
     azure_ad_properties = read_schema('azuread.json')
+    _apply_location_options(workspace_default_properties[1])
     return enrich_template(template, [workspace_default_properties, azure_ad_properties], is_update=is_update)
+
+
+def _apply_location_options(properties: Dict) -> None:
+    """When the deployment is configured with an allow-list of locations, restrict the
+    workspace 'azure_location' property to those values so the UI renders a dropdown and
+    the schema validates the choice. Mutates the provided properties dict in place."""
+    location_options = config.LOCATION_OPTIONS
+    if not location_options or "azure_location" not in properties:
+        return
+
+    azure_location = properties["azure_location"]
+    azure_location["enum"] = location_options
+    # A fixed enum makes the free-form pattern redundant and can conflict with the UI dropdown.
+    azure_location.pop("pattern", None)
+    # Default to the core TRE region when it's one of the allowed options.
+    if config.RESOURCE_LOCATION in location_options:
+        azure_location["default"] = config.RESOURCE_LOCATION
 
 
 def enrich_workspace_service_template(template, is_update: bool = False) -> dict:

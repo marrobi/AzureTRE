@@ -21,6 +21,42 @@ def test_enrich_workspace_template_enriches_with_workspace_defaults_and_aad(enri
     enrich_template_mock.assert_called_once_with(workspace_template, [default_props, aad_props], is_update=False)
 
 
+@patch('services.schema_service.config')
+@patch('services.schema_service.read_schema')
+@patch('services.schema_service.enrich_template')
+def test_enrich_workspace_template_injects_location_enum_when_configured(enrich_template_mock, read_schema_mock, config_mock, basic_resource_template):
+    config_mock.LOCATION_OPTIONS = ["westeurope", "northeurope"]
+    config_mock.RESOURCE_LOCATION = "westeurope"
+    default_props = (['description'], {'azure_location': {'type': 'string', 'pattern': '^[a-z0-9]*$'}})
+    aad_props = (['client_id'], {'client_id': {'type': 'string'}})
+    read_schema_mock.side_effect = [default_props, aad_props]
+
+    services.schema_service.enrich_workspace_template(basic_resource_template)
+
+    azure_location = default_props[1]['azure_location']
+    assert azure_location['enum'] == ["westeurope", "northeurope"]
+    assert azure_location['default'] == "westeurope"
+    # the free-form pattern is removed in favour of the enum
+    assert 'pattern' not in azure_location
+
+
+@patch('services.schema_service.config')
+@patch('services.schema_service.read_schema')
+@patch('services.schema_service.enrich_template')
+def test_enrich_workspace_template_leaves_location_unchanged_when_no_options(enrich_template_mock, read_schema_mock, config_mock, basic_resource_template):
+    config_mock.LOCATION_OPTIONS = []
+    config_mock.RESOURCE_LOCATION = "westeurope"
+    default_props = (['description'], {'azure_location': {'type': 'string', 'pattern': '^[a-z0-9]*$'}})
+    aad_props = (['client_id'], {'client_id': {'type': 'string'}})
+    read_schema_mock.side_effect = [default_props, aad_props]
+
+    services.schema_service.enrich_workspace_template(basic_resource_template)
+
+    azure_location = default_props[1]['azure_location']
+    assert 'enum' not in azure_location
+    assert azure_location['pattern'] == '^[a-z0-9]*$'
+
+
 @patch('services.schema_service.read_schema')
 @patch('services.schema_service.enrich_template')
 def test_enrich_workspace_service_template_enriches_with_workspace_service_defaults(enrich_template_mock, read_schema_mock, basic_resource_template):

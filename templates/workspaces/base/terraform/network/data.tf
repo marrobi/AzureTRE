@@ -1,11 +1,3 @@
-data "azurerm_client_config" "core" {
-  provider = azurerm.core
-}
-
-data "azurerm_client_config" "workspace" {
-  provider = azurerm
-}
-
 data "azurerm_resource_group" "core" {
   provider = azurerm.core
   name     = local.core_resource_group_name
@@ -55,12 +47,6 @@ data "azurerm_subnet" "airlockprocessor" {
 data "azurerm_firewall" "firewall" {
   provider            = azurerm.core
   name                = "fw-${var.tre_id}"
-  resource_group_name = local.core_resource_group_name
-}
-
-data "azurerm_route_table" "rt" {
-  provider            = azurerm.core
-  name                = "rt-${var.tre_id}"
   resource_group_name = local.core_resource_group_name
 }
 

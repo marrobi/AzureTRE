@@ -267,6 +267,12 @@ variable "allowed_dns" {
   default     = []
 }
 
+variable "location_options" {
+  type        = list(string)
+  description = "Optional list of Azure regions that workspaces may be deployed to. When empty, any region is allowed and workspaces default to the core TRE region."
+  default     = []
+}
+
 variable "auto_grant_workspace_consent" {
   type        = bool
   description = "A boolean indicating if admin consent should be auto granted to the workspace"
