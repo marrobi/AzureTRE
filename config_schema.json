@@ -6,9 +6,9 @@
   "type": "object",
   "properties": {
     "location": {
-      "description": "The Azure location (region) for all resources.",
+      "description": "The Azure location (region) short name for all resources, e.g. 'westeurope'. Must be a lowercase Azure region short name (letters and digits only, no spaces or capitals). The value is also validated against the regions available in the target subscription/cloud during deployment.",
       "type": "string",
-      "pattern": "[a-z]+"
+      "pattern": "^[a-z0-9]+$"
     },
     "tre_id": {
       "description": "TRE unique identifier",

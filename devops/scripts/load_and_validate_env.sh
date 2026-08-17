@@ -78,6 +78,20 @@ else
     AZURE_ENVIRONMENT=$(az cloud show --query name --output tsv)
     export AZURE_ENVIRONMENT
 
+    # Validate the configured location is a real Azure region for the current subscription/cloud.
+    # This catches typos (e.g. "westeruope") up front with a clear message, instead of failing
+    # deep inside terraform apply. Uses the live region list so it also works for sovereign clouds.
+    if [ -n "${LOCATION:-}" ]; then
+      VALID_LOCATIONS="$(az account list-locations --query "[].name" --output tsv 2>/dev/null || true)"
+      # Only enforce when we could retrieve the region list (e.g. skip when not logged in / offline).
+      if [ -n "${VALID_LOCATIONS}" ] && ! echo "${VALID_LOCATIONS}" | grep -qx "${LOCATION}"; then
+        echo -e "\e[31m»»» ⚠️ The configured location '${LOCATION}' is not a valid Azure region for the current subscription/cloud.\e[0m"
+        echo -e "\e[31m»»» Please set a valid region in config.yaml. Available regions are:\e[0m"
+        echo "${VALID_LOCATIONS}" | sort | paste -sd' ' -
+        exit 1
+      fi
+    fi
+
     # The ARM Environment is required by terraform to indicate the destination cloud.
     ARM_ENVIRONMENT=$(convert_azure_env_to_arm_env "${AZURE_ENVIRONMENT}")
     export ARM_ENVIRONMENT
