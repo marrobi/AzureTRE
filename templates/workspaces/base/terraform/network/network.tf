@@ -88,11 +88,10 @@ moved {
   to   = azurerm_virtual_network_peering.core_ws_peer
 }
 
-# If the workspace is deployed to a different subscription to the core,
-# it cannot reuse the route table defined in the core, so we need to
-# create a new one.
+# Each workspace gets its own route table. A route table is a regional resource,
+# so it must live in the workspace region (which may differ from the core), and a
+# local table keeps the workspace self-contained across regions and subscriptions.
 resource "azurerm_route_table" "rt" {
-  count                         = local.is_separate_subscription ? 1 : 0
   name                          = local.route_table_name
   location                      = var.location
   resource_group_name           = var.ws_resource_group_name
