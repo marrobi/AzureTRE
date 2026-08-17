@@ -26,6 +26,12 @@
       "title": "Workspace Overview",
       "description": "Long form description of the workspace, in markdown syntax.",
       "updateable": true
+    },
+    "azure_location": {
+      "type": "string",
+      "title": "Azure location (region)",
+      "description": "Azure region to deploy the workspace and its services to. Leave blank to use the same region as the core TRE.",
+      "updateable": false
     }
   }
 }

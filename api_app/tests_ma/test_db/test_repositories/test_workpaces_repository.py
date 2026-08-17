@@ -146,6 +146,50 @@ async def test_create_workspace_item_creates_a_workspace_with_the_right_values(m
     assert workspace.properties["address_space"] == "1.2.3.4/24"
     assert workspace.properties["address_spaces"] == ["1.2.3.4/24"]
     assert workspace.properties["workspace_owner_object_id"] == "test_object_id"
+    # when no location is requested, the core TRE region is used
+    assert workspace.properties["azure_location"] == "useast2"
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.generate_new_cidr')
+@patch('db.repositories.workspaces.WorkspaceRepository.validate_input_against_template')
+@patch('db.repositories.workspaces.WorkspaceRepository.is_workspace_storage_account_available')
+@patch('core.config.RESOURCE_LOCATION', "useast2")
+@patch('core.config.TRE_ID', "9876")
+async def test_create_workspace_item_uses_requested_azure_location(mock_is_workspace_storage_account_available, validate_input_mock, new_cidr_mock, workspace_repo, basic_workspace_request, basic_resource_template):
+    workspace_to_create = basic_workspace_request
+    workspace_to_create.properties["azure_location"] = "westeurope"
+
+    mock_is_workspace_storage_account_available.return_value = AsyncMock().return_value
+    mock_is_workspace_storage_account_available.return_value.return_value = False
+    validate_input_mock.return_value = basic_resource_template
+    new_cidr_mock.return_value = "1.2.3.4/24"
+
+    workspace, _ = await workspace_repo.create_workspace_item(workspace_to_create, {}, "test_object_id", ["test_role"])
+
+    # a requested location overrides the core TRE region
+    assert workspace.properties["azure_location"] == "westeurope"
+
+
+@pytest.mark.asyncio
+@patch('db.repositories.workspaces.generate_new_cidr')
+@patch('db.repositories.workspaces.WorkspaceRepository.validate_input_against_template')
+@patch('db.repositories.workspaces.WorkspaceRepository.is_workspace_storage_account_available')
+@patch('core.config.RESOURCE_LOCATION', "useast2")
+@patch('core.config.TRE_ID', "9876")
+async def test_create_workspace_item_defaults_to_core_location_when_blank(mock_is_workspace_storage_account_available, validate_input_mock, new_cidr_mock, workspace_repo, basic_workspace_request, basic_resource_template):
+    workspace_to_create = basic_workspace_request
+    workspace_to_create.properties["azure_location"] = ""
+
+    mock_is_workspace_storage_account_available.return_value = AsyncMock().return_value
+    mock_is_workspace_storage_account_available.return_value.return_value = False
+    validate_input_mock.return_value = basic_resource_template
+    new_cidr_mock.return_value = "1.2.3.4/24"
+
+    workspace, _ = await workspace_repo.create_workspace_item(workspace_to_create, {}, "test_object_id", ["test_role"])
+
+    # a blank location falls back to the core TRE region
+    assert workspace.properties["azure_location"] == "useast2"
 
 
 @pytest.mark.asyncio
