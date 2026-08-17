@@ -32,6 +32,14 @@ class TestPropertiesExtraction():
         req_prop = extract_properties(message)
         assert req_prop.review_workspace_id is None
 
+    def test_extract_prop_defaults_missing_previous_status_to_none(self):
+        message_body = "{ \"data\": { \"request_id\":\"123\",\"new_status\":\"draft\", \"type\":\"export\", \"workspace_id\":\"ws1\"  }}"
+        message = _mock_service_bus_message(body=message_body)
+
+        req_prop = extract_properties(message)
+
+        assert req_prop.previous_status is None
+
     def test_extract_prop_missing_arg_throws(self):
         message_body = "{ \"data\": { \"status\":\"456\" , \"type\":\"789\", \"workspace_id\":\"ws1\"  }}"
         message = _mock_service_bus_message(body=message_body)
@@ -173,6 +181,23 @@ class TestImportApproval():
         main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
         mock_create_container.assert_called_once()
         mock_copy_data.assert_called_once()
+
+
+class TestMainFailurePaths():
+    def test_main_raises_json_decode_error_when_invalid_json(self):
+        message = _mock_service_bus_message(body="invalid json")
+        with pytest.raises(JSONDecodeError):
+            main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+
+    def test_main_raises_key_error_when_missing_data_field(self):
+        message = _mock_service_bus_message(body="{}")
+        with pytest.raises(KeyError):
+            main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
+
+    def test_main_raises_validation_error_when_missing_properties(self):
+        message = _mock_service_bus_message(body="{ \"data\": {} }")
+        with pytest.raises(ValidationError):
+            main(msg=message, stepResultEvent=MagicMock(), dataDeletionEvent=MagicMock())
 
 
 def _mock_service_bus_message(body: str):
