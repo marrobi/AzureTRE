@@ -174,6 +174,12 @@ variable "enable_airlock_malware_scanning" {
   description = "If False, Airlock requests will skip the malware scanning stage"
 }
 
+variable "enable_legacy_airlock" {
+  type        = bool
+  default     = true
+  description = "Deploy v1 legacy per-stage airlock storage accounts in core. Required for workspaces using airlock_version=1."
+}
+
 variable "enable_airlock_email_check" {
   type        = bool
   default     = false
@@ -276,6 +282,12 @@ variable "auto_grant_workspace_consent" {
 variable "user_management_enabled" {
   type        = bool
   description = "Is the Entra ID user management feature enabled (requires a workspace with Entra ID groups enabled, default to false)?"
+  default     = false
+}
+
+variable "direct_user_management_enabled" {
+  type        = bool
+  description = "When true the API assigns workspace roles via direct app-role assignment instead of Entra ID groups (grants the API app AppRoleAssignment.ReadWrite.All). Not recommended - some workspace services rely on Entra ID groups."
   default     = false
 }
 

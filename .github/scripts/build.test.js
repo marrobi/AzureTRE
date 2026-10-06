@@ -167,7 +167,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
-            bodyMatcher: /Running tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `291ae84f`\)/,
+            bodyMatcher: /Running tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
       });
@@ -347,7 +347,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.FORK_NON_DOCS_CHANGES,
-            bodyMatcher: /Running tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `607c7437`\)/,
+            bodyMatcher: /Running tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
       })
@@ -390,7 +390,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.FORK_NON_DOCS_CHANGES,
-            bodyMatcher: /Running tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `607c7437`\)/,
+            bodyMatcher: /Running tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
       })
@@ -426,7 +426,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
-            bodyMatcher: /Running extended tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `291ae84f`\)/,
+            bodyMatcher: /Running extended tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
       });
@@ -452,7 +452,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
-            bodyMatcher: /Running extended AAD tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `291ae84f`\)/,
+            bodyMatcher: /Running extended AAD tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
 
@@ -468,6 +468,32 @@ describe('getCommandFromComment', () => {
             repo: 'someRepo',
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
             bodyMatcher: /`skip_deployment` is only supported for `\/test` and `\/test-extended`\. Please re-run `\/test-extended-aad` without `skip_deployment`\./,
+          });
+        });
+      });
+
+      describe(`for '/test-manual-app'`, () => {
+        test(`should set command to 'run-tests-manual-app'`, async () => {
+          const context = createCommentContext({
+            username: 'admin',
+            body: '/test-manual-app',
+          });
+          await getCommandFromComment({ core, context, github });
+          expect(outputFor(mockCoreSetOutput, 'command')).toBe('run-tests-manual-app');
+        });
+
+        test(`should add comment with run link`, async () => {
+          const context = createCommentContext({
+            username: 'admin',
+            body: '/test-manual-app',
+            pullRequestNumber: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
+          });
+          await getCommandFromComment({ core, context, github });
+          expect(mockGithubRestIssuesCreateComment).toHaveComment({
+            owner: 'someOwner',
+            repo: 'someRepo',
+            issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
+            bodyMatcher: /Running manual app tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
       });
@@ -493,7 +519,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
-            bodyMatcher: /Running shared service tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `291ae84f`\)/,
+            bodyMatcher: /Running shared service tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
 
@@ -510,6 +536,17 @@ describe('getCommandFromComment', () => {
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
             bodyMatcher: /`skip_deployment` is only supported for `\/test` and `\/test-extended`\. Please re-run `\/test-shared-services` without `skip_deployment`\./,
           });
+        });
+      });
+
+      describe(`for '/test-airlock'`, () => {
+        test(`should set command to 'run-tests-airlock'`, async () => {
+          const context = createCommentContext({
+            username: 'admin',
+            body: '/test-airlock',
+          });
+          await getCommandFromComment({ core, context, github });
+          expect(outputFor(mockCoreSetOutput, 'command')).toBe('run-tests-airlock');
         });
       });
 
@@ -534,7 +571,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
-            bodyMatcher: /Running backup tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `291ae84f`\)/,
+            bodyMatcher: /Running backup tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
 
@@ -665,7 +702,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.FORK_NON_DOCS_CHANGES,
-            bodyMatcher: /Running extended tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222 \(with refid `607c7437`\)/,
+            bodyMatcher: /Running extended tests: https:\/\/github.com\/someOwner\/someRepo\/actions\/runs\/11112222/,
           });
         });
       })
@@ -741,7 +778,7 @@ describe('getCommandFromComment', () => {
             owner: 'someOwner',
             repo: 'someRepo',
             issue_number: PR_NUMBER.UPSTREAM_NON_DOCS_CHANGES,
-            bodyMatcher: /Hello!\n\nYou can use the following commands:/,
+            bodyMatcher: /Hello!\n\nYou can use the following commands:[\s\S]*\/test-airlock/,
           });
         });
       });
@@ -827,6 +864,7 @@ goes here`,
         });
         await getCommandFromComment({ core, context, github });
         expect(outputFor(mockCoreSetOutput, 'branchRefId')).toBe(null);
+        expect(outputFor(mockCoreSetOutput, 'branchCiGitRef')).toBe(null);
       });
 
       test('should set branchRefId for PR from upstream repo', async () => {
@@ -838,6 +876,7 @@ goes here`,
         });
         await getCommandFromComment({ core, context, github });
         expect(outputFor(mockCoreSetOutput, 'branchRefId')).toBe('6b751c8f');
+        expect(outputFor(mockCoreSetOutput, 'branchCiGitRef')).toBe('refs/heads/pr-head-ref');
       });
 
       test('should set prHeadSha output', async () => {

@@ -4,6 +4,38 @@ To deploy the Azure TRE using GitHub workflows, create a fork of the repository.
 
 Deployment is done using the `/.github/workflows/deploy_tre.yml` workflow. This method is also used to deploy the dev/test environment for the original Azure TRE repository.
 
+## Isolated CI environments
+
+PR comment tests and branch validation derive their environment names from the Git reference, Azure cloud and deployment location.
+Repeated runs in the same cloud and location reuse the environment. Changing the location creates a separate environment, including its management account and Key Vault names.
+This prevents a retained, purge-protected vault in the previous location from blocking deployment in the new location.
+Terraform continues to recover soft-deleted vaults in the same location through its existing provider configuration.
+
+The first run after adopting these names must include deployment. Use `/test COMMIT_SHA` without `skip_deployment`.
+PR comment workflow changes take effect after merge. Before merge, use the branch validation workflow from a trusted upstream branch to test the changed workflow.
+
+`/test-destroy-env` finds all core and management groups tagged with the PR's Git reference, including previous naming schemes and locations in the selected subscription.
+For an upstream PR, it also cleans the tagged branch environments. Cleanup refuses conflicting ownership tags and shares deployment concurrency.
+Scheduled cleanup continues to use the `ci_git_ref` tags. Retained vaults remain subject to their existing soft-delete and purge protection policies.
+
+## Dockerfile build checks
+
+The `Dockerfile Build Check` workflow builds Dockerfiles and Porter bundle images each Monday at 06:00 UTC. It can also run manually. Scheduled runs use the default branch, where the workflow must first be merged.
+
+Pull requests to `main` or `feature/**` select targets when their Dockerfile, Porter manifest or named build context changes. Changes to the shared Porter versions, installer or build helper select all bundles. Changes to the check's workflow or scripts select all targets.
+
+Changes within a named context source select its own bundle and every consuming bundle. These sources include the base workspace, Guacamole Windows VM and import review VM directories. Runs use the PR number for cancellation, so identical branch names in different forks remain independent.
+
+Discovery fails if a tracked Porter bundle under `templates/` has only one of `porter.yaml` and `Dockerfile.tmpl`. Removing both files removes the bundle from the build matrix.
+
+These checks run without Azure deployment credentials and do not publish images. Each target starts on a fresh GitHub-hosted runner without an imported build cache.
+
+If a target fails, the job waits ten seconds and retries it once. The retry includes Porter installation and the build, with a new Porter directory to avoid an incomplete installation. Both attempts remain in the job log. A successful retry passes the build check.
+
+The report lists every selected target. It fails if both build attempts fail, a job is cancelled, or a result is missing or invalid. Result artifacts are retained for seven days and replaced when a job runs again.
+
+If a build fails, open its job log to identify the failed command. Package or base-image failures can occur without repository changes. The existing deployment validation remains necessary to test deployed services.
+
 ## Setup instructions
 
 Before you can run the `deploy_tre.yml` workflow there are some one-time configuration steps that we need to do, similar to the Pre-deployment steps for manual deployment.
@@ -116,17 +148,6 @@ Configure the E2E Test repository secrets
 | `TEST_USER_NAME` | The username of the E2E Test User |
 | `TEST_USER_PASSWORD` | The password of the E2E Test User |
 
-### Create a workspace app registration for setting up workspaces (for the E2E tests)
-
-Follow the [instructions to create a workspace app registration](../auth.md#workspaces) (used for the E2E tests) - and make the E2E test user a **WorkspaceOwner** for the app registration.
-
-Configure the TEST_WORKSPACE_APP_ID repository secret
-
-| <div style="width: 230px">Secret name</div> | Description |
-| ----------- | ----------- |
-| `TEST_WORKSPACE_APP_ID` | The application (client) ID of the Workspaces app. |
-| `TEST_WORKSPACE_APP_SECRET` | The application (client) secret of the Workspaces app. |
-
 ### Configure repository/environment secrets
 
 Configure additional secrets used in the deployment workflow:
@@ -145,7 +166,7 @@ Configure additional secrets used in the deployment workflow:
 Configure variables used in the deployment workflow:
 
 | <div style="width: 230px">Variable name</div> | Description |
-| ----------- | ----------- |
+| --- | --- |
 | `LOCATION` | The Azure location (region) for all resources. E.g. `westeurope` |
 | `TERRAFORM_STATE_CONTAINER_NAME` | Optional. The name of the blob container to hold the Terraform state. Default value is `tfstate`. |
 | `CORE_ADDRESS_SPACE` | Optional. The address space for the Azure TRE core virtual network. Default value is `10.0.0.0/22`. |
@@ -155,6 +176,7 @@ Configure variables used in the deployment workflow:
 | `RESOURCE_PROCESSOR_VMSS_SKU` | Optional. The SKU of the resource processor VMSS. Defaults to `Standard_B2s`. |
 | `RESOURCE_PROCESSOR_NUMBER_PROCESSES_PER_INSTANCE` | Optional. The number of processes to instantiate when the Resource Processor starts. Equates to the number of parallel deployment operations possible in your TRE. Defaults to `5`. |
 | `ENABLE_SWAGGER` | Optional. Determines whether the Swagger interface for the API will be available. Default value is `false`. |
+| `DIRECT_USER_MANAGEMENT_ENABLED` | Optional. Default value is `false`. Set to `true` when the E2E tests authenticate with a service principal (`TEST_ACCOUNT_CLIENT_ID`), so the tests can assign it workspace roles on the workspaces they create. See `DIRECT_USER_MANAGEMENT_ENABLED` in [environment variables](../environment-variables.md). |
 | `FIREWALL_SKU` | Optional. The SKU of the Azure Firewall instance. Default value is `Standard`. Allowed values [`Basic`, `Standard`, `Premium`]. See [Azure Firewall SKU feature comparison](https://learn.microsoft.com/en-us/azure/firewall/choose-firewall-sku). |
 | `APP_GATEWAY_SKU` | Optional. The SKU of the Application Gateway. Default value is `Standard_v2`. Allowed values [`Standard_v2`, `WAF_v2`] |
 | `ENABLE_CMK_ENCRYPTION` | Optional. Default is `false`, if set to `true` customer-managed key encryption will be enabled for all supported resources. |

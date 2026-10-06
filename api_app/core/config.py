@@ -69,8 +69,12 @@ API_AUDIENCE: str = config("API_AUDIENCE", default=API_CLIENT_ID)
 
 AIRLOCK_SAS_TOKEN_EXPIRY_PERIOD_IN_HOURS: int = config("AIRLOCK_SAS_TOKEN_EXPIRY_PERIOD_IN_HOURS", default=1)
 ENABLE_AIRLOCK_EMAIL_CHECK: bool = config("ENABLE_AIRLOCK_EMAIL_CHECK", cast=bool, default=False)
+ENABLE_LEGACY_AIRLOCK: bool = config("ENABLE_LEGACY_AIRLOCK", cast=bool, default=True)
+
+APP_GATEWAY_FQDN: str = config("APP_GATEWAY_FQDN", default="")
 
 API_ROOT_SCOPE: str = f"api://{API_CLIENT_ID}/user_impersonation"
 
 # User Management
 USER_MANAGEMENT_ENABLED: bool = config("USER_MANAGEMENT_ENABLED", cast=bool, default=False)
+DIRECT_USER_MANAGEMENT_ENABLED: bool = config("DIRECT_USER_MANAGEMENT_ENABLED", cast=bool, default=False)

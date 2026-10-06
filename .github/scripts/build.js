@@ -32,6 +32,7 @@ async function getCommandFromComment({ core, context, github }) {
     core.info(`Using head ref: ${pr.head.ref}`)
     const branchRefId = getRefIdForBranch(pr.head.ref);
     logAndSetOutput(core, "branchRefId", branchRefId);
+    logAndSetOutput(core, "branchCiGitRef", `refs/heads/${pr.head.ref}`);
   } else {
     core.info("Skipping branchRefId as PR is from a fork")
   }
@@ -128,6 +129,20 @@ async function getCommandFromComment({ core, context, github }) {
           break;
         }
 
+      case "/test-manual-app":
+        {
+          if (commandHasSkipDeploymentFlag(parts)) {
+            await addUnsupportedSkipDeploymentFlagComment({ github }, repoOwner, repoName, prNumber, commentUsername, commentLink, commandText);
+            break;
+          }
+
+          const runTests = await handleTestCommand({ core, github }, parts, "manual app tests", runId, { number: prNumber, authorUsername: prAuthorUsername, repoOwner, repoName, headSha: prHeadSha, refId: prRefId, details: pr }, { username: commentUsername, link: commentLink });
+          if (runTests) {
+            command = "run-tests-manual-app";
+          }
+          break;
+        }
+
       case "/test-backups":
         {
           if (commandHasSkipDeploymentFlag(parts)) {
@@ -138,6 +153,15 @@ async function getCommandFromComment({ core, context, github }) {
           const runTests = await handleTestCommand({ core, github }, parts, "backup tests", runId, { number: prNumber, authorUsername: prAuthorUsername, repoOwner, repoName, headSha: prHeadSha, refId: prRefId, details: pr }, { username: commentUsername, link: commentLink });
           if (runTests) {
             command = "run-tests-backups";
+          }
+          break;
+        }
+
+      case "/test-airlock":
+        {
+          const runTests = await handleTestCommand({ core, github }, parts, "airlock tests", runId, { number: prNumber, authorUsername: prAuthorUsername, repoOwner, repoName, headSha: prHeadSha, refId: prRefId, details: pr }, { username: commentUsername, link: commentLink });
+          if (runTests) {
+            command = "run-tests-airlock";
           }
           break;
         }
@@ -206,7 +230,7 @@ async function handleTestCommand({ core, github }, commandParts, testDescription
     }
   }
 
-  const message = `:runner: Running ${testDescription}: https://github.com/${pr.repoOwner}/${pr.repoName}/actions/runs/${runId} (with refid \`${pr.refId}\`)`;
+  const message = `:runner: Running ${testDescription}: https://github.com/${pr.repoOwner}/${pr.repoName}/actions/runs/${runId}`;
   await addActionComment({ github }, pr.repoOwner, pr.repoName, pr.number, comment.username, comment.link, message);
   return true
 
@@ -293,6 +317,8 @@ You can use the following commands:
 &nbsp;&nbsp;&nbsp;&nbsp;/test-extended-aad - build, deploy and run smoke & extended AAD tests on a PR
 &nbsp;&nbsp;&nbsp;&nbsp;/test-shared-services - test the deployment of shared services on a PR build
 &nbsp;&nbsp;&nbsp;&nbsp;/test-backups - build, deploy and run backup tests on a PR
+&nbsp;&nbsp;&nbsp;&nbsp;/test-airlock - build, deploy and run Airlock tests on a PR
+&nbsp;&nbsp;&nbsp;&nbsp;/test-manual-app - run the manual workspace application test suite on a PR build
 &nbsp;&nbsp;&nbsp;&nbsp;/test-force-approve - force approval of the PR tests (i.e. skip the deployment checks)
 &nbsp;&nbsp;&nbsp;&nbsp;/test-destroy-env - delete the validation environment for a PR (e.g. to enable testing a deployment from a clean start after previous tests)
 &nbsp;&nbsp;&nbsp;&nbsp;/help - show this help`;

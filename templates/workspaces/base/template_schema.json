@@ -1,11 +1,10 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/microsoft/AzureTRE/templates/workspaces/base/template_schema.json",
   "type": "object",
   "title": "Base Workspace",
   "description": "This workspace template is the foundation for TRE workspaces.",
   "required": [
-    "auth_type",
     "address_space_size"
   ],
   "authorizedRoles": [],
@@ -21,6 +20,16 @@
       "title": "Enable Airlock",
       "description": "Allow safe import and export to the workspace",
       "default": true,
+      "updateable": true
+    },
+    "airlock_version": {
+      "type": "integer",
+      "title": "Airlock Version",
+      "description": "Airlock storage version: 1 = legacy per-stage storage accounts, 2 = consolidated metadata-based storage. Leave unset to use the default (2). Version 1 requires legacy airlock to be enabled in core.",
+      "enum": [
+        1,
+        2
+      ],
       "updateable": true
     },
     "app_service_plan_sku": {
@@ -49,9 +58,18 @@
     "address_space_size": {
       "type": "string",
       "title": "Address space size",
-      "description": "Network address size (small, medium, large or custom) to be used by the workspace.",
+      "description": "Network address size as a CIDR value or (small /24, medium /22, large /16 or custom with an IP range e.g. 10.2.1.0/25) to be used by the workspace.",
       "default": "small",
       "enum": [
+        "24",
+        "23",
+        "22",
+        "21",
+        "20",
+        "19",
+        "18",
+        "17",
+        "16",
         "small",
         "medium",
         "large",
@@ -64,15 +82,17 @@
       "description": "Network address space to be used by the workspace.",
       "updateable": true
     },
-    "auth_type": {
+    "client_id": {
       "type": "string",
-      "title": "Workspace Authentication Type",
-      "description": "",
-      "default": "Automatic",
-      "enum": [
-        "Automatic",
-        "Manual"
-      ],
+      "title": "Application (Client) ID",
+      "description": "Optional. Provide the client ID of a pre-created AAD application. If left empty, Terraform will create a new one automatically. Cannot be changed after the workspace is created.",
+      "updateable": false
+    },
+    "create_aad_groups": {
+      "type": "boolean",
+      "title": "Create AAD Groups for each workspace role (Required for user management)",
+      "description": "Create AAD Groups for the workspace roles. If this is set to true, the workspace will create new AAD Groups.",
+      "default": false,
       "updateable": true
     },
     "enable_backup": {
@@ -95,6 +115,39 @@
       "description": "Check this box if you want to deploy the workspace to another subscription.",
       "default": false,
       "updateable": false
+    },
+    "aad_redirect_uris": {
+      "type": "array",
+      "title": "AAD Redirect URIs",
+      "description": "Additional redirect URIs for the workspace AAD app",
+      "updateable": true,
+      "items": {
+        "title": "items",
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "title": "name",
+            "type": "string",
+            "description": "Redirect URI Name",
+            "examples": [
+              "My Redirect URI"
+            ],
+            "pattern": "^.*$"
+          },
+          "value": {
+            "title": "value",
+            "type": "string",
+            "description": "Redirect URI Value",
+            "examples": [
+              "https://a-domain-name.com/oauth/"
+            ]
+          }
+        }
+      }
     }
   },
   "allOf": [
@@ -252,82 +305,6 @@
     {
       "if": {
         "properties": {
-          "auth_type": {
-            "const": "Manual"
-          }
-        },
-        "required": [
-          "auth_type"
-        ]
-      },
-      "then": {
-        "properties": {
-          "client_id": {
-            "type": "string",
-            "title": "Application (Client) ID",
-            "description": "The AAD Application Registration ID for the workspace.",
-            "updateable": true
-          },
-          "client_secret": {
-            "type": "string",
-            "title": "Application (Client) Secret",
-            "description": "The AAD Application Registration secret for the workspace. This value will be stored in the Workspace Key Vault.",
-            "sensitive": true,
-            "updateable": true
-          }
-        },
-        "required": [
-          "client_id"
-        ]
-      },
-      "else": {
-        "properties": {
-          "create_aad_groups": {
-            "type": "boolean",
-            "title": "Create AAD Groups for each workspace role (Required for user management)",
-            "description": "Create AAD Groups for the workspace roles. If this is set to true, the workspace will create new AAD Groups.",
-            "default": false,
-            "updateable": true
-          },
-          "aad_redirect_uris": {
-            "type": "array",
-            "title": "AAD Redirect URIs",
-            "description": "Redirect URIs for the AAD app in Automatic Auth mode",
-            "updateable": true,
-            "items": {
-              "title": "items",
-              "type": "object",
-              "required": [
-                "name",
-                "value"
-              ],
-              "properties": {
-                "name": {
-                  "title": "name",
-                  "type": "string",
-                  "description": "Redirect URI Name",
-                  "examples": [
-                    "My Redirect URI"
-                  ],
-                  "pattern": "^.*$"
-                },
-                "value": {
-                  "title": "value",
-                  "type": "string",
-                  "description": "Redirect URI Value",
-                  "examples": [
-                    "https://a-domain-name.com/oauth/"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
           "deploy_to_another_subscription": {
             "const": true
           }
@@ -369,10 +346,8 @@
       "app_service_plan_sku",
       "address_space_size",
       "address_space",
-      "auth_type",
-      "create_aad_groups",
       "client_id",
-      "client_secret",
+      "create_aad_groups",
       "enable_backup",
       "delete_backups_on_uninstall",
       "enable_airlock",
