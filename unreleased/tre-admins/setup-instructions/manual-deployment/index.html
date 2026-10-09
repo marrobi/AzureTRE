@@ -364,6 +364,8 @@
       
         
       
+        
+      
     
     
     
@@ -503,6 +505,34 @@
     
   
     Airlock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../azure-tre-overview/airlock-legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airlock (Legacy)
   
 
     
@@ -3504,6 +3534,8 @@
       
         
       
+        
+      
     
     
     
@@ -3559,6 +3591,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../tre-developers/agent-guidance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Guidance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3574,10 +3634,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_2_3" id="__nav_5_2_2_3_label" tabindex="0">
             
   
   
@@ -3595,8 +3655,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_2_2">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4656,6 +4716,11 @@ static_web_storage = "stwebmytre"
 <p>The Azure TRE instance is initially deployed with an invalid self-signed SSL certificate. This certificate needs to be replaced with one valid for your configured domain name. To use a certificate from <a href="https://letsencrypt.org/">Let's Encrypt</a>, run the command:</p>
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>letsencrypt
 </code></pre></div>
+<p>If Certbot is installed elsewhere, specify its executable path:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">CERTBOT_BIN</span><span class="o">=</span>/path/to/certbot<span class="w"> </span>make<span class="w"> </span>letsencrypt
+</code></pre></div>
+<p>The default is <code>/opt/certbot/bin/certbot</code>, as installed in the development container.
+The command checks the selected executable before loading Terraform outputs or changing Azure network access.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
 <p>There are rate limits with Let's Encrypt, so this should not be run when not needed.</p>

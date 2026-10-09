@@ -364,6 +364,8 @@
       
         
       
+        
+      
     
     
     
@@ -503,6 +505,34 @@
     
   
     Airlock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../azure-tre-overview/airlock-legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airlock (Legacy)
   
 
     
@@ -3499,6 +3529,8 @@
       
         
       
+        
+      
     
     
     
@@ -3554,6 +3586,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../tre-developers/agent-guidance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Guidance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3569,10 +3629,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_2_3" id="__nav_5_2_2_3_label" tabindex="0">
             
   
   
@@ -3590,8 +3650,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_2_2">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4655,11 +4715,11 @@
 </tr>
 <tr>
 <td>AUTO_WORKSPACE_GROUP_CREATION</td>
-<td>Set to <code>false</code> by default. Setting this to <code>true</code> grants the <code>Group.ReadWrite.All</code> permission to the <em>Application Admin</em> identity. This identity can then create security groups aligned to each application role. Microsoft Entra ID licencing implications need to be considered as Group assignment is a premium feature. <a href="https://docs.microsoft.com/en-us/azure/architecture/multitenant-identity/app-roles#roles-using-azure-ad-app-roles">You can read mode about Group Assignment here</a>.</td>
+<td>Set to <code>true</code> in <code>config.sample.yaml</code>. Setting this to <code>true</code> grants the <code>Group.Create</code> permission to the <em>Application Admin</em> identity. This identity can then create security groups aligned to each application role. Microsoft Entra ID licensing implications need to be considered, as group assignment is a premium feature. <a href="https://docs.microsoft.com/en-us/azure/architecture/multitenant-identity/app-roles#roles-using-azure-ad-app-roles">You can read more about group assignment here</a>.</td>
 </tr>
 <tr>
 <td>AUTO_GRANT_WORKSPACE_CONSENT</td>
-<td>Default of <code>false</code>.  Setting this to <code>true</code> will remove the need for users to manually grant consent when creating new workspaces. The identity will be granted <code>Application.ReadWrite.All</code> and <code>DelegatedPermissionGrant.ReadWrite.All</code> permissions.</td>
+<td>Set to <code>true</code> in <code>config.sample.yaml</code>. Setting this to <code>true</code> will remove the need for users to manually grant consent when creating new workspaces. The identity will be granted <code>Application.ReadWrite.All</code> and <code>DelegatedPermissionGrant.ReadWrite.All</code> permissions.</td>
 </tr>
 </tbody>
 </table>

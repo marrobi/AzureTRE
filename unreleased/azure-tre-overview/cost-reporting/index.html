@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/azure-tre-overview/cost-reporting/">
       
       
-        <link rel="prev" href="../airlock/">
+        <link rel="prev" href="../airlock-legacy/">
       
       
         <link rel="next" href="../../using-tre/terms-definitions/">
@@ -368,6 +368,8 @@
       
         
       
+        
+      
     
     
     
@@ -507,6 +509,34 @@
     
   
     Airlock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../airlock-legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airlock (Legacy)
   
 
     
@@ -3557,6 +3587,8 @@
       
         
       
+        
+      
     
     
     
@@ -3612,6 +3644,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../tre-developers/agent-guidance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Guidance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3627,10 +3687,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_2_3" id="__nav_5_2_2_3_label" tabindex="0">
             
   
   
@@ -3648,8 +3708,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_2_2">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4827,20 +4887,20 @@
 <p><strong>Output</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">"coreServices"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="p">{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}</span><span class="w"> </span>
+<span class="w">        </span><span class="p">{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}</span>
 <span class="w">        </span><span class="p">],</span>
 <span class="w">    </span><span class="nt">"sharedServices"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">"id"</span><span class="p">:</span><span class="s2">"shared service id"</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">"name"</span><span class="p">:</span><span class="s2">"shared service name"</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">"costs"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">            </span><span class="p">{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}</span><span class="w"> </span>
+<span class="w">            </span><span class="p">{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}</span>
 <span class="w">            </span><span class="p">]</span>
 <span class="w">        </span><span class="p">}],</span>
 <span class="w">    </span><span class="nt">"workspaces"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace id"</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace name"</span><span class="p">,</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace name"</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">"costs"</span><span class="p">:[</span>
-<span class="w">            </span><span class="p">{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}</span><span class="w"> </span>
+<span class="w">            </span><span class="p">{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}</span>
 <span class="w">            </span><span class="p">]}</span>
 <span class="w">        </span><span class="p">]</span>
 <span class="p">}</span>
@@ -4886,15 +4946,15 @@
 <p><strong>Output</strong>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">      </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace id"</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace name"</span><span class="p">,</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace name"</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">"workspaceServices"</span><span class="p">:[{</span>
 <span class="w">        </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace service id"</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace service name"</span><span class="p">,</span><span class="w"> </span>
-<span class="w">          </span><span class="nt">"costs"</span><span class="p">:[{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}],</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"workspace service name"</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">"costs"</span><span class="p">:[{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}],</span>
 <span class="w">          </span><span class="nt">"userResources"</span><span class="p">:[{</span>
 <span class="w">            </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"user resource id"</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"user resource name"</span><span class="p">,</span><span class="w"> </span>
-<span class="w">            </span><span class="nt">"costs"</span><span class="p">:[{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}],</span><span class="w"> </span>
+<span class="w">            </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"user resource name"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"costs"</span><span class="p">:[{</span><span class="nt">"date"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"cost"</span><span class="p">:</span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nt">"currency"</span><span class="p">:</span><span class="s2">""</span><span class="p">}],</span>
 <span class="w">          </span><span class="p">}]</span>
 <span class="w">        </span><span class="p">}]</span>
 <span class="p">}</span>

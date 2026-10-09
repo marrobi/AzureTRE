@@ -364,6 +364,8 @@
       
         
       
+        
+      
     
     
     
@@ -503,6 +505,34 @@
     
   
     Airlock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../azure-tre-overview/airlock-legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airlock (Legacy)
   
 
     
@@ -3383,6 +3413,8 @@
       
         
       
+        
+      
     
     
     
@@ -3438,6 +3470,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../tre-developers/agent-guidance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Guidance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3453,10 +3513,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_2_3" id="__nav_5_2_2_3_label" tabindex="0">
             
   
   
@@ -3474,8 +3534,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_2_2">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3950,6 +4010,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#json-schema-version-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON Schema Version Standard
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="JSON Schema Version Standard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compatibility-with-existing-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility with existing templates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#template-properties" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4000,10 +4088,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#workpace-services-requiring-additional-address-spaces" class="md-nav__link">
+  <a href="#workspace-services-requiring-additional-address-spaces" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workpace services requiring additional address spaces
+        Workspace services requiring additional address spaces
       
     </span>
   </a>
@@ -4684,6 +4772,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#json-schema-version-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON Schema Version Standard
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="JSON Schema Version Standard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compatibility-with-existing-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility with existing templates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#template-properties" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4734,10 +4850,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#workpace-services-requiring-additional-address-spaces" class="md-nav__link">
+  <a href="#workspace-services-requiring-additional-address-spaces" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workpace services requiring additional address spaces
+        Workspace services requiring additional address spaces
       
     </span>
   </a>
@@ -4906,7 +5022,52 @@ ARM_CLIENT_SECRET
 <p><code>tre_id</code> can be found in the resource names of the Azure TRE instance; for example the resource group name of the Azure TRE instance based on the example in the above table would be "<code>rg-tre-dev-42</code>".</p>
 <p>Similarly to <code>tre_id</code>, <code>workspace_id</code> is used in the resource names of the workspace. The resource group name of the workspace must be of form "<code>rg-&lt;tre_id&gt;-ws-&lt;workspace_id&gt;</code>", for example: "<code>rg-tre-dev-42-ws-0a9e</code>".</p>
 <p>All the values for the required parameters will be provided by the deployment runner.</p>
-<p>Any <strong>custom parameters</strong> are picked up by Azure TRE API and will be queried from the user deploying the workspace bundle. Custom parameters should also be defined in the <code>template_schema.json</code> file at the root of the bundle. This file follows the <a href="http://json-schema.org/">JSON schema standard</a> and can be used by a user interface to generate a UI for the user to input the parameters.</p>
+<p>Any <strong>custom parameters</strong> are picked up by Azure TRE API and will be queried from the user deploying the workspace bundle. Custom parameters should also be defined in the <code>template_schema.json</code> file at the root of the bundle.
+This file follows the <a href="https://json-schema.org/">JSON schema standard</a> Draft 2020-12 (<code>https://json-schema.org/draft/2020-12/schema</code>) for the subset supported by Azure TRE and can be used by a user interface to generate a UI for the user to input the parameters.</p>
+<h3 id="json-schema-version-standard">JSON Schema Version Standard</h3>
+<p>Azure TRE template schemas (<code>template_schema.json</code>) use the <strong>JSON Schema Draft 2020-12</strong> dialect for the keywords supported by the template registration and validation APIs:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"$schema"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://json-schema.org/draft/2020-12/schema"</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The API preserves the root <code>$schema</code>, <code>$id</code>, and <code>$defs</code> keywords during registration. Other Draft 2020-12 keywords should be used only where supported by the template model and validation engine.</p>
+<h4 id="compatibility-with-existing-templates">Compatibility with existing templates</h4>
+<table>
+<thead>
+<tr>
+<th>Template declaration</th>
+<th>API validation</th>
+<th>Resource forms</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Draft 2020-12</td>
+<td>Draft 2020-12</td>
+<td>Draft 2020-12 validator</td>
+</tr>
+<tr>
+<td>Draft 7</td>
+<td>Draft 7 with Azure TRE's additional <code>unevaluatedProperties</code> restriction</td>
+<td>Draft 7 validator</td>
+</tr>
+<tr>
+<td>No <code>$schema</code></td>
+<td>Existing default validation, currently Draft 2020-12</td>
+<td>Existing Draft 7 form validation</td>
+</tr>
+</tbody>
+</table>
+<p>Azure TRE rejects unexpected resource properties and PATCH changes to properties that are not updateable, including when a Draft 7 template is registered again. The Draft 7 API validator retains legacy keyword behaviour and adds support for Azure TRE's <code>unevaluatedProperties: false</code> restriction. Conditional properties declared in an active <code>allOf</code> branch remain valid.</p>
+<p>Registration preserves the root validation fields <code>properties</code>, <code>required</code>, <code>allOf</code> and <code>$defs</code>, together with <code>$schema</code> and <code>$id</code>. The root type is always <code>object</code>. Other root validation keywords are not preserved.</p>
+<p>Put conditional rules inside <code>allOf</code>, rather than using root <code>if</code>, <code>then</code> or <code>else</code>. Property schemas can contain local references such as <code>#/$defs/label</code>, nested object and array constraints, and nullable types. Form rendering remains limited to the features supported by React JSON Schema Form. This is not full JSON Schema conformance.</p>
+<p>Keep Azure TRE annotations such as <code>updateable</code>, <code>sensitive</code> and <code>readOnly</code> on the property itself when using a <code>$ref</code>. A reusable definition does not supply these annotations to Azure TRE's resource processing.</p>
+<p>An API upgrade does not rewrite stored templates or add missing metadata. To adopt Draft 2020-12, review the custom template's keywords, increment its bundle version and register the updated bundle. Changing only <code>$schema</code> can change validation semantics. Test creation and updates before upgrading existing resources.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong><code>$id</code> is not required on individual properties or subschemas.</strong> Properties defined under "properties" are natively addressable by standard JSON Pointer (e.g. <code>#/properties/property_name</code>).
+* In JSON Schema Draft 2020-12, <code>$id</code> is used for establishing the base URI of schema resources (e.g. at the root schema level). Placing <code>$id</code> on individual properties or subschemas is generally unnecessary and can alter reference resolution context. If custom plain-name anchors are needed within a subschema, use <code>$anchor</code> instead.</p>
+</div>
 <h3 id="template-properties">Template properties</h3>
 <p>When authoring a <code>template_schema.json</code> file, you can reference properties from the resource being deployed, or its parent resources. For more information see <a href="../../tre-templates/pipeline-templates/pipeline-schema/#substituting-resource-property-values">Pipeline Template Schema</a>.</p>
 <h3 id="output">Output</h3>
@@ -4947,10 +5108,15 @@ ARM_CLIENT_SECRET
 </tr>
 </tbody>
 </table>
-<h3 id="workpace-services-requiring-additional-address-spaces">Workpace services requiring additional address spaces</h3>
+<h3 id="workspace-services-requiring-additional-address-spaces">Workspace services requiring additional address spaces</h3>
 <p>Some workspace services may require additional address spaces to be provisioned. This may be necessary if they need advanced network security groups, route tables or delegated subnets.</p>
 <p>To request an additional address space, the workspace service bundle must define an <code>address_space</code> parameter in the <code>porter.yaml</code> file. The value of this parameter will be provided by API to the resource processor.</p>
-<p>The size of the <code>address_space</code> will default to <code>/24</code>, however other sizes can be requested by including an <code>address_space_size</code> as part of the workspace service template.</p>
+<p>The size of the <code>address_space</code> will default to <code>/24</code>, however other sizes can be requested by including an <code>address_space_size</code> as part of the workspace service template.
+This parameter accepts the presets <code>small</code> (/24), <code>medium</code> (/22), <code>large</code> (/16), the literal value <code>custom</code> together with an explicit <code>address_space</code> CIDR (e.g. <code>10.2.1.0/25</code>), or a numeric CIDR mask as a string.
+The API has support for allocating CIDR subnet masks from "16" to "29". Workspace templates are configured to support from "16" (65,536 IP addresses) to "24" (256 IP addresses).
+Depending on the workspace service you are deploying you may configure a template with a CIDR up to "29" which has only 3 usable IP addresses as Azure reserves the first four and last address of every subnet.
+The workspace service IP addresses are in addition to the workspace addresses and the address size is unrelated to the workspace IP address size.
+The workspace will be patched to add the additional address space to its vnet.</p>
 <p>The <code>address_space</code> allocation will only take place during the install phase of a deployment, as this is a breaking change to your template you should increment the major version of your template, this means a you must deploy a new resource instead of upgrading an existing one.</p>
 <p>In your install and uninstall pipelines you also need to include a workspace upgrade step for the workspace to update it's <code>address_spaces</code> property.</p>
 <div class="highlight"><pre><span></span><code><span class="w">  </span><span class="nt">"pipeline"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5026,7 +5192,7 @@ Templates authors need to make sure that underlying Azure resources are tagged w
 <li>
 <p>Build and deploy the Porter bundle</p>
 <div class="highlight"><pre><span></span><code>make bundle-build DIR=./templates/&lt;scope&gt;/&lt;bundle_name&gt;
-make bundle-publish DIR=./templates/&lt;scope&gt;/&lt;bundle_name&gt; 
+make bundle-publish DIR=./templates/&lt;scope&gt;/&lt;bundle_name&gt;
 make bundle-register DIR=./templates/&lt;scope&gt;/&lt;bundle_name&gt; BUNDLE_TYPE=&lt;scope&gt;
 </code></pre></div>
 </li>

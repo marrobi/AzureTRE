@@ -364,6 +364,8 @@
       
         
       
+        
+      
     
     
     
@@ -503,6 +505,34 @@
     
   
     Airlock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../azure-tre-overview/airlock-legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airlock (Legacy)
   
 
     
@@ -3463,6 +3493,8 @@
       
         
       
+        
+      
     
     
     
@@ -3518,6 +3550,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../tre-developers/agent-guidance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Guidance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3533,10 +3593,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_2_2" id="__nav_5_2_2_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_2_3" id="__nav_5_2_2_3_label" tabindex="0">
             
   
   
@@ -3554,8 +3614,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_2_2">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4671,6 +4731,10 @@
 <td>If False, Airlock requests will skip the malware scanning stage. If set to True, Defender for Storage will be enabled.</td>
 </tr>
 <tr>
+<td><code>ENABLE_LEGACY_AIRLOCK</code></td>
+<td>Set to <code>true</code> by default. Deploys the legacy per-stage airlock storage accounts alongside the consolidated accounts. Set to <code>false</code> only once no <code>airlock_version=1</code> workspaces or in-flight v1 requests remain; doing so permanently deletes the legacy accounts and any data still in them.</td>
+</tr>
+<tr>
 <td><code>ENABLE_LOCAL_DEBUGGING</code></td>
 <td>Set to <code>false</code> by default. Setting this to <code>true</code> will ensure that Azure resources are accessible from your local development machine. (e.g. ServiceBus and Cosmos)</td>
 </tr>
@@ -4728,15 +4792,15 @@
 </tr>
 <tr>
 <td><code>AUTO_WORKSPACE_GROUP_CREATION</code></td>
-<td>Set to <code>false</code> by default. Setting this to <code>true</code> grants the <code>Group.Create</code> permission to the <em>Application Admin</em> identity. This identity can then create security groups aligned to each application role.</td>
+<td>Set to <code>true</code> in <code>config.sample.yaml</code>. Setting this to <code>true</code> grants the <code>Group.Create</code> permission to the <em>Application Admin</em> identity. This identity can then create security groups aligned to each application role. Microsoft Entra ID licensing implications need to be considered, as group assignment is a premium feature.</td>
 </tr>
 <tr>
 <td><code>AUTO_GRANT_WORKSPACE_CONSENT</code></td>
-<td>Default of <code>false</code>.  Setting this to <code>true</code> will remove the need for users to manually grant consent when creating new workspaces. The identity will be granted <code>Application.ReadWrite.All</code> and <code>DelegatedPermissionGrant.ReadWrite.All</code> permissions.</td>
+<td>Set to <code>true</code> in <code>config.sample.yaml</code> (Terraform default remains <code>false</code>). Setting this to <code>true</code> will remove the need for users to manually grant consent when creating new workspaces. The identity will be granted <code>Application.ReadWrite.All</code> and <code>DelegatedPermissionGrant.ReadWrite.All</code> permissions.</td>
 </tr>
 <tr>
 <td><code>USER_MANAGEMENT_ENABLED</code></td>
-<td>If set to <code>true</code>, TRE Admins will be able to assign and de-assign users to workspaces via the UI (Requires Entra ID groups to be enabled on the workspace and the workspace template version to be 2.2.0 or greater).</td>
+<td>Set to <code>true</code> in <code>config.sample.yaml</code>. If set to <code>true</code>, TRE Admins will be able to assign and de-assign users to workspaces via the UI (Requires Entra ID groups to be enabled on the workspace and the workspace template version to be 2.2.0 or greater).</td>
 </tr>
 <tr>
 <td><code>PRIVATE_AGENT_SUBNET_ID</code></td>

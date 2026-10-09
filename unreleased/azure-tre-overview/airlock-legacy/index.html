@@ -12,13 +12,13 @@
         <meta name="author" content="Microsoft">
       
       
-        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-developers/letsencrypt/">
+        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/azure-tre-overview/airlock-legacy/">
       
       
-        <link rel="prev" href="../end-to-end-tests/">
+        <link rel="prev" href="../airlock/">
       
       
-        <link rel="next" href="../release/">
+        <link rel="next" href="../cost-reporting/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Letsencrypt - Azure TRE</title>
+        <title>Airlock (Legacy) - Azure TRE</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#letsencrypt" class="md-skip">
+        <a href="#legacy-airlock-architecture" class="md-skip">
           Skip to content
         </a>
       
@@ -135,7 +135,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Letsencrypt
+              Airlock (Legacy)
             
           </span>
         </div>
@@ -251,6 +251,8 @@
       
   
   
+    
+  
   
   
     
@@ -272,11 +274,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -304,7 +306,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -324,7 +326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../azure-tre-overview/user-roles/" class="md-nav__link">
+      <a href="../user-roles/" class="md-nav__link">
         
   
   
@@ -349,8 +351,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -370,11 +374,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_3" checked>
         
           
           <label class="md-nav__link" for="__nav_1_3" id="__nav_1_3_label" tabindex="0">
@@ -395,7 +399,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -413,7 +417,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../azure-tre-overview/architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   
@@ -441,7 +445,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../azure-tre-overview/networking/" class="md-nav__link">
+      <a href="../networking/" class="md-nav__link">
         
   
   
@@ -469,7 +473,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../azure-tre-overview/tre-resources-breakdown/" class="md-nav__link">
+      <a href="../tre-resources-breakdown/" class="md-nav__link">
         
   
   
@@ -497,7 +501,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../azure-tre-overview/airlock/" class="md-nav__link">
+      <a href="../airlock/" class="md-nav__link">
         
   
   
@@ -522,10 +526,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../azure-tre-overview/airlock-legacy/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airlock (Legacy)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -541,6 +572,131 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Accounts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Accounts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-tre-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core (TRE-level)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workspace-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace-level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#airlock-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Airlock Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-current-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Current Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading-to-current-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading to Current Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -553,7 +709,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../azure-tre-overview/cost-reporting/" class="md-nav__link">
+      <a href="../cost-reporting/" class="md-nav__link">
         
   
   
@@ -617,7 +773,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../azure-tre-overview/case-studies/" class="md-nav__link">
+      <a href="../case-studies/" class="md-nav__link">
         
   
   
@@ -2378,10 +2534,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -2397,11 +2551,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -2422,7 +2576,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3301,10 +3455,8 @@
                 
   
   
-    
   
   
-  
     
     
       
@@ -3318,11 +3470,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
         
           
           <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
@@ -3343,7 +3495,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3386,8 +3538,6 @@
                 
   
   
-    
-  
   
   
     
@@ -3421,15 +3571,15 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../tre-developers/" class="md-nav__link ">
               
   
   
@@ -3453,7 +3603,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5_2_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3473,7 +3623,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../agent-guidance/" class="md-nav__link">
+      <a href="../../tre-developers/agent-guidance/" class="md-nav__link">
         
   
   
@@ -3554,7 +3704,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/" class="md-nav__link">
+      <a href="../../tre-developers/api/" class="md-nav__link">
         
   
   
@@ -3582,7 +3732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api-permissions-map/" class="md-nav__link">
+      <a href="../../tre-developers/api-permissions-map/" class="md-nav__link">
         
   
   
@@ -3618,7 +3768,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ui/" class="md-nav__link">
+      <a href="../../tre-developers/ui/" class="md-nav__link">
         
   
   
@@ -3646,7 +3796,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ui-testing/" class="md-nav__link">
+      <a href="../../tre-developers/ui-testing/" class="md-nav__link">
         
   
   
@@ -3674,7 +3824,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../resource-processor/" class="md-nav__link">
+      <a href="../../tre-developers/resource-processor/" class="md-nav__link">
         
   
   
@@ -3702,7 +3852,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../end-to-end-tests/" class="md-nav__link">
+      <a href="../../tre-developers/end-to-end-tests/" class="md-nav__link">
         
   
   
@@ -3727,19 +3877,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../tre-developers/letsencrypt/" class="md-nav__link">
         
   
   
@@ -3755,7 +3896,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -3768,7 +3908,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../release/" class="md-nav__link">
+      <a href="../../tre-developers/release/" class="md-nav__link">
         
   
   
@@ -3824,7 +3964,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../github-pr-bot-commands/" class="md-nav__link">
+      <a href="../../tre-developers/github-pr-bot-commands/" class="md-nav__link">
         
   
   
@@ -4104,7 +4244,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../CLI/" class="md-nav__link">
+      <a href="../../tre-developers/CLI/" class="md-nav__link">
         
   
   
@@ -4489,6 +4629,119 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Accounts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Accounts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-tre-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core (TRE-level)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workspace-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace-level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#airlock-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Airlock Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-current-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Current Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading-to-current-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading to Current Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -4504,50 +4757,251 @@
 
 
 
-<h1 id="letsencrypt">Letsencrypt</h1>
-<p>Certain components of the TRE require the acquisition of a certificate via Letsencrypt to ensure secure HTTPS connections.</p>
-<p>In order to acquire these certificates, there must be a public facing endpoint which can be reached by Letsencrypt.</p>
-<p>As TREs are secured environments with very few publicly facing points, additional resources are required to ensure the certificate can be provisioned for the correct domain.</p>
-<p>The additional resources are as followed:</p>
+<h1 id="legacy-airlock-architecture">Legacy Airlock Architecture</h1>
+<div class="admonition warning">
+<p class="admonition-title">Legacy Architecture</p>
+<p>This page documents the legacy airlock architecture that uses per-stage storage accounts. New deployments should use the current <a href="../airlock/">consolidated architecture</a>. This architecture is maintained for backwards compatibility with existing workspaces.</p>
+</div>
+<h2 id="overview">Overview</h2>
+<p>The legacy airlock architecture uses <strong>separate storage accounts for each stage</strong> of the airlock process. Data is physically copied between storage accounts as the request progresses through stages. This results in 5 core storage accounts and 5 per-workspace storage accounts (10+ total).</p>
+<p>To use the legacy architecture, explicitly set <code>airlock_version: 1</code> in your workspace properties (new workspaces default to <code>2</code>) and ensure <code>enable_legacy_airlock: true</code> is set in your <code>config.yaml</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Airlock v2 works with both auth modes</p>
+<p>Airlock v2 (consolidated storage) uses a per-workspace Entra <strong>app registration</strong> as its SAS signer. This signer is created for <strong>every</strong> workspace, including those using manual authentication (<code>auth_type: Manual</code>):
+it is always created and owned by TRE and needs no directory reads, consent grants or role assignments, so the Application Administrator's <code>Application.ReadWrite.OwnedBy</code> permission (granted unconditionally) is sufficient. Manual-auth workspaces therefore default to and fully support <code>airlock_version: 2</code>.</p>
+</div>
+<h2 id="storage-accounts">Storage Accounts</h2>
+<h3 id="core-tre-level">Core (TRE-level)</h3>
+<table>
+<thead>
+<tr>
+<th>Storage Account</th>
+<th>Name Pattern</th>
+<th>Description</th>
+<th>Network Access</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stalimex</code></td>
+<td><code>stalimex{tre_id}</code></td>
+<td>Import external — initial upload location</td>
+<td>Public (SAS token)</td>
+</tr>
+<tr>
+<td><code>stalimip</code></td>
+<td><code>stalimip{tre_id}</code></td>
+<td>Import in-progress — during review</td>
+<td>TRE Core VNet</td>
+</tr>
+<tr>
+<td><code>stalimrej</code></td>
+<td><code>stalimrej{tre_id}</code></td>
+<td>Import rejected</td>
+<td>TRE Core VNet</td>
+</tr>
+<tr>
+<td><code>stalimblocked</code></td>
+<td><code>stalimblocked{tre_id}</code></td>
+<td>Import blocked by scan</td>
+<td>TRE Core VNet</td>
+</tr>
+<tr>
+<td><code>stalexapp</code></td>
+<td><code>stalexapp{tre_id}</code></td>
+<td>Export approved — final export location</td>
+<td>Public (SAS token)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workspace-level">Workspace-level</h3>
+<table>
+<thead>
+<tr>
+<th>Storage Account</th>
+<th>Name Pattern</th>
+<th>Description</th>
+<th>Network Access</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stalimappws</code></td>
+<td><code>stalimappws{short_ws_id}</code></td>
+<td>Import approved — final import location</td>
+<td>Workspace VNet</td>
+</tr>
+<tr>
+<td><code>stalexintws</code></td>
+<td><code>stalexintws{short_ws_id}</code></td>
+<td>Export internal — initial export upload</td>
+<td>Workspace VNet</td>
+</tr>
+<tr>
+<td><code>stalexipws</code></td>
+<td><code>stalexipws{short_ws_id}</code></td>
+<td>Export in-progress — during review</td>
+<td>Workspace VNet</td>
+</tr>
+<tr>
+<td><code>stalexrejws</code></td>
+<td><code>stalexrejws{short_ws_id}</code></td>
+<td>Export rejected</td>
+<td>Workspace VNet</td>
+</tr>
+<tr>
+<td><code>stalexblockedws</code></td>
+<td><code>stalexblockedws{short_ws_id}</code></td>
+<td>Export blocked by scan</td>
+<td>Workspace VNet</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Each workspace gets its own set of 5 storage accounts, leading to significant resource proliferation as the number of workspaces grows.</p>
+</blockquote>
+<h2 id="data-flow">Data Flow</h2>
+<p>In the legacy architecture, data is <strong>copied between storage accounts</strong> at each stage transition. A typical import request involves up to 3 copies:</p>
 <ol>
-<li>Public IP provisioned in the same location as the web app that the certificate is intended for; this will also have a domain label which matches the web app name.</li>
-<li>Storage Account with a static web app.</li>
-<li>Application gateway to route traffic from the Public IP to the static web app</li>
+<li>External → In-progress (on submit)</li>
+<li>In-progress → Blocked (if scan fails) OR stay in In-progress (if clean)</li>
+<li>In-progress → Approved (on approval) OR In-progress → Rejected (on rejection)</li>
 </ol>
-<p>The following diagram illustrated the flow of data between the resources:</p>
-<pre class="mermaid"><code>flowchart RL
-    subgraph .dev Container
-        direction TB
-        A(letsencrypt process runs)
-    end
-    subgraph External
-        direction TB
-        B[letsencrypt authority]
-    end
-    subgraph TRE
-        subgraph Core VNet
-            C[Public IP  &lt;br/&gt; Domain Label: &lt; web-app-name &gt; &lt;br/&gt; Endpoint: &lt; web-app-name &gt;.&lt; location &gt;.cloudapp.net]
-            subgraph Storage Account
-                D[SA Static Site]
-            end
-        end
-        subgraph VNet
-            E[Key Vault &lt;br/&gt; kv-&lt; tre_id &gt;]
-            subgraph VM
-                F[Web App]
-            end
-            G[Private DNS Zone &lt; web-app-name &gt;.&lt; location &gt;.cloudapp.net]
-        end
-    end
-
-    A --&gt; |1. Request to            | B
-    B --&gt; |2. Attempts to hit       | C
-    C --&gt; |3. App Gateway routes    | D
-    D --&gt; |4. Responds              | C
-    C --&gt; |5. Responds              | B
-    B --&gt; |6. Acquires certificate  | A
-    A --&gt; |7. Stores Certificate    | E
-    F --&gt; |8. Pulls Certificate     | E</code></pre>
+<pre class="mermaid"><code>graph LR
+  subgraph TRE["TRE Core"]
+  A["stalimex\nimport external"]--&gt;|"Copy on submit"| B
+  B["stalimip\nimport in-progress"]--&gt;|"Copy if blocked"| D["stalimblocked\nimport blocked"]
+  B--&gt;|"No issues"| review{"Manual\nApproval"}
+  review--&gt;|"Copy on reject"| C["stalimrej\nimport rejected"]
+  end
+  subgraph Workspace["TRE Workspace"]
+  review--&gt;|"Copy on approve"| E["stalimappws\nimport approved"]
+  end
+  subgraph External["External"]
+      data("Data to import")--&gt;A
+  end</code></pre>
+<blockquote>
+<p>Legacy import data flow — data is copied at each stage transition.</p>
+</blockquote>
+<pre class="mermaid"><code>graph LR
+  subgraph Workspace["TRE Workspace"]
+  data("Data to export")--&gt;A
+  A["stalexintws\nexport internal"]--&gt;|"Copy on submit"| B
+  B["stalexipws\nexport in-progress"]--&gt;|"Copy if blocked"| D["stalexblockedws\nexport blocked"]
+  B--&gt;|"No issues"| review{"Manual\nApproval"}
+  review--&gt;|"Copy on reject"| C["stalexrejws\nexport rejected"]
+  end
+  subgraph External["External"]
+  review--&gt;|"Copy on approve"| E["stalexapp\nexport approved"]
+  end</code></pre>
+<blockquote>
+<p>Legacy export data flow — data is copied at each stage transition.</p>
+</blockquote>
+<h2 id="network-architecture">Network Architecture</h2>
+<p>In the legacy architecture, each storage account has its own network configuration:</p>
+<ul>
+<li><strong>External accounts</strong> (<code>stalimex</code>, <code>stalexapp</code>): Not bound to any VNet, accessible via SAS token through the internet.</li>
+<li><strong>Core internal accounts</strong> (<code>stalimip</code>, <code>stalimrej</code>, <code>stalimblocked</code>): Bound to the TRE Core VNet.</li>
+<li><strong>Workspace accounts</strong> (<code>stalimappws</code>, <code>stalexintws</code>, <code>stalexipws</code>, <code>stalexrejws</code>, <code>stalexblockedws</code>): Bound to the workspace VNet.</li>
+</ul>
+<p>Each storage account has its own private endpoints, EventGrid system topics, and role assignments.</p>
+<p><a href="../../assets/airlock-networking.png"><img alt="Legacy airlock networking" src="../../assets/airlock-networking.png" /></a></p>
+<h2 id="airlock-flow">Airlock Flow</h2>
+<p>The following diagram shows the legacy airlock flow with data copies between storage accounts:</p>
+<p><a href="../../assets/airlock-swimlanes.png"><img alt="Legacy airlock flow" src="../../assets/airlock-swimlanes.png" /></a></p>
+<h2 id="comparison-with-current-architecture">Comparison with Current Architecture</h2>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Current (Consolidated)</th>
+<th>Legacy (Per-Stage)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Storage accounts</strong></td>
+<td>2 total</td>
+<td>10+ (5 core + 5 per workspace)</td>
+</tr>
+<tr>
+<td><strong>Stage tracking</strong></td>
+<td>Container metadata</td>
+<td>Separate storage accounts</td>
+</tr>
+<tr>
+<td><strong>Data copies per request</strong></td>
+<td>1 (on approval only)</td>
+<td>Up to 3</td>
+</tr>
+<tr>
+<td><strong>Workspace isolation</strong></td>
+<td>ABAC + per-workspace PE</td>
+<td>Dedicated storage per workspace</td>
+</tr>
+<tr>
+<td><strong>Private endpoints</strong></td>
+<td>2 core + 1 per workspace</td>
+<td>5 core + 5 per workspace</td>
+</tr>
+<tr>
+<td><strong>EventGrid topics</strong></td>
+<td>2 system topics</td>
+<td>10+ system topics</td>
+</tr>
+<tr>
+<td><strong>Infrastructure cost</strong></td>
+<td>Lower</td>
+<td>Higher (more resources)</td>
+</tr>
+<tr>
+<td><strong>Stage transition speed</strong></td>
+<td>Near-instant (metadata)</td>
+<td>Minutes (data copy)</td>
+</tr>
+<tr>
+<td><strong>Scalability</strong></td>
+<td>All workspaces share storage</td>
+<td>Linear growth per workspace</td>
+</tr>
+</tbody>
+</table>
+<h2 id="upgrading-to-current-architecture">Upgrading to Current Architecture</h2>
+<p>To upgrade a workspace from the legacy architecture:</p>
+<ol>
+<li>After upgrading the API, run <code>POST /migrations</code> so every pre-v2 workspace is explicitly stamped with <code>airlock_version=1</code>. Ensure core is deployed with the current codebase (<code>enable_legacy_airlock: true</code> to keep legacy infrastructure alongside the new accounts), then upgrade the workspace to the current <code>tre-workspace-base</code> version.
+   The explicit v1 stamp makes that workspace upgrade non-destructive: no v2 infrastructure is deployed and no data moves until the switch below.</li>
+<li>Let any in-flight requests complete or cancel them: the API rejects an <code>airlock_version</code> change while the workspace holds requests that are still in progress (HTTP 400). Requests in a final state do not block the change.</li>
+<li>Update the workspace <code>airlock_version</code> property to <code>2</code>.</li>
+<li>Redeploy the workspace — this switches from the legacy airlock terraform module to the consolidated module.</li>
+<li>New airlock requests will use the consolidated storage accounts.</li>
+<li>Once all workspaces are migrated and no legacy requests are in-flight, set <code>enable_legacy_airlock: false</code> in <code>config.yaml</code> and redeploy core to remove the legacy storage accounts.</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each request has <code>airlock_version</code> stamped at creation time, so a request always keeps using the storage it was created against. A workspace cannot be switched to v2 while any of its requests are still in progress, so drain them before changing the version.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Upgrading a workspace from <code>airlock_version=1</code> to <code>2</code> <strong>permanently deletes that workspace's per-stage
+v1 airlock storage accounts</strong>, including the data of already-completed requests (approved imports, and
+retained rejected/blocked/export data). The request records themselves remain in the API — their
+metadata, status and history are preserved — but their stored files are gone and any download link will
+no longer resolve. Only upgrade a workspace once you no longer need the data held by its completed v1
+requests. Downgrading from <code>2</code> to <code>1</code> is not supported and is rejected by the API.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Setting <code>enable_legacy_airlock: false</code> and redeploying core <strong>permanently deletes the core v1 airlock storage accounts</strong> (<code>stalimex</code>, <code>stalimip</code>, <code>stalimrej</code>, <code>stalimblocked</code>, <code>stalexapp</code>) and any data still in them. Terraform destroys them in the same apply that switches the API to v2-only.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Before disabling, ensure no active <code>airlock_version=1</code> workspaces or in-flight v1 requests remain.
+Run <code>POST /migrations</code> after upgrading the API so pre-v2 workspaces are stamped with an explicit <code>1</code>;
+otherwise their next redeploy would migrate them to v2 (new workspaces default to <code>airlock_version=2</code>)
+and destroy their legacy storage. Switching a workspace's <code>airlock_version</code> while it holds in-progress
+requests is blocked by the API (returns HTTP 400).</p>
+</div>
 
 
 

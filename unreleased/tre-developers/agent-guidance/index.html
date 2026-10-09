@@ -12,13 +12,13 @@
         <meta name="author" content="Microsoft">
       
       
-        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-developers/letsencrypt/">
+        <link rel="canonical" href="https://microsoft.github.io/AzureTRE/unreleased/tre-developers/agent-guidance/">
       
       
-        <link rel="prev" href="../end-to-end-tests/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../release/">
+        <link rel="next" href="../api/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Letsencrypt - Azure TRE</title>
+        <title>Agent Guidance - Azure TRE</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#letsencrypt" class="md-skip">
+        <a href="#agent-guidance-for-contributors" class="md-skip">
           Skip to content
         </a>
       
@@ -135,7 +135,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Letsencrypt
+              Agent Guidance
             
           </span>
         </div>
@@ -3470,10 +3470,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../agent-guidance/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Guidance
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3489,6 +3516,87 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-changes-to-the-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate changes to the guidance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validate changes to the guidance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-and-behaviour-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client and behaviour checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3727,19 +3835,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../letsencrypt/" class="md-nav__link">
         
   
   
@@ -3755,7 +3854,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -4489,6 +4587,75 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-changes-to-the-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate changes to the guidance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validate changes to the guidance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-and-behaviour-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client and behaviour checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -4504,50 +4671,173 @@
 
 
 
-<h1 id="letsencrypt">Letsencrypt</h1>
-<p>Certain components of the TRE require the acquisition of a certificate via Letsencrypt to ensure secure HTTPS connections.</p>
-<p>In order to acquire these certificates, there must be a public facing endpoint which can be reached by Letsencrypt.</p>
-<p>As TREs are secured environments with very few publicly facing points, additional resources are required to ensure the certificate can be provisioned for the correct domain.</p>
-<p>The additional resources are as followed:</p>
+<h1 id="agent-guidance-for-contributors">Agent guidance for contributors</h1>
+<p>Azure TRE shares repository context through root <code>AGENTS.md</code> and reusable procedures through <code>.github/skills</code>. GitHub Copilot is the primary target. Other agents can read the same files as repository guidance.</p>
+<h2 id="file-layout">File layout</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>Security baseline, repository map, contribution requirements and links to the relevant skills</td>
+</tr>
+<tr>
+<td><code>.github/copilot-instructions.md</code></td>
+<td>Essential Copilot rules and links to the shared guidance</td>
+</tr>
+<tr>
+<td><code>.github/skills/tre-frontend/SKILL.md</code></td>
+<td>UI setup, conventions, component checks and deployed testing</td>
+</tr>
+<tr>
+<td><code>.github/skills/tre-bundle-development/SKILL.md</code></td>
+<td>Bundle contracts, security boundaries and lifecycle checks</td>
+</tr>
+<tr>
+<td><code>.github/skills/tre-code-review/SKILL.md</code></td>
+<td>Security, coordination, release metadata and validation recommendations</td>
+</tr>
+<tr>
+<td><code>.github/skills/tre-troubleshooting/SKILL.md</code></td>
+<td>Failure evidence and cause isolation</td>
+</tr>
+</tbody>
+</table>
+<p>Start with the <a href="https://github.com/microsoft/AzureTRE/blob/main/AGENTS.md">root instructions</a>. Keep each detailed procedure in its skill. The short Copilot file retains essential rules for surfaces that do not automatically load <code>AGENTS.md</code>. Scoped instruction files and additional discovery adapters can be added when a demonstrated need justifies them.</p>
+<p>These files guide existing sessions. They do not create scheduled automation, change review settings, post PR bot commands or grant permission to deploy or merge.</p>
+<p>The <code>tre-</code> prefix identifies repository skills alongside built-in and plugin capabilities. Use the exact skill name when invoking one. Reload skills or start a fresh session after a rename, and verify the loaded path. Earlier discovery evidence under the previous names does not establish discovery after renaming.</p>
+<h2 id="client-compatibility">Client compatibility</h2>
+<p>The following expectations describe documented support, not completed client acceptance tests. Product sources were checked on 6 October 2026. CLI instruction inheritance and skill naming were rechecked on 7 October 2026.</p>
+<table>
+<thead>
+<tr>
+<th>Client or surface</th>
+<th>Expected behaviour and limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Copilot cloud agent, including issue-assignee sessions</td>
+<td>Supports root <code>AGENTS.md</code> and repository skills. Verify both discovery and application in a fresh task.</td>
+</tr>
+<tr>
+<td>Copilot code review on GitHub</td>
+<td>Supports root <code>AGENTS.md</code> and skills in <code>.github/skills</code>, read from the PR head branch. This layout keeps review guidance in the review-focused <code>tre-code-review</code> skill rather than duplicating it in a root <code>REVIEW.md</code>.</td>
+</tr>
+<tr>
+<td>Copilot CLI session agent</td>
+<td>Supports root <code>AGENTS.md</code> and <code>.github/skills</code>. Use <code>copilot skill list --json</code> and <code>/skills info tre-code-review</code> to inspect discovery and source paths. Reload skills or start a fresh session after changes.</td>
+</tr>
+<tr>
+<td>Copilot CLI built-in review subagent</td>
+<td>GitHub documents that the built-in <code>code-review</code> subagent does not receive repository instruction files. Session-agent loading does not prove review-subagent loading. Check skill invocation separately. The built-in agent, <code>/review</code> command and repository <code>tre-code-review</code> skill are distinct capabilities.</td>
+</tr>
+<tr>
+<td>Copilot agent sessions in VS Code</td>
+<td>Supports root <code>AGENTS.md</code> and <code>.github/skills</code>. Record the selected agent harness and instruction settings. The Local agent can disable <code>AGENTS.md</code> through <code>chat.useAgentsMdFile</code>.</td>
+</tr>
+<tr>
+<td>Copilot code review in VS Code</td>
+<td>The support matrix lists <code>.github/copilot-instructions.md</code>. Do not infer support for every instruction type from the agent-session behaviour.</td>
+</tr>
+<tr>
+<td>GitHub Copilot app</td>
+<td>Repository and CLI skills are documented as available. Confirm root instruction loading and skill use in the installed app.</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>Reads root <code>AGENTS.md</code>. Its documented native repository skill location is <code>.agents/skills</code>. Follow the root links to read these skills as guidance; this does not promise native skill-picker registration. Copilot also discovers <code>.agents/skills</code>, but the code review documentation names only <code>.github/skills</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Sources: <a href="https://docs.github.com/en/copilot/reference/custom-instructions-support">GitHub instruction support</a>, <a href="https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills">Copilot skills</a>, <a href="https://docs.github.com/en/copilot/how-tos/copilot-on-github/use-copilot-agents/copilot-code-review">GitHub code review</a>.</p>
+<p>Additional sources: <a href="https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills">Copilot CLI skills</a>, <a href="https://code.visualstudio.com/docs/agent-customization/custom-instructions">VS Code instructions</a>, <a href="https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app">Copilot app customisation</a>.</p>
+<p>CLI details: <a href="https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#repository-custom-instructions-for-subagents">instruction inheritance</a> and <a href="https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#skill-locations">skill discovery and duplicate-name priority</a>.</p>
+<p>Codex sources: <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">repository instructions</a>, <a href="https://learn.chatgpt.com/docs/build-skills">skill discovery</a>.</p>
+<p>GitHub documents custom review-overview formatting as <a href="https://docs.github.com/en/copilot/tutorials/customize-code-review#unsupported-instruction-types">unsupported</a>. The review skill requests a justified test recommendation where the surface permits it. Record whether a recommendation appears; do not claim that the files guarantee one on every review.</p>
+<h2 id="validate-changes-to-the-guidance">Validate changes to the guidance</h2>
+<h3 id="static-checks">Static checks</h3>
 <ol>
-<li>Public IP provisioned in the same location as the web app that the certificate is intended for; this will also have a domain label which matches the web app name.</li>
-<li>Storage Account with a static web app.</li>
-<li>Application gateway to route traffic from the Public IP to the static web app</li>
+<li>Check each skill's YAML frontmatter for a unique <code>name</code> matching its directory and a concise <code>description</code>.</li>
+<li>Resolve local links and check the referenced paths and commands against the current repository.</li>
+<li>Lint every changed Markdown file using <code>.markdownlint.json</code>.</li>
+<li>If documentation content or navigation changes, install <code>docs/requirements.txt</code> and run <code>mkdocs build --strict</code>.</li>
+<li>Run <code>git diff --check</code>.</li>
 </ol>
-<p>The following diagram illustrated the flow of data between the resources:</p>
-<pre class="mermaid"><code>flowchart RL
-    subgraph .dev Container
-        direction TB
-        A(letsencrypt process runs)
-    end
-    subgraph External
-        direction TB
-        B[letsencrypt authority]
-    end
-    subgraph TRE
-        subgraph Core VNet
-            C[Public IP  &lt;br/&gt; Domain Label: &lt; web-app-name &gt; &lt;br/&gt; Endpoint: &lt; web-app-name &gt;.&lt; location &gt;.cloudapp.net]
-            subgraph Storage Account
-                D[SA Static Site]
-            end
-        end
-        subgraph VNet
-            E[Key Vault &lt;br/&gt; kv-&lt; tre_id &gt;]
-            subgraph VM
-                F[Web App]
-            end
-            G[Private DNS Zone &lt; web-app-name &gt;.&lt; location &gt;.cloudapp.net]
-        end
-    end
-
-    A --&gt; |1. Request to            | B
-    B --&gt; |2. Attempts to hit       | C
-    C --&gt; |3. App Gateway routes    | D
-    D --&gt; |4. Responds              | C
-    C --&gt; |5. Responds              | B
-    B --&gt; |6. Acquires certificate  | A
-    A --&gt; |7. Stores Certificate    | E
-    F --&gt; |8. Pulls Certificate     | E</code></pre>
+<p>With <code>markdownlint-cli</code> installed, this command checks the shared guidance from the repository root:</p>
+<div class="highlight"><pre><span></span><code>markdownlint<span class="w"> </span>--config<span class="w"> </span>.markdownlint.json<span class="w"> </span>AGENTS.md<span class="w"> </span>.github/copilot-instructions.md<span class="w"> </span><span class="s1">'.github/skills/*/SKILL.md'</span><span class="w"> </span>docs/tre-developers/agent-guidance.md
+</code></pre></div>
+<p>Include other changed Markdown files in the invocation. <code>make lint-docs</code> excludes root instructions and <code>.github/skills</code>, so it is not sufficient for this change.</p>
+<p>For an all-documentation PR, <code>/test</code> produces a smoke-check waiver under the current <a href="https://github.com/microsoft/AzureTRE/blob/main/.github/scripts/build.js">PR bot implementation</a>. It does not test skill discovery. Select any PR command using the <a href="https://github.com/microsoft/AzureTRE/blob/main/.github/skills/tre-code-review/SKILL.md">code-review procedure</a> and <a href="../github-pr-bot-commands/">PR bot documentation</a>.</p>
+<h3 id="client-and-behaviour-checks">Client and behaviour checks</h3>
+<ol>
+<li>Start a fresh session against the branch containing the guidance.</li>
+<li>Record the client version, agent harness, relevant settings and repository SHA.</li>
+<li>Check discovery using the client's skill list, references or session logs where available.
+   If a task delegates to a subagent, record its instruction loading and skill invocation separately from the parent session.</li>
+<li>Give the agent a representative task without pasting repository guidance or the expected finding.</li>
+<li>Check the produced work and tool activity against the expected behaviour below.</li>
+<li>Record discovery, invocation and behaviour separately as passed, failed or not tested.</li>
+</ol>
+<p>Use a disposable branch or a supplied diff for regression examples. Do not reintroduce historical defects into the product PR. Keep review posting, CI dispatch and Azure changes within the authorised evaluation scope.</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Expected behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UI filter or workspace changes during a pending request</td>
+<td>Reads the UI procedure, considers follow-up requests and stale responses, and chooses relevant component checks.</td>
+</tr>
+<tr>
+<td>A new Terraform input is supplied only during install</td>
+<td>Checks upgrade and uninstall and identifies any missing input or suitable default.</td>
+</tr>
+<tr>
+<td>A bundle adds an outbound rule for a shared Azure endpoint</td>
+<td>Lists the new access, assesses external tenant/subscription destinations and checks identity permissions and data-export controls.</td>
+</tr>
+<tr>
+<td>A public endpoint or broader managed-identity role is introduced</td>
+<td>Checks the exposure, role and scope against the security baseline and asks for evidence supporting the expanded access.</td>
+</tr>
+<tr>
+<td>Cleanup persists state before dispatching an update</td>
+<td>Considers interruption, overlapping operations and redelivery, and identifies what mocked tests leave unverified.</td>
+</tr>
+<tr>
+<td>API behaviour changes without a new API version</td>
+<td>Checks the current base version and identifies the release metadata gap.</td>
+</tr>
+<tr>
+<td>Main advances during conflict resolution</td>
+<td>Rechecks versions and changelog against the refreshed base and identifies unrelated changes in the PR diff.</td>
+</tr>
+<tr>
+<td>A release note claims a field that the UI does not render</td>
+<td>Compares the implementation and tests with the note and identifies the mismatch.</td>
+</tr>
+<tr>
+<td>CI deployment fails before E2E starts</td>
+<td>Identifies the run attempt, checked-out commit and first relevant failure. Reports the tests as unexecuted.</td>
+</tr>
+<tr>
+<td>Documentation-only PR review</td>
+<td>Justifies the checks needed and identifies any successful smoke status created by a waiver.</td>
+</tr>
+</tbody>
+</table>
+<p>Historical examples: <a href="https://github.com/microsoft/AzureTRE/pull/5100#discussion_r4104200195">bundle uninstall input</a>, <a href="https://github.com/microsoft/AzureTRE/pull/5100#discussion_r4186456098">API version</a>, <a href="https://github.com/microsoft/AzureTRE/pull/5105#discussion_r4173077326">UI refresh race</a>, <a href="https://github.com/microsoft/AzureTRE/pull/5105#discussion_r4173077339">release-note accuracy</a>.</p>
+<p>For GitHub review, record the PR head, review URL and any skill attribution or session-log evidence. Evaluate the test recommendation's SHA, coverage, observed checks and justification. Record missing or misplaced recommendations as a limitation. A skill appearing in a list establishes discovery only; it does not prove that the agent used it correctly.</p>
+<p>Keep dated validation results in the PR or linked issue, including untested clients and missing evidence. Recheck relevant clients after changing discovery paths or skill descriptions. When you recheck the product documentation, update the compatibility table and its check date.</p>
 
 
 
