@@ -38,6 +38,15 @@ case "${source_type}" in
   *) echo "Unknown pipeline source: ${source_type}" >&2; exit 2 ;;
 esac
 
+# A pipeline's tre.config adapts it to the TRE, for example to use images mirrored into the TRE registry.
+configs=(-c run.config)
+if [[ -f "${pipeline_dir}/tre.config" ]]; then
+  : "${NF_CONTAINER_REGISTRY:?A pipeline with tre.config needs NF_CONTAINER_REGISTRY}"
+  sed "s|@TRE_REGISTRY@|${NF_CONTAINER_REGISTRY}|g" "${pipeline_dir}/tre.config" > tre.config
+  # run.config comes last so the TRE's executor and storage settings always win.
+  configs=(-c tre.config -c run.config)
+fi
+
 plugins=$(find "${NXF_HOME}/plugins" -mindepth 1 -maxdepth 1 -type d -name 'nf-*' -printf '%f\n' \
   | sed -E 's/^(nf-[a-z0-9-]+)-([0-9][^/]*)$/\1@\2/' | paste -sd, -)
 
@@ -46,7 +55,7 @@ sink_pid=$!
 
 set +o errexit
 nextflow -log nextflow.log run "${pipeline_dir}" \
-  -c run.config -params-file params.json -plugins "${plugins}" \
+  "${configs[@]}" -params-file params.json -plugins "${plugins}" \
   -with-report report.html -with-timeline timeline.html -with-trace trace.txt -with-dag dag.mmd &
 nf_pid=$!
 # Batch stops the container on cancel; let Nextflow abort its own Batch tasks first.

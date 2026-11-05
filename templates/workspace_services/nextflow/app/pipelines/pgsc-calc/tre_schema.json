@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pgsc_calc: polygenic scores (PGS Catalog)",
+  "description": "Calculates polygenic scores for target genomes with the PGS Catalog Calculator from the University of Cambridge and EMBL-EBI. The example scores synthetic genomes for a UK Biobank height score. Options that download scores or reference panels need internet access and are not offered.",
+  "type": "object",
+  "$defs": {
+    "input_options": {
+      "title": "Input",
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string",
+          "format": "file-path",
+          "title": "Samplesheet",
+          "description": "CSV samplesheet describing the target genomes. Leave empty to use the bundled CINECA synthetic chr22 example."
+        },
+        "format": {
+          "type": "string",
+          "title": "Samplesheet format",
+          "enum": ["csv", "json"],
+          "default": "csv"
+        },
+        "target_build": {
+          "type": "string",
+          "title": "Genome build of the target genomes",
+          "enum": ["GRCh37", "GRCh38"],
+          "default": "GRCh37"
+        }
+      }
+    },
+    "score_options": {
+      "title": "Scores",
+      "type": "object",
+      "properties": {
+        "scorefile": {
+          "type": "string",
+          "format": "file-path",
+          "title": "Scoring file",
+          "description": "A PGS Catalog scoring file in the workspace, for example imported through Airlock. Leave empty to use PGS001229 (standing height) for chr22."
+        },
+        "min_overlap": {
+          "type": "number",
+          "title": "Minimum variant overlap",
+          "description": "The fraction of score variants that must match the target genomes.",
+          "default": 0.75,
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/input_options" },
+    { "$ref": "#/$defs/score_options" }
+  ]
+}

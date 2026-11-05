@@ -247,3 +247,20 @@ def test_msal_client_starts_pkce_code_flow():
     query = parse_qs(urlsplit(auth_uri).query)
     assert query["redirect_uri"] == ["https://nf.example/auth/callback"]
     assert query["code_challenge_method"] == ["S256"] and "nonce" in query and flow["state"] == query["state"][0]
+
+
+def test_tre_schema_overlay_replaces_pipeline_schema(tmp_path):
+    pipeline = tmp_path / "builtin" / "upstream"
+    pipeline.mkdir(parents=True)
+    (pipeline / "main.nf").write_text("workflow {}")
+    (pipeline / "nextflow_schema.json").write_text(json.dumps({"properties": {"pgs_id": {"type": "string"}}}))
+    (pipeline / "tre_schema.json").write_text(json.dumps({"properties": {"scorefile": {"type": "string"}}}))
+    catalog = PipelineCatalog(LocalStore(tmp_path / "store"), tmp_path / "builtin")
+    assert [f.name for f in catalog.get("builtin:upstream").fields] == ["scorefile"]
+
+
+def test_head_gets_tre_registry(services):
+    services.runs.settings = replace(services.settings, runtime_image="acr.example.io/microsoft/azuretre/nf:1")
+    run = services.runs.create(make_user(["WorkspaceOwner"]), services.catalog.get("builtin:tre-demo"), {}, "")
+    env = dict(services.runner.submitted[-1][1])
+    assert run.id == env["NF_RUN_ID"] and env["NF_CONTAINER_REGISTRY"] == "acr.example.io"

@@ -16,6 +16,9 @@ PATH_FORMATS = {"file-path", "directory-path", "path", "file-path-pattern"}
 RESERVED_PARAMS = {"outdir"}
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 PATH_CONTAINERS = (INPUTS, RESULTS)
+# A TRE overlay schema replaces the pipeline's own schema in the launch form, for example to hide
+# options that need internet access. The pipeline still validates parameters against its own schema.
+SCHEMA_FILES = ("tre_schema.json", "nextflow_schema.json")
 
 
 @dataclass
@@ -161,16 +164,17 @@ class PipelineCatalog:
         base = self.builtin_dir / name
         if not (base / "main.nf").is_file():
             return None
-        schema = _load_json(
-            (base / "nextflow_schema.json").read_bytes() if (base / "nextflow_schema.json").is_file() else None
-        )
+        schema_file = next((base / f for f in SCHEMA_FILES if (base / f).is_file()), None)
+        schema = _load_json(schema_file.read_bytes() if schema_file else None)
         readme = (base / "README.md").read_text() if (base / "README.md").is_file() else ""
         return _pipeline(f"{BUILTIN}:{name}", name, BUILTIN, schema, readme)
 
     def _stored(self, name: str) -> Pipeline | None:
         if not NAME_PATTERN.match(name) or self.store.size(PIPELINES, f"{name}/main.nf") is None:
             return None
-        schema = _load_json(self.store.read_bytes(PIPELINES, f"{name}/nextflow_schema.json"))
+        schema = next(
+            (s for s in (_load_json(self.store.read_bytes(PIPELINES, f"{name}/{f}")) for f in SCHEMA_FILES) if s), None
+        )
         readme = (self.store.read_bytes(PIPELINES, f"{name}/README.md") or b"").decode("utf-8", "replace")
         return _pipeline(f"{STORAGE}:{name}", name, STORAGE, schema, readme)
 

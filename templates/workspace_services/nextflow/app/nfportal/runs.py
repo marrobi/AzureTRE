@@ -131,6 +131,10 @@ class RunService:
             "NF_PIPELINE": pipeline.id,
             "NF_STORAGE_ACCOUNT": self.settings.storage_account,
             "NF_IDENTITY_CLIENT_ID": self.settings.head_identity_client_id,
+            # The TRE registry, for pipelines whose tre.config uses images mirrored into it.
+            "NF_CONTAINER_REGISTRY": self.settings.runtime_image.split("/", 1)[0]
+            if self.settings.runtime_image
+            else "",
         }
         try:
             self.runner.submit(run_id, env)

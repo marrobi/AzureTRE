@@ -1,0 +1,8 @@
+# Images used by pgsc_calc v2.3.0 (conf/modules.config). mirror-pipeline-images.sh copies each one to
+# <TRE ACR>/mirror/<source>, which tre.config uses because Batch nodes cannot reach ghcr.io.
+ghcr.io/pgscatalog/pygscatalog:pgscatalog-utils-2.0.4
+ghcr.io/pgscatalog/plink2:2.00a5.10
+ghcr.io/pgscatalog/zstd:2-beta
+ghcr.io/pgscatalog/report:2-beta
+ghcr.io/pgscatalog/pyyaml:6.0
+ghcr.io/pgscatalog/fraposa_pgsc:v1.0.2

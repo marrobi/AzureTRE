@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "1000 Genomes British (GBR) germline demo",
+  "description": "Aligns 30x reads for British 1000 Genomes sample HG00096 around CYP2D6, calls variants, annotates them with British and global allele frequencies, and checks them against the 1000 Genomes calls. Research demonstration only.",
+  "type": "object",
+  "$defs": {
+    "input_options": {
+      "title": "Input",
+      "type": "object",
+      "properties": {
+        "sample": {
+          "type": "string",
+          "title": "Sample name",
+          "default": "HG00096",
+          "pattern": "^[A-Za-z0-9_.-]{1,40}$"
+        },
+        "reads_1": {
+          "type": "string",
+          "format": "file-path",
+          "title": "Read 1 FASTQ",
+          "description": "Leave empty to use the bundled HG00096 reads."
+        },
+        "reads_2": {
+          "type": "string",
+          "format": "file-path",
+          "title": "Read 2 FASTQ",
+          "description": "Leave empty to use the bundled HG00096 reads."
+        }
+      }
+    },
+    "calling_options": {
+      "title": "Variant calling",
+      "type": "object",
+      "properties": {
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "GRCh38 region on chr22 to call. The bundled reads cover chr22:41,600,000-42,600,000.",
+          "default": "chr22:41600000-42600000",
+          "pattern": "^chr22:[0-9]{1,9}-[0-9]{1,9}$"
+        },
+        "min_qual": {
+          "type": "integer",
+          "title": "Minimum variant quality",
+          "description": "Calls below this QUAL are marked LowQual and excluded from the comparison.",
+          "default": 30,
+          "minimum": 0,
+          "maximum": 1000
+        }
+      }
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/input_options" },
+    { "$ref": "#/$defs/calling_options" }
+  ]
+}

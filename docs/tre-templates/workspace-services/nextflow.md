@@ -43,6 +43,29 @@ The install pipeline adds Microsoft Entra ID sign-in rules, the same as Gitea, f
 - `AzureActiveDirectory` on TCP 443, so the portal can exchange the sign-in code and workspace VM browsers can sign in.
 - `aadcdn.msftauth.net` and `aadcdn.msauth.net`, for the sign-in page assets.
 
+## Built-in pipelines
+
+| Pipeline | What it does | Data |
+| --- | --- | --- |
+| **1000 Genomes British (GBR) germline demo** (`uk-1kg-germline`) | FastQC, BWA-MEM, samtools, bcftools and MultiQC. Calls variants around the CYP2D6 pharmacogene, annotates them with British and continental allele frequencies, and compares them with the 1000 Genomes calls. | 30x reads for British sample HG00096 from the 1000 Genomes high-coverage release, sliced to chr22:41.6–42.6 Mb during the image build. |
+| **pgsc_calc: polygenic scores** (`pgsc-calc`) | The [PGS Catalog Calculator](https://github.com/PGScatalog/pgsc_calc) v2.3.0 from the University of Cambridge and EMBL-EBI. | CINECA synthetic genomes scored with PGS001229, a height score trained on UK Biobank. |
+| **TRE demo pipeline** (`tre-demo`) | A quick check that Batch, Nexus and storage work. | Simulated. |
+
+The germline demo uses [StaPH-B](https://staphb.org/docker-builds/) images from Docker Hub. pgsc_calc uses images from `ghcr.io`, which Batch nodes can't reach, so a TRE administrator copies them into the TRE container registry after deploying the service:
+
+```bash
+templates/workspace_services/nextflow/mirror-pipeline-images.sh <acr-name>
+```
+
+The script imports each image listed in a pipeline's `images.txt` as `<acr-name>.azurecr.io/mirror/<image>`.
+
+### Adapting a pipeline to the TRE
+
+A pipeline folder can contain two TRE-specific files:
+
+- `tre_schema.json` replaces `nextflow_schema.json` in the launch form, for example to leave out options that need internet access. The pipeline still validates its parameters against its own schema.
+- `tre.config` is applied before the TRE's own settings. `@TRE_REGISTRY@` in it is replaced with the TRE container registry, so it can point the pipeline at mirrored images.
+
 ## Using the portal
 
 1. Open the service's connection URL from a workspace VM.
@@ -54,7 +77,7 @@ To add a pipeline, upload its folder to **Data** > **Pipelines**. The folder nee
 - `main.nf`, with a `container` for every process. Only Docker Hub images can be pulled through Nexus. Each image needs `bash` and `ps` (the `procps` package), because the portal turns on Nextflow's execution report and trace. Slim images such as `python:3.12-slim` don't have `ps`.
 - Optionally `nextflow_schema.json` in nf-core format. The portal generates the launch form from it. Parameters with `"format": "file-path"` or `"directory-path"` get a storage picker.
 
-Pipelines run offline. Nextflow can't download plugins or pipelines from GitHub, and the image only contains `nf-azure` and `nf-weblog`.
+Pipelines run offline. Nextflow can't download plugins or pipelines from GitHub, and the image only contains the `nf-azure`, `nf-weblog` and `nf-schema` plugins.
 
 Upload inputs to **Data** > **Inputs** from inside the workspace, for example after an Airlock import. To take results out of the workspace, use an Airlock export request.
 
@@ -70,7 +93,7 @@ Upload inputs to **Data** > **Inputs** from inside the workspace, for example af
 
 ## Prerequisites and limitations
 
-- Deploy the Nexus shared service so task nodes can pull Docker Hub images. Images from quay.io, Wave or other registries aren't available.
+- Deploy the Nexus shared service so task nodes can pull Docker Hub images. Images from quay.io, ghcr.io, Wave or other registries are only available after they're copied into the TRE container registry.
 - The subscription needs a free Azure Batch account quota in the region (the default is low). New Batch accounts get core quota for older VM families such as Dv3 and Esv3 but none for v5 families, so the service offers Dv3 and Esv3 sizes.
 - The service creates a `privatelink.batch.azure.com` private DNS zone in the workspace resource group, so a workspace can have only one Nextflow service.
 - Cancelling a run stops the head task. Tasks that are already running can finish before Nextflow cleans up its Batch jobs.
