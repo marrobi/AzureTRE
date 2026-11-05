@@ -88,7 +88,9 @@ A delegation SAS can't grant more than its creator's data access, so pipelines c
    If the pipeline schema gives the parameter a `pattern`, such as `^\S+\.f(ast)?q(\.gz)?$`, the browser shows only matching files and the portal rejects other files.
 1. Follow the run on the **Overview** tab. When it finishes, the **Results** tab shows the run's key outputs, such as its HTML reports, and a folder browser of everything it published. The Nextflow report, timeline and trace are on **Reports**.
 
-To add a pipeline, upload its folder to **Data** > **Pipelines**. The folder needs:
+To add a pipeline, select **Import pipeline (.zip)** on **Pipelines**, or upload its folder to **Data** > **Pipelines**. Airlock imports a single file per request, so a zip suits pipelines that come into the workspace through Airlock.
+The portal extracts the zip into `pipelines/<name>/`. If all files are in one top-level folder, the folder name becomes the pipeline name. It rejects unsafe paths and symbolic links, and asks before replacing a pipeline with the same name.
+The pipeline folder needs:
 
 - `main.nf`, with a `container` for every process. Only Docker Hub images can be pulled through Nexus. Each image needs `bash` and `ps` (the `procps` package), because the portal turns on Nextflow's execution report and trace. Slim images such as `python:3.12-slim` don't have `ps`.
 - Optionally `nextflow_schema.json` in nf-core format. The portal generates the launch form from it. Parameters with `"format": "file-path"` or `"directory-path"` get a storage picker.

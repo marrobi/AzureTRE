@@ -32,7 +32,7 @@ from .auth import (
 )
 from .batch import AzureBatchHeadRunner
 from .config import Settings, load_settings
-from .pipelines import PipelineCatalog, coerce_params
+from .pipelines import PipelineCatalog, PipelineImportError, coerce_params, import_pipeline_zip
 from .render import PREVIEW_LIMIT, kind_for, parse_table
 from .runs import RunService
 from .store import (
@@ -328,6 +328,18 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
             await run_in_threadpool(services.store.write_stream, container, name, f.file)
             names.append(name)
         return {"uploaded": names}
+
+    @api.post("/pipelines/import", status_code=201, dependencies=[Depends(require_csrf_header)])
+    async def import_pipeline(file: UploadFile = File(...), name: str = Form(""), replace: bool = Form(False)) -> dict:
+        if file.size is not None and file.size > settings.max_upload_bytes:
+            raise HTTPException(413, f"{file.filename} is larger than the upload limit")
+        try:
+            pipeline, files = await run_in_threadpool(
+                import_pipeline_zip, services.store, file.file, name, settings.max_upload_bytes, replace
+            )
+        except PipelineImportError as exc:
+            raise HTTPException(409 if "already exists" in str(exc) else 400, str(exc)) from exc
+        return {"id": f"storage:{pipeline}", "name": pipeline, "files": files}
 
     @api.delete("/storage/{container}", dependencies=[Depends(require_csrf_header)])
     def delete_file(container: str, name: str = Query(...)) -> dict:

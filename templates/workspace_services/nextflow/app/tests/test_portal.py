@@ -9,9 +9,9 @@ from nfportal.auth import User, safe_next, user_from_claims
 from nfportal.batch import HeadStatus
 from nfportal.config import load_settings
 from nfportal.main import Services, create_app
-from nfportal.pipelines import PipelineCatalog, coerce_params, schema_fields
+from nfportal.pipelines import PipelineCatalog, PipelineImportError, coerce_params, import_pipeline_zip, schema_fields
 from nfportal.runs import RunService
-from nfportal.store import RESULTS, RUNS, WORK, LocalStore
+from nfportal.store import PIPELINES, RESULTS, RUNS, WORK, LocalStore
 
 ROLES = ("WorkspaceOwner", "WorkspaceResearcher")
 
@@ -292,3 +292,30 @@ def test_expire_work_deletes_old_files_of_finished_runs_only(services, tmp_path)
     remaining = [i.name for i in services.store.list(WORK)]
     assert f"{done.id}/ab/task/.command.out" not in remaining
     assert f"{done.id}/cd/new/.command.out" in remaining and f"{active.id}/ab/task/.command.out" in remaining
+
+
+def _zip(files):
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for name, data in files.items():
+            zf.writestr(name, data)
+    buf.seek(0)
+    return buf
+
+
+def test_import_pipeline_zip_strips_top_folder_and_guards_paths(services):
+    store = services.store
+    archive = _zip({"vcf-qc/main.nf": "workflow {}", "vcf-qc/bin/x.py": "", "__MACOSX/vcf-qc/._main.nf": ""})
+    name, files = import_pipeline_zip(store, archive, "", 10_000)
+    assert (name, sorted(files)) == ("vcf-qc", ["bin/x.py", "main.nf"])
+    assert services.catalog.get("storage:vcf-qc") is not None
+    with pytest.raises(PipelineImportError, match="already exists"):
+        import_pipeline_zip(store, _zip({"vcf-qc/main.nf": ""}), "", 10_000)
+    import_pipeline_zip(store, _zip({"vcf-qc/main.nf": "new"}), "", 10_000, replace=True)
+    assert sorted(i.name for i in store.list(PIPELINES, "vcf-qc/")) == ["vcf-qc/main.nf"]
+    for bad in ({"../evil/main.nf": ""}, {"a/README.md": ""}, {"main.nf": "x" * 20_000}):
+        with pytest.raises(PipelineImportError):
+            import_pipeline_zip(store, _zip(bad), "other", 10_000)

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import re
+import stat
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from .store import INPUTS, PIPELINES, RESULTS, InvalidPath, Store, safe_blob_name
 
@@ -16,6 +18,8 @@ PATH_FORMATS = {"file-path", "directory-path", "path", "file-path-pattern"}
 RESERVED_PARAMS = {"outdir"}
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 PATH_CONTAINERS = (INPUTS, RESULTS)
+ZIP_MAX_FILES = 2000
+ZIP_IGNORED = ("__MACOSX/", ".git/")
 # A TRE overlay schema replaces the pipeline's own schema in the launch form, for example to hide
 # options that need internet access. The pipeline still validates parameters against its own schema.
 SCHEMA_FILES = ("tre_schema.json", "nextflow_schema.json")
@@ -207,3 +211,59 @@ def _pipeline(pid: str, name: str, source: str, schema: dict | None, readme: str
         schema=schema,
         fields=schema_fields(schema),
     )
+
+
+class PipelineImportError(ValueError):
+    pass
+
+
+def import_pipeline_zip(
+    store: Store, archive: BinaryIO, name: str, max_bytes: int, replace: bool = False
+) -> tuple[str, list[str]]:
+    """Extract a pipeline zip, such as an approved Airlock import, into pipelines/<name>/.
+
+    If every file is inside one top-level folder, that folder is removed and gives the default name.
+    Returns the pipeline name and the files written.
+    """
+    try:
+        zf = zipfile.ZipFile(archive)
+    except zipfile.BadZipFile as exc:
+        raise PipelineImportError("The file isn't a valid zip archive.") from exc
+    with zf:
+        members = [
+            m
+            for m in zf.infolist()
+            if not m.is_dir() and not any(m.filename.startswith(p) or f"/{p}" in m.filename for p in ZIP_IGNORED)
+        ]
+        if not members or len(members) > ZIP_MAX_FILES:
+            raise PipelineImportError(f"The zip must contain between 1 and {ZIP_MAX_FILES} files.")
+        if sum(m.file_size for m in members) > max_bytes:
+            raise PipelineImportError("The extracted pipeline is larger than the upload limit.")
+        paths = []
+        for m in members:
+            if stat.S_ISLNK(m.external_attr >> 16):
+                raise PipelineImportError(f"Symbolic links aren't allowed: {m.filename}")
+            try:
+                paths.append(safe_blob_name(m.filename))
+            except InvalidPath as exc:
+                raise PipelineImportError(f"Unsafe path in zip: {m.filename}") from exc
+        tops = {p.split("/", 1)[0] for p in paths}
+        strip = len(tops) == 1 and all("/" in p for p in paths)
+        if strip:
+            paths = [p.split("/", 1)[1] for p in paths]
+        name = name.strip() or (tops.pop() if strip else "")
+        if not NAME_PATTERN.match(name):
+            raise PipelineImportError("Give the pipeline a name of letters, numbers, dots, dashes or underscores.")
+        if "main.nf" not in paths:
+            raise PipelineImportError("The zip needs a main.nf at its top level, or in a single top-level folder.")
+        existing = [i.name for i in store.list(PIPELINES, f"{name}/")]
+        if existing and not replace:
+            raise PipelineImportError(f"A pipeline named {name} already exists.")
+        for old in existing:
+            store.delete(PIPELINES, old)
+        written = []
+        for m, path in zip(members, paths, strict=True):
+            with zf.open(m) as src:
+                store.write_stream(PIPELINES, f"{name}/{path}", src)
+            written.append(path)
+    return name, written

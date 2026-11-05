@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "British population comparison",
+  "description": "Compares a sample's variant calls with British (GBR) and global 1000 Genomes allele frequencies, and lists the variants that are rare in British people or differ most from other populations. Research demonstration only.",
+  "type": "object",
+  "$defs": {
+    "input_options": {
+      "title": "Input",
+      "type": "object",
+      "required": ["vcf"],
+      "properties": {
+        "vcf": {
+          "type": "string",
+          "format": "file-path",
+          "pattern": "^\\S+\\.annotated\\.vcf\\.gz$",
+          "title": "Annotated VCF",
+          "description": "variants/<sample>.annotated.vcf.gz from a run of the 1000 Genomes British (GBR) germline demo."
+        }
+      }
+    },
+    "report_options": {
+      "title": "Report",
+      "type": "object",
+      "properties": {
+        "max_af": {
+          "type": "number",
+          "title": "Rare variant threshold",
+          "description": "Variants with a British allele frequency below this are listed as rare. 0.01 is 1%.",
+          "default": 0.01,
+          "minimum": 0.0001,
+          "maximum": 0.5
+        },
+        "top_n": {
+          "type": "integer",
+          "title": "Differentiated variants to list",
+          "default": 15,
+          "minimum": 5,
+          "maximum": 100
+        }
+      }
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/input_options" },
+    { "$ref": "#/$defs/report_options" }
+  ]
+}
