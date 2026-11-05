@@ -128,7 +128,9 @@ class AzureADAuthorization:
     def _get_roles_for_principal(self, user_id, roles_graph_data, app_id_to_role_name) -> List[Role]:
         roles = []
         for role_assignment in roles_graph_data["value"]:
-            if role_assignment["principalId"] == user_id:
+            # Skip assignments to roles the app doesn't define, such as the default access role that
+            # user consent creates when the app doesn't require assignment.
+            if role_assignment["principalId"] == user_id and role_assignment["appRoleId"] in app_id_to_role_name:
                 roles.append(
                     Role(id=role_assignment["appRoleId"], displayName=app_id_to_role_name[role_assignment["appRoleId"]])
                 )

@@ -830,3 +830,16 @@ def test_compare_versions_greater_than():
 def test_compare_versions_less_than():
     result = compare_versions("1.0.0", "1.1.0")
     assert result < 0
+
+
+def test_get_roles_for_principal_ignores_assignments_to_undefined_roles():
+    access_service = AzureADAuthorization()
+    roles_graph_data = {
+        "value": [
+            {"principalId": "user1", "appRoleId": "owner-role-id"},
+            {"principalId": "user1", "appRoleId": "00000000-0000-0000-0000-000000000000"},
+            {"principalId": "user2", "appRoleId": "owner-role-id"},
+        ]
+    }
+    roles = access_service._get_roles_for_principal("user1", roles_graph_data, {"owner-role-id": "WorkspaceOwner"})
+    assert roles == [Role(id="owner-role-id", displayName="WorkspaceOwner")]
