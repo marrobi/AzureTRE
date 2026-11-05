@@ -17,7 +17,9 @@ resource "azurerm_linux_web_app" "portal" {
     AZURE_CLIENT_ID                     = azurerm_user_assigned_identity.portal.client_id
     NF_SERVICE_NAME                     = var.display_name
     NF_PUBLIC_URL                       = "https://${local.webapp_name}.azurewebsites.net"
-    NF_STORAGE_ACCOUNT                  = azurerm_storage_account.nf.name
+    NF_STORAGE_ACCOUNT                  = data.azurerm_storage_account.ws.name
+    NF_STORAGE_CONTAINER                = azurerm_storage_container.nf.name
+    NF_WORK_RETENTION_DAYS              = tostring(var.work_retention_days)
     NF_BATCH_ENDPOINT                   = "https://${azurerm_batch_account.nf.account_endpoint}"
     NF_HEAD_POOL_ID                     = local.head_pool_id
     NF_WORKER_POOL_ID                   = local.worker_pool_id

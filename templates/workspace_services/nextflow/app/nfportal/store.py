@@ -126,15 +126,18 @@ class LocalStore:
 
 
 class AzureBlobStore:
-    def __init__(self, account_url: str, credential) -> None:
+    """The logical areas (pipelines, inputs, ...) are top-level folders in one blob container."""
+
+    def __init__(self, account_url: str, credential, container: str) -> None:
         from azure.storage.blob import BlobServiceClient
 
         self.client = BlobServiceClient(account_url=account_url, credential=credential)
+        self.container = self.client.get_container_client(container)
 
     def _blob(self, container: str, name: str):
         if container not in CONTAINERS:
             raise InvalidPath(f"Unknown container: {container}")
-        return self.client.get_blob_client(container, safe_blob_name(name))
+        return self.container.get_blob_client(f"{container}/{safe_blob_name(name)}")
 
     def read_bytes(self, container: str, name: str) -> bytes | None:
         from azure.core.exceptions import ResourceNotFoundError
@@ -182,8 +185,14 @@ class AzureBlobStore:
     def list(self, container: str, prefix: str = "") -> list[BlobItem]:
         if container not in CONTAINERS:
             raise InvalidPath(f"Unknown container: {container}")
-        blobs = self.client.get_container_client(container).list_blobs(name_starts_with=prefix or None)
-        return [BlobItem(b.name, b.size, b.last_modified) for b in blobs]
+        root = f"{container}/"
+        blobs = self.container.list_blobs(name_starts_with=root + prefix, include=["metadata"])
+        # Accounts with a hierarchical namespace also list directories, which have no content.
+        return [
+            BlobItem(b.name[len(root) :], b.size, b.last_modified)
+            for b in blobs
+            if (b.metadata or {}).get("hdi_isfolder") != "true"
+        ]
 
     def iter_bytes(self, container: str, name: str) -> Iterator[bytes]:
         yield from self._blob(container, name).download_blob().chunks()

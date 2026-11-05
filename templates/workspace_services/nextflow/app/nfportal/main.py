@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import logging
+import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,7 @@ from .store import (
 log = logging.getLogger("nfportal")
 WRITABLE = (INPUTS, PIPELINES)
 REFRESH_SECONDS = 30
+WORK_EXPIRY_SECONDS = 6 * 3600
 PATH_OPTION_LIMIT = 5000
 CSRF_HEADER = "x-requested-with"
 # nf-azure writes these zero-byte blobs to mark folders it published.
@@ -94,7 +96,7 @@ def build_services(settings: Settings) -> Services:
         from azure.identity import DefaultAzureCredential
 
         credential = DefaultAzureCredential(exclude_interactive_browser_credential=True)
-        store = AzureBlobStore(settings.blob_endpoint, credential)
+        store = AzureBlobStore(settings.blob_endpoint, credential, settings.storage_container)
         runner = AzureBatchHeadRunner(
             settings.batch_endpoint, credential, settings.head_pool_id, settings.runtime_image
         )
@@ -265,7 +267,7 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
         p = services.catalog.get(body.pipeline_id)
         if not p:
             raise HTTPException(404, "Pipeline not found")
-        params, errors = coerce_params(p.fields, body.params)
+        params, errors = coerce_params(p.fields, body.params, settings.storage_container)
         if errors:
             return JSONResponse({"errors": errors}, status_code=422)
         return asdict(services.runs.create(u, p, params, body.label))
@@ -401,9 +403,15 @@ def _safe(name: str) -> str:
 
 
 async def _refresh_loop(services: Services) -> None:
+    next_expiry = 0.0
     while True:
         try:
             await run_in_threadpool(services.runs.refresh_active)
+            if time.monotonic() >= next_expiry:
+                deleted = await run_in_threadpool(services.runs.expire_work)
+                if deleted:
+                    log.info("Deleted %d expired work files", deleted)
+                next_expiry = time.monotonic() + WORK_EXPIRY_SECONDS
         except Exception:  # keep polling; a transient Batch or storage error must not stop reconciliation
             log.exception("Run refresh failed")
         await asyncio.sleep(REFRESH_SECONDS)

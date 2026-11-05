@@ -11,7 +11,7 @@ from nfportal.config import load_settings
 from nfportal.main import Services, create_app
 from nfportal.pipelines import PipelineCatalog, coerce_params, schema_fields
 from nfportal.runs import RunService
-from nfportal.store import RESULTS, RUNS, LocalStore
+from nfportal.store import RESULTS, RUNS, WORK, LocalStore
 
 ROLES = ("WorkspaceOwner", "WorkspaceResearcher")
 
@@ -141,21 +141,24 @@ def test_coerce_params_validates_paths_and_ranges():
             }
         }
     )
-    params, errors = coerce_params(fields, {"input": "inputs/a/b.txt", "n": "3", "title": "ok"})
-    assert params == {"input": "az://inputs/a/b.txt", "n": 3, "title": "ok"} and not errors
-    _, errors = coerce_params(fields, {"input": "runs/x/run.json", "n": 9, "title": "Bad!"})
+    params, errors = coerce_params(fields, {"input": "inputs/a/b.txt", "n": "3", "title": "ok"}, "nextflow-ab12")
+    assert params == {"input": "az://nextflow-ab12/inputs/a/b.txt", "n": 3, "title": "ok"} and not errors
+    params, _ = coerce_params(fields, {"input": "az://nextflow-ab12/results/r1/x.csv"}, "nextflow-ab12")
+    assert params["input"] == "az://nextflow-ab12/results/r1/x.csv"
+    _, errors = coerce_params(fields, {"input": "runs/x/run.json", "n": 9, "title": "Bad!"}, "nextflow-ab12")
     assert set(errors) == {"input", "n", "title"}
-    _, errors = coerce_params(fields, {"input": "inputs/../runs/x"})
+    _, errors = coerce_params(fields, {"input": "inputs/../runs/x"}, "nextflow-ab12")
     assert "input" in errors
 
 
 def test_run_lifecycle_and_progress(services):
     pipeline = services.catalog.get("builtin:tre-demo")
     run = services.runs.create(make_user(["WorkspaceResearcher"]), pipeline, {"samples": 2}, "label")
-    assert run.params["outdir"] == f"az://results/{run.id}"
+    assert run.params["outdir"] == f"az://nextflow/results/{run.id}"
     config = services.store.read_bytes(RUNS, f"{run.id}/nextflow.config").decode()
     assert "allowPoolCreation = false" in config and "clientId = 'cid'" in config
     assert "AZCOPY_JOB_PLAN_LOCATION = '$PWD/.azcopy'" in config
+    assert f"workDir = 'az://nextflow/work/{run.id}'" in config
     assert services.runner.submitted[0][1]["NF_PIPELINE"] == "builtin:tre-demo"
 
     for event, status in (("process_submitted", "SUBMITTED"), ("process_completed", "COMPLETED")):
@@ -264,3 +267,23 @@ def test_head_gets_tre_registry(services):
     run = services.runs.create(make_user(["WorkspaceOwner"]), services.catalog.get("builtin:tre-demo"), {}, "")
     env = dict(services.runner.submitted[-1][1])
     assert run.id == env["NF_RUN_ID"] and env["NF_CONTAINER_REGISTRY"] == "acr.example.io"
+
+
+def test_expire_work_deletes_old_files_of_finished_runs_only(services, tmp_path):
+    import os
+    import time
+
+    pipeline = services.catalog.get("builtin:tre-demo")
+    done = services.runs.create(make_user(["WorkspaceOwner"]), pipeline, {}, "")
+    active = services.runs.create(make_user(["WorkspaceOwner"]), pipeline, {}, "")
+    services.runner.state = HeadStatus("completed", exit_code=0, end_time=datetime.now(timezone.utc))
+    services.runs.refresh(services.runs.get(done.id))
+    old = time.time() - 30 * 86400
+    for run_id in (done.id, active.id):
+        services.store.write_bytes(WORK, f"{run_id}/ab/task/.command.out", b"x")
+        os.utime(tmp_path / WORK / run_id / "ab/task/.command.out", (old, old))
+    services.store.write_bytes(WORK, f"{done.id}/cd/new/.command.out", b"x")
+    assert services.runs.expire_work() == 1
+    remaining = [i.name for i in services.store.list(WORK)]
+    assert f"{done.id}/ab/task/.command.out" not in remaining
+    assert f"{done.id}/cd/new/.command.out" in remaining and f"{active.id}/ab/task/.command.out" in remaining

@@ -3,9 +3,10 @@
 # The portal stores the run's config and parameters under runs/<run_id>/ before it submits the task.
 set -o errexit -o nounset -o pipefail
 
-: "${NF_RUN_ID:?}" "${NF_PIPELINE:?}" "${NF_STORAGE_ACCOUNT:?}" "${NF_IDENTITY_CLIENT_ID:?}" "${NXF_HOME:?}"
+: "${NF_RUN_ID:?}" "${NF_PIPELINE:?}" "${NF_STORAGE_ACCOUNT:?}" "${NF_STORAGE_CONTAINER:?}" "${NF_IDENTITY_CLIENT_ID:?}" "${NXF_HOME:?}"
 
-blob="https://${NF_STORAGE_ACCOUNT}.blob.core.windows.net"
+# The service's container in the workspace storage account, with pipelines/, runs/, results/ ... folders.
+blob="https://${NF_STORAGE_ACCOUNT}.blob.core.windows.net/${NF_STORAGE_CONTAINER}"
 workdir="${AZ_BATCH_TASK_WORKING_DIR:-$PWD}"
 cd "${workdir}"
 

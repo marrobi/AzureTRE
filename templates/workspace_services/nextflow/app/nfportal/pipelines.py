@@ -92,18 +92,22 @@ def schema_fields(schema: dict | None) -> list[ParamField]:
     return fields
 
 
-def to_az_path(value: str) -> str:
-    """Convert an `inputs/...` or `results/...` selection to a Nextflow az:// path in this service's storage."""
+def to_az_path(value: str, storage_container: str) -> str:
+    """Convert an `inputs/...` or `results/...` selection to a Nextflow az:// path in this service's container."""
     value = value.strip()
     if value.startswith("az://"):
         value = value[len("az://") :]
+        if value.startswith(f"{storage_container}/"):
+            value = value[len(storage_container) + 1 :]
     container, _, rest = value.partition("/")
     if container not in PATH_CONTAINERS or not rest:
         raise InvalidPath("Choose a file or folder from the inputs or results storage.")
-    return f"az://{container}/{safe_blob_name(rest)}"
+    return f"az://{storage_container}/{container}/{safe_blob_name(rest)}"
 
 
-def coerce_params(fields: list[ParamField], raw: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+def coerce_params(
+    fields: list[ParamField], raw: dict[str, Any], storage_container: str
+) -> tuple[dict[str, Any], dict[str, str]]:
     """Validate form values against the schema fields. Returns (params, errors)."""
     params: dict[str, Any] = {}
     errors: dict[str, str] = {}
@@ -125,7 +129,7 @@ def coerce_params(fields: list[ParamField], raw: dict[str, Any]) -> tuple[dict[s
             else:
                 value = str(value)
                 if f.is_path:
-                    value = to_az_path(value)
+                    value = to_az_path(value, storage_container)
                 elif f.pattern and not re.fullmatch(f.pattern, value):
                     raise ValueError(f"Does not match pattern {f.pattern}")
             if f.enum and value not in f.enum:

@@ -51,5 +51,5 @@ variable "worker_use_spot" {
 variable "work_retention_days" {
   type        = number
   default     = 14
-  description = "Days to keep Nextflow work directories before lifecycle management deletes them"
+  description = "Days to keep a finished run's Nextflow work directory before the portal deletes it"
 }

@@ -49,14 +49,26 @@ resource "azurerm_role_assignment" "batch_job_submitter" {
   principal_id         = each.value
 }
 
-# Also covers the user delegation keys Nextflow uses to issue container SAS tokens to tasks.
+# Data access is limited to the service's container, so pipeline code can't reach the rest of the
+# workspace storage. Nextflow issues task SAS tokens from user delegation keys, which need the account-scoped
+# Delegator role; a delegation SAS can't grant more than the creator's container-scoped data access.
 resource "azurerm_role_assignment" "blob_contributor" {
   for_each = {
     portal = azurerm_user_assigned_identity.portal.principal_id
     head   = azurerm_user_assigned_identity.head.principal_id
   }
-  scope                = azurerm_storage_account.nf.id
+  scope                = local.storage_container_scope
   role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = each.value
+}
+
+resource "azurerm_role_assignment" "blob_delegator" {
+  for_each = {
+    portal = azurerm_user_assigned_identity.portal.principal_id
+    head   = azurerm_user_assigned_identity.head.principal_id
+  }
+  scope                = data.azurerm_storage_account.ws.id
+  role_definition_name = "Storage Blob Delegator"
   principal_id         = each.value
 }
 

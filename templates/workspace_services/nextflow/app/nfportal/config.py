@@ -12,6 +12,8 @@ class Settings:
     dev_mode: bool
     service_name: str
     storage_account: str
+    storage_container: str
+    work_retention_days: int
     batch_endpoint: str
     head_pool_id: str
     worker_pool_id: str
@@ -39,6 +41,8 @@ def load_settings() -> Settings:
         dev_mode=_flag("NF_DEV_MODE"),
         service_name=os.environ.get("NF_SERVICE_NAME", "Nextflow"),
         storage_account=os.environ.get("NF_STORAGE_ACCOUNT", ""),
+        storage_container=os.environ.get("NF_STORAGE_CONTAINER", "nextflow"),
+        work_retention_days=int(os.environ.get("NF_WORK_RETENTION_DAYS", "14")),
         batch_endpoint=os.environ.get("NF_BATCH_ENDPOINT", ""),
         head_pool_id=os.environ.get("NF_HEAD_POOL_ID", "nf-head"),
         worker_pool_id=os.environ.get("NF_WORKER_POOL_ID", "nf-worker"),

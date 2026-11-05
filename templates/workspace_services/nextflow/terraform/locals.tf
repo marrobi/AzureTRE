@@ -6,7 +6,9 @@ locals {
   core_resource_group_name       = "rg-${var.tre_id}"
   keyvault_name                  = lower("kv-${substr(local.workspace_resource_name_suffix, -20, -1)}")
   compact_suffix                 = lower(replace("${var.tre_id}${local.short_workspace_id}${local.short_service_id}", "-", ""))
-  storage_name                   = substr("stnf${local.compact_suffix}", 0, 24)
+  workspace_storage_name         = lower(replace("stg${substr(local.workspace_resource_name_suffix, -8, -1)}", "-", ""))
+  storage_container_name         = "nextflow-${local.short_service_id}"
+  storage_container_scope        = "${data.azurerm_storage_account.ws.id}/blobServices/default/containers/${azurerm_storage_container.nf.name}"
   batch_account_name             = substr("banf${local.compact_suffix}", 0, 24)
   webapp_name                    = "nextflow-${local.service_resource_name_suffix}"
   version                        = replace(replace(replace(data.local_file.version.content, "__version__ = \"", ""), "\"", ""), "\n", "")
@@ -14,7 +16,6 @@ locals {
   nexus_proxy_url                = "https://nexus-${data.azurerm_public_ip.app_gateway_ip.fqdn}"
   head_pool_id                   = "nf-head"
   worker_pool_id                 = "nf-worker"
-  storage_containers             = ["pipelines", "inputs", "work", "results", "runs"]
   # Nextflow requires one task slot per vCPU on existing pools. Keep in sync with template_schema.json.
   vm_vcpus = {
     Standard_D2s_v3  = 2

@@ -6,14 +6,14 @@ import json
 import re
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .auth import User
 from .batch import HeadRunner, HeadStatus
 from .config import Settings
 from .pipelines import Pipeline
-from .store import RESULTS, RUNS, Store
+from .store import RESULTS, RUNS, WORK, Store
 
 TERMINAL = {"succeeded", "failed", "cancelled"}
 RUN_ID_PATTERN = re.compile(r"^[a-f0-9]{12}$")
@@ -68,7 +68,7 @@ process {{
     queue = '{settings.worker_pool_id}'
 }}
 
-workDir = 'az://work/{run_id}'
+workDir = 'az://{settings.storage_container}/work/{run_id}'
 
 // Batch runs task containers as a task user whose home directory doesn't exist in the image,
 // so azcopy must keep its job plans in the task directory.
@@ -110,7 +110,7 @@ class RunService:
 
     def create(self, user: User, pipeline: Pipeline, params: dict[str, Any], label: str = "") -> Run:
         run_id = uuid.uuid4().hex[:12]
-        params = {**params, "outdir": f"az://{RESULTS}/{run_id}"}
+        params = {**params, "outdir": f"az://{self.settings.storage_container}/{RESULTS}/{run_id}"}
         now = utcnow()
         run = Run(
             id=run_id,
@@ -130,6 +130,7 @@ class RunService:
             "NF_RUN_ID": run_id,
             "NF_PIPELINE": pipeline.id,
             "NF_STORAGE_ACCOUNT": self.settings.storage_account,
+            "NF_STORAGE_CONTAINER": self.settings.storage_container,
             "NF_IDENTITY_CLIENT_ID": self.settings.head_identity_client_id,
             # The TRE registry, for pipelines whose tre.config uses images mirrored into it.
             "NF_CONTAINER_REGISTRY": self.settings.runtime_image.split("/", 1)[0]
@@ -212,6 +213,21 @@ class RunService:
         for run in self.list():
             if not run.is_terminal:
                 self.refresh(run)
+
+    def expire_work(self, now: datetime | None = None) -> int:
+        """Delete intermediate files of finished runs after the retention period. Returns the number deleted."""
+        cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=self.settings.work_retention_days)
+        finished: dict[str, bool] = {}
+        deleted = 0
+        for item in self.store.list(WORK):
+            run_id = item.name.split("/", 1)[0]
+            if run_id not in finished:
+                run = self.get(run_id)
+                finished[run_id] = run is None or run.is_terminal
+            if finished[run_id] and item.last_modified and item.last_modified < cutoff:
+                self.store.delete(WORK, item.name)
+                deleted += 1
+        return deleted
 
     def cancel(self, run: Run, user: User) -> None:
         if run.is_terminal:

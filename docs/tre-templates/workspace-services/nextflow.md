@@ -14,25 +14,25 @@ flowchart LR
   B --> H[Head pool<br/>runs Nextflow]
   H -->|submit pipeline tasks| B
   B --> W[Task pool<br/>autoscales to zero]
-  P & H & W --> S[(Service storage<br/>pipelines, inputs, work, results, runs)]
+  P & H & W --> S[(Workspace storage account<br/>nextflow-xxxx container)]
   W -->|Docker Hub images| N[TRE Nexus proxy]
 ```
 
 - **Portal:** a container on the workspace App Service plan. It has no public network access and serves a React and Fluent UI front end that matches the TRE portal. Users sign in with the workspace app registration and need the WorkspaceOwner or WorkspaceResearcher role.
 - **Nextflow head:** each run starts as an Azure Batch container task on the head pool. The head process uses Nextflow's `azurebatch` executor to submit the pipeline's tasks to the task pool. Pipeline code runs on Batch nodes, never in the portal.
 - **Batch pools:** both pools are in a dedicated workspace subnet. They have no public IP addresses, use simplified node communication through a private endpoint, and send any other traffic through the TRE firewall. They scale to zero when idle.
-- **Storage:** a service storage account with shared keys disabled and a private endpoint. Nextflow issues short-lived user delegation SAS tokens to its tasks. Work directories are deleted after the configured retention period.
+- **Storage:** a container in the workspace storage account, reached through the workspace's existing private endpoint. Nextflow issues short-lived user delegation SAS tokens to its tasks. The portal deletes work directories after the configured retention period.
 - **Progress:** an `nf-weblog` receiver beside the head process writes run events to storage, and the portal reads them. Batch nodes never connect to the portal.
 
 ## Identities
 
 | Identity | Roles | Used by |
 | --- | --- | --- |
-| Portal | AcrPull on the TRE ACR, Azure Batch Job Submitter on the service Batch account, Storage Blob Data Contributor on the service storage, Key Vault Secrets User on its two secrets | Portal web app |
-| Head | AcrPull, Azure Batch Job Submitter, Storage Blob Data Contributor | Head pool nodes |
+| Portal | AcrPull on the TRE ACR, Azure Batch Job Submitter on the service Batch account, Storage Blob Data Contributor on the service container, Storage Blob Delegator on the workspace storage account, Key Vault Secrets User on its two secrets | Portal web app |
+| Head | AcrPull, Azure Batch Job Submitter, Storage Blob Data Contributor on the service container, Storage Blob Delegator | Head pool nodes |
 | Worker | AcrPull | Task pool nodes, to prefetch the runtime image |
 
-No identity can create, resize or delete Batch pools, and none has roles outside the workspace service's resources and the TRE ACR.
+No identity can create, resize or delete Batch pools, and none has data access outside the service's container, its Batch account and the TRE ACR.
 
 ## Network access
 
@@ -68,15 +68,18 @@ A pipeline folder can contain two TRE-specific files:
 
 ## Where files are stored
 
-Each Nextflow service has its own storage account, `stnf<tre-id><workspace><service>`, in the workspace resource group. It's only reachable through its private endpoint, and only the portal and the Nextflow head have data access, so researchers browse it on the portal's **Data** page.
+The service keeps its files in a container named `nextflow-<last 4 characters of the service ID>` in the workspace storage account (`stg<workspace>`). Reusing that account saves a storage account and a private endpoint for each service, because storage accounts are limited per subscription and region. The container has a folder for each area:
 
-| Container | Contents | Retention |
+| Folder | Contents | Retention |
 | --- | --- | --- |
-| `pipelines` | Pipeline folders uploaded on **Data** > **Pipelines** | Until deleted |
-| `inputs` | Files uploaded on **Data** > **Inputs** | Until deleted |
-| `results` | `results/<run id>/`: the files a run publishes, and `_nextflow/` with the Nextflow report, timeline, trace and log | Until deleted |
-| `work` | `work/<run id>/`: Nextflow task directories with intermediate files | `work_retention_days` |
-| `runs` | `runs/<run id>/`: run status, generated configuration, parameters and progress events | Until deleted |
+| `pipelines/` | Pipeline folders uploaded on **Data** > **Pipelines** | Until deleted |
+| `inputs/` | Files uploaded on **Data** > **Inputs** | Until deleted |
+| `results/<run id>/` | The files a run publishes, and `_nextflow/` with the Nextflow report, timeline, trace and log | Until deleted |
+| `work/<run id>/` | Nextflow task directories with intermediate files | Deleted by the portal `work_retention_days` after the run ends |
+| `runs/<run id>/` | Run status, generated configuration, parameters and progress events | Until deleted |
+
+The portal and Nextflow head identities have Storage Blob Data Contributor on this container only, and Storage Blob Delegator on the account so Nextflow can issue user delegation SAS tokens to tasks.
+A delegation SAS can't grant more than its creator's data access, so pipelines can't read the rest of the workspace storage, such as the `datalake` container or the VM file share. Researchers browse the container on the portal's **Data** page.
 
 ## Using the portal
 

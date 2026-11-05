@@ -1,7 +1,7 @@
 """Local nf-weblog receiver that runs beside the Nextflow head process.
 
 Nextflow posts workflow events to 127.0.0.1, and this process appends each
-event to runs/<run_id>/events.jsonl with the head pool's managed identity. The
+event to runs/<run_id>/events.jsonl in the service's container with the head pool's managed identity. The
 portal therefore needs no endpoint reachable from the Batch subnet.
 """
 
@@ -43,7 +43,7 @@ def main() -> None:
     run_id = os.environ["NF_RUN_ID"]
     account = os.environ["NF_STORAGE_ACCOUNT"]
     credential = ManagedIdentityCredential(client_id=os.environ["NF_IDENTITY_CLIENT_ID"])
-    store = AzureBlobStore(f"https://{account}.blob.core.windows.net", credential)
+    store = AzureBlobStore(f"https://{account}.blob.core.windows.net", credential, os.environ["NF_STORAGE_CONTAINER"])
     port = int(os.environ.get("NF_WEBLOG_PORT", "8099"))
     HTTPServer(("127.0.0.1", port), make_handler(store, run_id)).serve_forever()
 
