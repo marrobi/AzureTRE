@@ -1,0 +1,8 @@
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+azure-batch==15.1.0
+azure-identity==1.27.0
+azure-storage-blob==12.31.1
+msal==1.39.0
+itsdangerous==2.2.0

@@ -1,0 +1,122 @@
+{
+  "schemaType": "ParameterSet",
+  "schemaVersion": "1.0.1",
+  "namespace": "",
+  "name": "tre-workspace-service-nextflow",
+  "parameters": [
+    {
+      "name": "workspace_id",
+      "source": {
+        "env": "WORKSPACE_ID"
+      }
+    },
+    {
+      "name": "tre_id",
+      "source": {
+        "env": "TRE_ID"
+      }
+    },
+    {
+      "name": "mgmt_acr_name",
+      "source": {
+        "env": "ACR_NAME"
+      }
+    },
+    {
+      "name": "mgmt_resource_group_name",
+      "source": {
+        "env": "MGMT_RESOURCE_GROUP_NAME"
+      }
+    },
+    {
+      "name": "id",
+      "source": {
+        "env": "ID"
+      }
+    },
+    {
+      "name": "tfstate_resource_group_name",
+      "source": {
+        "env": "MGMT_RESOURCE_GROUP_NAME"
+      }
+    },
+    {
+      "name": "tfstate_storage_account_name",
+      "source": {
+        "env": "MGMT_STORAGE_ACCOUNT_NAME"
+      }
+    },
+    {
+      "name": "tfstate_container_name",
+      "source": {
+        "env": "TERRAFORM_STATE_CONTAINER_NAME"
+      }
+    },
+    {
+      "name": "arm_use_msi",
+      "source": {
+        "env": "ARM_USE_MSI"
+      }
+    },
+    {
+      "name": "arm_environment",
+      "source": {
+        "env": "ARM_ENVIRONMENT"
+      }
+    },
+    {
+      "name": "aad_authority_url",
+      "source": {
+        "env": "AAD_AUTHORITY_URL"
+      }
+    },
+    {
+      "name": "display_name",
+      "source": {
+        "env": "DISPLAY_NAME"
+      }
+    },
+    {
+      "name": "address_space",
+      "source": {
+        "env": "ADDRESS_SPACE"
+      }
+    },
+    {
+      "name": "head_vm_size",
+      "source": {
+        "env": "HEAD_VM_SIZE"
+      }
+    },
+    {
+      "name": "head_max_nodes",
+      "source": {
+        "env": "HEAD_MAX_NODES"
+      }
+    },
+    {
+      "name": "worker_vm_size",
+      "source": {
+        "env": "WORKER_VM_SIZE"
+      }
+    },
+    {
+      "name": "worker_max_nodes",
+      "source": {
+        "env": "WORKER_MAX_NODES"
+      }
+    },
+    {
+      "name": "worker_use_spot",
+      "source": {
+        "env": "WORKER_USE_SPOT"
+      }
+    },
+    {
+      "name": "work_retention_days",
+      "source": {
+        "env": "WORK_RETENTION_DAYS"
+      }
+    }
+  ]
+}

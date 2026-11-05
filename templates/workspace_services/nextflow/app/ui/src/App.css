@@ -1,0 +1,201 @@
+/* Layout and styles follow the Azure TRE portal (ui/app/src/App.scss). */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue",
+    sans-serif;
+  color: #323130;
+  background: #fff;
+}
+
+h1 {
+  font-weight: 600;
+  font-size: 20px;
+  margin: 0;
+}
+
+h5 {
+  display: inline;
+  font-size: 1.2rem;
+  font-weight: normal;
+  margin: 0;
+}
+
+.nf-root {
+  min-height: 100vh;
+}
+
+.nf-body {
+  flex: 1;
+}
+
+.nf-left-nav {
+  width: 200px;
+  min-width: 200px;
+  border-right: 1px solid #edebe9;
+  padding-top: 10px;
+}
+
+.nf-content {
+  padding: 20px 30px;
+  min-width: 0;
+}
+
+.nf-home-link {
+  color: #fff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nf-home-icon {
+  margin: 0 10px;
+}
+
+.nf-home-divider {
+  margin: 0 10px;
+  opacity: 0.6;
+}
+
+.nf-user .ms-Persona-primaryText,
+.nf-user .ms-Persona-secondaryText {
+  color: #fff;
+}
+
+.nf-card {
+  background: #fff;
+  box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132), 0 0.3px 0.9px 0 rgba(0, 0, 0, 0.108);
+  padding: 15px 20px;
+  box-sizing: border-box;
+}
+
+.nf-pipeline-card {
+  width: 340px;
+  min-height: 200px;
+}
+
+.nf-grow {
+  flex-grow: 1;
+}
+
+.nf-muted {
+  color: #605e5c;
+}
+
+.nf-error {
+  color: #a4262c;
+  font-size: 12px;
+}
+
+.nf-status {
+  min-height: 32px;
+}
+
+.nf-tab {
+  padding-top: 16px;
+}
+
+.nf-half {
+  flex: 1 1 420px;
+  min-width: 320px;
+}
+
+.nf-file-pane {
+  flex: 0 1 420px;
+  min-width: 300px;
+}
+
+.nf-preview-pane {
+  flex: 1 1 520px;
+  min-width: 320px;
+}
+
+.nf-form {
+  flex: 1 1 520px;
+  max-width: 720px;
+}
+
+.nf-readme {
+  flex: 1 1 320px;
+  max-width: 520px;
+  align-self: flex-start;
+}
+
+.nf-fact-label {
+  color: #605e5c;
+  min-width: 140px;
+}
+
+.nf-facts {
+  margin-top: 12px;
+}
+
+.nf-pre {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  background: #faf9f8;
+  border: 1px solid #edebe9;
+  padding: 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 65vh;
+  overflow: auto;
+}
+
+.nf-log {
+  max-height: 70vh;
+}
+
+.nf-frame {
+  width: 100%;
+  height: 70vh;
+  border: 1px solid #edebe9;
+  background: #fff;
+}
+
+.nf-image {
+  max-width: 100%;
+  border: 1px solid #edebe9;
+  background: #fff;
+}
+
+.nf-table-scroll {
+  max-height: 65vh;
+  overflow: auto;
+}
+
+.nf-markdown {
+  line-height: 1.5;
+}
+
+.nf-break {
+  word-break: break-all;
+}
+
+.nf-selected {
+  font-weight: 600;
+}
+
+.nf-folder {
+  width: 280px;
+}
+
+.nf-search {
+  width: 320px;
+}
+
+.nf-progress-failed .ms-ProgressIndicator-progressBar {
+  background-color: #a4262c;
+}
+
+.nf-signout,
+.nf-signout:hover,
+.nf-signout:active {
+  color: #fff;
+}

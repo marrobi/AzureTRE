@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TRE demo pipeline",
+  "description": "Simulates a random walk for each sample on Azure Batch, then publishes a summary table, an SVG chart and an HTML report.",
+  "type": "object",
+  "$defs": {
+    "input_options": {
+      "title": "Input",
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string",
+          "format": "file-path",
+          "title": "Sample list",
+          "description": "Optional text file in the inputs storage with one sample name per line. Leave empty to generate samples."
+        },
+        "samples": {
+          "type": "integer",
+          "title": "Number of generated samples",
+          "description": "Used when no sample list is selected.",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 50
+        }
+      }
+    },
+    "simulation_options": {
+      "title": "Simulation",
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "integer",
+          "title": "Steps per sample",
+          "default": 50,
+          "minimum": 2,
+          "maximum": 10000
+        },
+        "title": {
+          "type": "string",
+          "title": "Report title",
+          "default": "Azure TRE Nextflow demo",
+          "pattern": "^[A-Za-z0-9 _.,:()-]{1,80}$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/input_options" },
+    { "$ref": "#/$defs/simulation_options" }
+  ]
+}

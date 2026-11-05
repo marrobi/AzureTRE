@@ -1,0 +1,12 @@
+# Local .terraform directories
+**/.terraform/*
+
+# TF backend files
+**/*_backend.tf
+
+Dockerfile.tmpl
+
+.env*
+
+# The portal runtime image is built separately from app/; the bundle only needs terraform/ and version.txt.
+app/

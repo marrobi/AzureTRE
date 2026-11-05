@@ -1,0 +1,7 @@
+ui/node_modules
+ui/public/fluent-icons
+nfportal/static
+.devdata
+**/__pycache__
+.pytest_cache
+tests

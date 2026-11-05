@@ -109,6 +109,7 @@ nav:
           - MySQL: tre-templates/workspace-services/mysql.md
           - Azure SQL: tre-templates/workspace-services/azuresql.md
           - Open AI: tre-templates/workspace-services/openai.md
+          - Nextflow (spike): tre-templates/workspace-services/nextflow.md
       - Shared Services:
           - Gitea (Source Mirror): tre-templates/shared-services/gitea.md
           - Nexus (Package Mirror): tre-templates/shared-services/nexus.md

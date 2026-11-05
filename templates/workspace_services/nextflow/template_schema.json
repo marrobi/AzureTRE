@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/microsoft/AzureTRE/templates/workspace_services/nextflow/template_schema.json",
+  "type": "object",
+  "title": "Nextflow",
+  "description": "Run Nextflow pipelines on Azure Batch from a web portal inside the workspace.",
+  "required": [],
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "title": "Name for the workspace service",
+      "description": "The name of the workspace service to be displayed to users",
+      "default": "Nextflow",
+      "updateable": true
+    },
+    "description": {
+      "type": "string",
+      "title": "Description of the workspace service",
+      "description": "Description of the workspace service",
+      "default": "Run Nextflow pipelines on Azure Batch from a web portal inside the workspace.",
+      "updateable": true
+    },
+    "overview": {
+      "type": "string",
+      "title": "Workspace Service Overview",
+      "description": "Long form description of the workspace service, in markdown syntax",
+      "default": "Run Nextflow pipelines from a web portal inside the workspace. Pipeline tasks run in containers on an Azure Batch pool that scales to zero, with no public IP addresses. Results are published to workspace storage and shown in the portal.\n\n- Pipelines: a built-in demo, or your own pipeline folders uploaded to the portal's pipeline storage.\n- Containers: Docker Hub images are pulled through the TRE Nexus proxy.\n- Data: bring data in and take results out with Airlock.\n\nDocumentation: [Nextflow](https://docs.seqera.io/nextflow/)",
+      "updateable": true
+    },
+    "worker_vm_size": {
+      "type": "string",
+      "title": "Task VM size",
+      "description": "VM size for pipeline tasks. Each node runs one task slot per vCPU.",
+      "enum": [
+        "Standard_D2s_v3",
+        "Standard_D4s_v3",
+        "Standard_D8s_v3",
+        "Standard_D16s_v3",
+        "Standard_E4s_v3",
+        "Standard_E8s_v3",
+        "Standard_E16s_v3"
+      ],
+      "default": "Standard_D4s_v3",
+      "updateable": true
+    },
+    "worker_max_nodes": {
+      "type": "integer",
+      "title": "Maximum task nodes",
+      "description": "The task pool scales between zero and this number of nodes.",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 4,
+      "updateable": true
+    },
+    "worker_use_spot": {
+      "type": "boolean",
+      "title": "Use Spot VMs for tasks",
+      "description": "Cheaper, but Azure can evict nodes and Batch then reruns their tasks.",
+      "default": false,
+      "updateable": true
+    },
+    "head_vm_size": {
+      "type": "string",
+      "title": "Nextflow head VM size",
+      "description": "VM size for the Nextflow head process of each run. Each node runs two runs.",
+      "enum": [
+        "Standard_D2s_v3",
+        "Standard_D4s_v3",
+        "Standard_D8s_v3"
+      ],
+      "default": "Standard_D2s_v3",
+      "updateable": true
+    },
+    "head_max_nodes": {
+      "type": "integer",
+      "title": "Maximum head nodes",
+      "description": "Limits how many runs can be active at once (two per node).",
+      "minimum": 1,
+      "maximum": 20,
+      "default": 2,
+      "updateable": true
+    },
+    "work_retention_days": {
+      "type": "integer",
+      "title": "Work directory retention (days)",
+      "description": "Nextflow intermediate files are deleted after this many days. Published results are kept.",
+      "minimum": 1,
+      "maximum": 365,
+      "default": 14,
+      "updateable": true
+    },
+    "address_space": {
+      "type": "string",
+      "title": "Address space",
+      "description": "The address space for the Batch pool subnet"
+    },
+    "is_exposed_externally": {
+      "type": "boolean",
+      "title": "Expose externally",
+      "description": "Is the portal accessible from outside of the TRE network.",
+      "default": false
+    }
+  },
+  "uiSchema": {
+    "address_space": {
+      "classNames": "tre-hidden"
+    },
+    "is_exposed_externally": {
+      "classNames": "tre-hidden"
+    }
+  },
+  "pipeline": {
+    "install": [
+      {
+        "stepId": "5c6e0f5a-6f1e-4d5e-9b0f-1a7f2c3d4e51",
+        "stepTitle": "Upgrade the workspace to add the Nextflow address space",
+        "resourceType": "workspace",
+        "resourceAction": "upgrade",
+        "properties": []
+      },
+      {
+        "stepId": "main"
+      },
+      {
+        "stepId": "6f3b1c2d-8a4e-4f6b-9c1d-2e3f4a5b6c72",
+        "stepTitle": "Add the Nextflow portal sign-in redirect URI",
+        "resourceType": "workspace",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "aad_redirect_uris",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "{{ resource.id }}",
+              "value": "{{ resource.properties.authentication_callback_uri }}"
+            }
+          }
+        ]
+      },
+      {
+        "stepId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c83",
+        "stepTitle": "Add firewall rules for Nextflow sign-in",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_nextflow",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AzureAD",
+                  "description": "Microsoft Entra ID sign-in for the Nextflow portal and workspace browsers",
+                  "source_addresses": "{{ resource.properties.auth_source_addresses }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_nextflow",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AAD CDN",
+                  "description": "Microsoft Entra ID sign-in page assets for workspace browsers",
+                  "source_addresses": "{{ resource.properties.auth_source_addresses }}",
+                  "target_fqdns": [
+                    "aadcdn.msftauth.net",
+                    "aadcdn.msauth.net"
+                  ],
+                  "protocols": [
+                    {
+                      "port": "443",
+                      "type": "Https"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "upgrade": [
+      {
+        "stepId": "main"
+      },
+      {
+        "stepId": "8b9c0d1e-2f3a-4b4c-9d5e-6f7a8b9c0d94",
+        "stepTitle": "Add the Nextflow portal sign-in redirect URI",
+        "resourceType": "workspace",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "aad_redirect_uris",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "{{ resource.id }}",
+              "value": "{{ resource.properties.authentication_callback_uri }}"
+            }
+          }
+        ]
+      },
+      {
+        "stepId": "9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1ea5",
+        "stepTitle": "Add firewall rules for Nextflow sign-in",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_nextflow",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AzureAD",
+                  "description": "Microsoft Entra ID sign-in for the Nextflow portal and workspace browsers",
+                  "source_addresses": "{{ resource.properties.auth_source_addresses }}",
+                  "destination_addresses": [
+                    "AzureActiveDirectory"
+                  ],
+                  "destination_ports": [
+                    "443"
+                  ],
+                  "protocols": [
+                    "TCP"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "replace",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_nextflow",
+              "action": "Allow",
+              "rules": [
+                {
+                  "name": "AAD CDN",
+                  "description": "Microsoft Entra ID sign-in page assets for workspace browsers",
+                  "source_addresses": "{{ resource.properties.auth_source_addresses }}",
+                  "target_fqdns": [
+                    "aadcdn.msftauth.net",
+                    "aadcdn.msauth.net"
+                  ],
+                  "protocols": [
+                    {
+                      "port": "443",
+                      "type": "Https"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "uninstall": [
+      {
+        "stepId": "0d1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2fb6",
+        "stepTitle": "Remove the Nextflow portal sign-in redirect URI",
+        "resourceType": "workspace",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "aad_redirect_uris",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "{{ resource.id }}"
+            }
+          }
+        ]
+      },
+      {
+        "stepId": "1e2f3a4b-5c6d-4e7f-8a9b-9c0d1e2f3ac7",
+        "stepTitle": "Remove firewall rules for Nextflow sign-in",
+        "resourceTemplateName": "tre-shared-service-firewall",
+        "resourceType": "shared-service",
+        "resourceAction": "upgrade",
+        "properties": [
+          {
+            "name": "network_rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "nrc_svc_{{ resource.id }}_nextflow"
+            }
+          },
+          {
+            "name": "rule_collections",
+            "type": "array",
+            "arraySubstitutionAction": "remove",
+            "arrayMatchField": "name",
+            "value": {
+              "name": "arc_svc_{{ resource.id }}_nextflow"
+            }
+          }
+        ]
+      },
+      {
+        "stepId": "main"
+      }
+    ]
+  }
+}
