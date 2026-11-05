@@ -106,8 +106,9 @@ h5 {
 }
 
 .nf-file-pane {
-  flex: 0 1 420px;
-  min-width: 300px;
+  flex: 1 1 480px;
+  min-width: 360px;
+  max-width: 640px;
 }
 
 .nf-preview-pane {
@@ -198,4 +199,17 @@ h5 {
 .nf-signout:hover,
 .nf-signout:active {
   color: #fff;
+}
+
+.nf-folder-icon {
+  color: #c19c00;
+}
+
+.nf-breadcrumb {
+  margin: 0;
+}
+
+.nf-breadcrumb .ms-Breadcrumb-itemLink,
+.nf-breadcrumb .ms-Breadcrumb-item {
+  font-size: 14px;
 }

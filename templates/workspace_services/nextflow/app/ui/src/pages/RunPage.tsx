@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DefaultButton,
   DetailsList,
@@ -22,7 +22,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../api";
 import { Card } from "../components/Card";
 import { ErrorBar } from "../components/ErrorBar";
-import { FileList } from "../components/FileList";
+import { FileBrowser, keyOutputs } from "../components/FileBrowser";
 import { FilePreview } from "../components/FilePreview";
 import { StatusBadge } from "../components/StatusBadge";
 import { formatDate, formatDuration } from "../format";
@@ -212,17 +212,18 @@ const Fact: React.FunctionComponent<{ label: string; value: string }> = ({ label
 );
 
 const Results: React.FunctionComponent<{ run: Run; active: boolean }> = ({ run, active }) => {
-  const prefix = `${run.id}/`;
+  const root = `${run.id}/`;
   const [files, setFiles] = useState<StoredFile[]>();
+  const [path, setPath] = useState("");
   const [selected, setSelected] = useState<StoredFile>();
   const [error, setError] = useState<string>();
 
   const load = useCallback(() => {
     api
-      .get<StoredFile[]>(`/api/storage/results?prefix=${encodeURIComponent(prefix)}`)
-      .then((all) => setFiles(all.filter((f) => !f.name.startsWith(`${prefix}_nextflow/`))))
+      .get<StoredFile[]>(`/api/storage/results?prefix=${encodeURIComponent(root)}`)
+      .then(setFiles)
       .catch((e) => setError(e.message));
-  }, [prefix]);
+  }, [root]);
 
   useEffect(() => {
     load();
@@ -231,33 +232,62 @@ const Results: React.FunctionComponent<{ run: Run; active: boolean }> = ({ run, 
     return () => clearInterval(timer);
   }, [load, active]);
 
+  const highlights = useMemo(() => (files ? keyOutputs(files, root) : []), [files, root]);
+
   useEffect(() => {
-    if (!selected && files?.length) {
-      setSelected(files.find((f) => f.kind === "html") ?? files.find((f) => f.kind !== "binary") ?? files[0]);
-    }
-  }, [files, selected]);
+    if (!selected && highlights.length) setSelected(highlights[0]);
+  }, [highlights, selected]);
+
+  const select = (file: StoredFile) => {
+    setSelected(file);
+    const folder = file.name.slice(root.length, file.name.lastIndexOf("/") + 1);
+    setPath(folder);
+  };
 
   return (
-    <Stack horizontal wrap tokens={{ childrenGap: 20 }} className="nf-tab">
-      <Card className="nf-file-pane">
-        <Text variant="large">Published files</Text>
-        <ErrorBar error={error} />
-        {!files && !error && <Shimmer />}
-        {files && (
-          <FileList
-            files={files}
-            stripPrefix={prefix}
-            selected={selected?.name}
-            onSelect={setSelected}
-            emptyMessage={active ? "Files appear here as the pipeline publishes them." : "This run published no files."}
-          />
-        )}
-      </Card>
-      {selected && (
-        <Card className="nf-preview-pane">
-          <FilePreview container="results" name={selected.name} label={selected.name.slice(prefix.length)} />
-        </Card>
+    <Stack tokens={{ childrenGap: 16 }} className="nf-tab">
+      {highlights.length > 0 && (
+        <Stack horizontal wrap verticalAlign="center" tokens={{ childrenGap: 8 }}>
+          <Text className="nf-muted">Key outputs:</Text>
+          {highlights.map((f) => {
+            const props = {
+              text: f.name.slice(root.length),
+              iconProps: { iconName: f.kind === "html" ? "ReportDocument" : f.kind === "table" ? "ExcelDocument" : "Page" },
+              onClick: () => select(f),
+            };
+            return selected?.name === f.name ? (
+              <PrimaryButton key={f.name} {...props} />
+            ) : (
+              <DefaultButton key={f.name} {...props} />
+            );
+          })}
+        </Stack>
       )}
+      <Stack horizontal wrap tokens={{ childrenGap: 20 }}>
+        <Card className="nf-file-pane">
+          <Text variant="large">Published files</Text>
+          <ErrorBar error={error} />
+          {!files && !error && <Shimmer />}
+          {files && (
+            <FileBrowser
+              files={files}
+              root={root}
+              rootLabel="Results"
+              path={path}
+              onPathChange={setPath}
+              selected={selected?.name}
+              onSelect={setSelected}
+              hiddenFolders={["_nextflow"]}
+              emptyMessage={active ? "Files appear here as the pipeline publishes them." : "This run published no files."}
+            />
+          )}
+        </Card>
+        {selected && (
+          <Card className="nf-preview-pane">
+            <FilePreview container="results" name={selected.name} label={selected.name.slice(root.length)} />
+          </Card>
+        )}
+      </Stack>
     </Stack>
   );
 };

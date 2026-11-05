@@ -66,11 +66,23 @@ A pipeline folder can contain two TRE-specific files:
 - `tre_schema.json` replaces `nextflow_schema.json` in the launch form, for example to leave out options that need internet access. The pipeline still validates its parameters against its own schema.
 - `tre.config` is applied before the TRE's own settings. `@TRE_REGISTRY@` in it is replaced with the TRE container registry, so it can point the pipeline at mirrored images.
 
+## Where files are stored
+
+Each Nextflow service has its own storage account, `stnf<tre-id><workspace><service>`, in the workspace resource group. It's only reachable through its private endpoint, and only the portal and the Nextflow head have data access, so researchers browse it on the portal's **Data** page.
+
+| Container | Contents | Retention |
+| --- | --- | --- |
+| `pipelines` | Pipeline folders uploaded on **Data** > **Pipelines** | Until deleted |
+| `inputs` | Files uploaded on **Data** > **Inputs** | Until deleted |
+| `results` | `results/<run id>/`: the files a run publishes, and `_nextflow/` with the Nextflow report, timeline, trace and log | Until deleted |
+| `work` | `work/<run id>/`: Nextflow task directories with intermediate files | `work_retention_days` |
+| `runs` | `runs/<run id>/`: run status, generated configuration, parameters and progress events | Until deleted |
+
 ## Using the portal
 
 1. Open the service's connection URL from a workspace VM.
 1. On **Pipelines**, choose **Launch** for a pipeline, fill in the parameters and select **Start run**. File parameters list files from the service's inputs and results storage.
-1. Follow the run on the **Overview** tab. When it finishes, view files on **Results** and the Nextflow report, timeline and trace on **Reports**.
+1. Follow the run on the **Overview** tab. When it finishes, the **Results** tab shows the run's key outputs, such as its HTML reports, and a folder browser of everything it published. The Nextflow report, timeline and trace are on **Reports**.
 
 To add a pipeline, upload its folder to **Data** > **Pipelines**. The folder needs:
 

@@ -13,7 +13,6 @@ import {
   PivotItem,
   PrimaryButton,
   ProgressIndicator,
-  SearchBox,
   Shimmer,
   Stack,
   Text,
@@ -22,10 +21,10 @@ import {
 import { api, fileUrl } from "../api";
 import { Card } from "../components/Card";
 import { ErrorBar } from "../components/ErrorBar";
-import { FileList } from "../components/FileList";
+import { FileBrowser } from "../components/FileBrowser";
 import { FilePreview } from "../components/FilePreview";
-import { formatSize } from "../format";
-import { Me, StoredFile } from "../types";
+import { formatShortDate, formatSize } from "../format";
+import { Me, Run, StoredFile } from "../types";
 
 const AREAS = [
   {
@@ -38,13 +37,13 @@ const AREAS = [
     key: "pipelines",
     title: "Pipelines",
     writable: true,
-    help: "One folder per pipeline. Upload main.nf and nextflow_schema.json into a folder, and subfolders such as templates/ by setting the folder path.",
+    help: "One folder per pipeline. Create a folder, then upload main.nf and nextflow_schema.json into it. Use New folder for subfolders such as templates/.",
   },
   {
     key: "results",
     title: "Results",
     writable: false,
-    help: "Files published by runs. To take results out of the workspace, use an Airlock export request.",
+    help: "Files published by runs, in one folder per run. To take results out of the workspace, use an Airlock export request.",
   },
 ];
 
@@ -68,8 +67,9 @@ const StorageArea: React.FunctionComponent<{ area: (typeof AREAS)[number]; maxUp
   maxUpload,
 }) => {
   const [files, setFiles] = useState<StoredFile[]>();
-  const [filter, setFilter] = useState("");
-  const [folder, setFolder] = useState("");
+  const [runLabels, setRunLabels] = useState<Record<string, string>>({});
+  const [path, setPath] = useState("");
+  const [newFolder, setNewFolder] = useState<string>();
   const [preview, setPreview] = useState<StoredFile>();
   const [toDelete, setToDelete] = useState<StoredFile>();
   const [uploading, setUploading] = useState<string>();
@@ -82,6 +82,18 @@ const StorageArea: React.FunctionComponent<{ area: (typeof AREAS)[number]; maxUp
       .get<StoredFile[]>(`/api/storage/${area.key}`)
       .then(setFiles)
       .catch((e) => setError(e.message));
+    if (area.key === "results") {
+      api
+        .get<Run[]>("/api/runs")
+        .then((runs) =>
+          setRunLabels(
+            Object.fromEntries(
+              runs.map((r) => [r.id, `${r.label || r.nextflow_run_name || r.id} · ${r.pipeline_name} · ${formatShortDate(r.created_at)}`]),
+            ),
+          ),
+        )
+        .catch(() => setRunLabels({}));
+    }
   }, [area.key]);
 
   useEffect(load, [load]);
@@ -96,7 +108,7 @@ const StorageArea: React.FunctionComponent<{ area: (typeof AREAS)[number]; maxUp
     }
     const form = new FormData();
     chosen.forEach((f) => form.append("files", f));
-    form.append("folder", folder);
+    form.append("folder", path);
     setUploading(chosen.length === 1 ? chosen[0].name : `${chosen.length} files`);
     setError(undefined);
     try {
@@ -123,69 +135,73 @@ const StorageArea: React.FunctionComponent<{ area: (typeof AREAS)[number]; maxUp
     }
   };
 
-  const shown = files?.filter((f) => f.name.toLowerCase().includes(filter.toLowerCase()));
+  const createFolder = () => {
+    const name = (newFolder ?? "").trim().replace(/^\/+|\/+$/g, "");
+    setNewFolder(undefined);
+    // Blob storage has no empty folders: the folder exists once a file is uploaded into it.
+    if (name && /^[A-Za-z0-9._ -]+(\/[A-Za-z0-9._ -]+)*$/.test(name)) setPath(`${path}${name}/`);
+    else if (name) setError("Folder names can contain letters, numbers, spaces, dots, hyphens and underscores.");
+  };
+
+  const needsFolder = area.key === "pipelines" && !path;
   return (
     <Stack tokens={{ childrenGap: 12 }}>
       <MessageBar>{area.help}</MessageBar>
-      {area.writable && (
-        <Card>
-          <Text variant="large">Upload</Text>
-          <Stack horizontal wrap verticalAlign="end" tokens={{ childrenGap: 12 }}>
-            <TextField
-              label="Folder"
-              placeholder={area.key === "pipelines" ? "my-pipeline" : "optional/folder"}
-              value={folder}
-              onChange={(_, v) => setFolder(v ?? "")}
-              className="nf-folder"
-            />
-            <PrimaryButton
-              text="Choose files"
-              iconProps={{ iconName: "Upload" }}
-              disabled={!!uploading || (area.key === "pipelines" && !folder.trim())}
-              onClick={() => input.current?.click()}
-            />
-            <input ref={input} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
-          </Stack>
-          {area.key === "pipelines" && !folder.trim() && (
-            <Text variant="small" className="nf-muted">
-              Enter the pipeline folder name first.
-            </Text>
-          )}
-          {uploading && <ProgressIndicator label={`Uploading ${uploading}`} />}
-        </Card>
-      )}
       {message && (
         <MessageBar messageBarType={MessageBarType.success} onDismiss={() => setMessage(undefined)}>
           {message}
         </MessageBar>
       )}
       <ErrorBar error={error} onDismiss={() => setError(undefined)} />
-      <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-        <SearchBox placeholder="Filter files" value={filter} onChange={(_, v) => setFilter(v ?? "")} className="nf-search" />
-        <DefaultButton text="Refresh" iconProps={{ iconName: "Refresh" }} onClick={load} />
-      </Stack>
-      {!shown && !error && <Shimmer />}
-      {shown && (
-        <FileList
-          files={shown}
-          onSelect={setPreview}
-          emptyMessage={filter ? "No files match the filter." : "No files yet."}
-          renderActions={(f) => (
-            <Stack horizontal>
-              <IconButton iconProps={{ iconName: "View" }} title="Preview" ariaLabel="Preview" onClick={() => setPreview(f)} />
-              <IconButton
-                iconProps={{ iconName: "Download" }}
-                title="Download"
-                ariaLabel="Download"
-                href={fileUrl(area.key, f.name, true)}
+      <Card>
+        <Stack horizontal wrap verticalAlign="center" tokens={{ childrenGap: 8 }}>
+          {area.writable && (
+            <>
+              <PrimaryButton
+                text={path ? `Upload to ${path}` : "Upload"}
+                iconProps={{ iconName: "Upload" }}
+                disabled={!!uploading || needsFolder}
+                onClick={() => input.current?.click()}
               />
-              {area.writable && (
-                <IconButton iconProps={{ iconName: "Delete" }} title="Delete" ariaLabel="Delete" onClick={() => setToDelete(f)} />
-              )}
-            </Stack>
+              <DefaultButton text="New folder" iconProps={{ iconName: "FabricNewFolder" }} onClick={() => setNewFolder("")} />
+              <input ref={input} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
+            </>
           )}
-        />
-      )}
+          <DefaultButton text="Refresh" iconProps={{ iconName: "Refresh" }} onClick={load} />
+          {needsFolder && (
+            <Text variant="small" className="nf-muted">
+              Open a pipeline folder, or create one, to upload its files.
+            </Text>
+          )}
+        </Stack>
+        {uploading && <ProgressIndicator label={`Uploading ${uploading}`} />}
+        {!files && !error && <Shimmer />}
+        {files && (
+          <FileBrowser
+            files={files}
+            rootLabel={area.title}
+            path={path}
+            onPathChange={setPath}
+            onSelect={setPreview}
+            folderLabels={runLabels}
+            emptyMessage={path ? "This folder is empty. Upload files to add them." : "No files yet."}
+            renderActions={(f) => (
+              <Stack horizontal>
+                <IconButton iconProps={{ iconName: "View" }} title="Preview" ariaLabel="Preview" onClick={() => setPreview(f)} />
+                <IconButton
+                  iconProps={{ iconName: "Download" }}
+                  title="Download"
+                  ariaLabel="Download"
+                  href={fileUrl(area.key, f.name, true)}
+                />
+                {area.writable && (
+                  <IconButton iconProps={{ iconName: "Delete" }} title="Delete" ariaLabel="Delete" onClick={() => setToDelete(f)} />
+                )}
+              </Stack>
+            )}
+          />
+        )}
+      </Card>
       <Panel
         isOpen={!!preview}
         type={PanelType.large}
@@ -195,6 +211,23 @@ const StorageArea: React.FunctionComponent<{ area: (typeof AREAS)[number]; maxUp
       >
         {preview && <FilePreview container={area.key} name={preview.name} />}
       </Panel>
+      <Dialog
+        hidden={newFolder === undefined}
+        onDismiss={() => setNewFolder(undefined)}
+        dialogContentProps={{ type: DialogType.normal, title: "New folder", subText: `Create a folder in ${area.title}/${path}` }}
+      >
+        <TextField
+          label="Folder name"
+          value={newFolder ?? ""}
+          onChange={(_, v) => setNewFolder(v ?? "")}
+          onKeyDown={(e) => e.key === "Enter" && createFolder()}
+          autoFocus
+        />
+        <DialogFooter>
+          <PrimaryButton text="Create" onClick={createFolder} />
+          <DefaultButton text="Cancel" onClick={() => setNewFolder(undefined)} />
+        </DialogFooter>
+      </Dialog>
       <Dialog
         hidden={!toDelete}
         onDismiss={() => setToDelete(undefined)}
