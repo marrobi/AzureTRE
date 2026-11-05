@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ComboBox,
   DefaultButton,
   Dropdown,
-  IComboBoxOption,
   MessageBar,
   MessageBarType,
   PrimaryButton,
@@ -18,6 +16,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { Card } from "../components/Card";
 import { ErrorBar } from "../components/ErrorBar";
+import { PathPicker, useRunLabels } from "../components/PathPicker";
 import { ParamField, Pipeline, Run } from "../types";
 
 type Values = Record<string, unknown>;
@@ -30,24 +29,11 @@ function initialValues(fields: ParamField[]): Values {
   return values;
 }
 
-function pathOptions(field: ParamField, paths: string[]): IComboBoxOption[] {
-  let options = paths;
-  if (field.format === "directory-path") {
-    const folders = new Set<string>();
-    for (const p of paths) {
-      const parts = p.split("/");
-      for (let i = 2; i < parts.length; i++) folders.add(parts.slice(0, i).join("/"));
-    }
-    options = [...folders].sort();
-  }
-  return options.map((p) => ({ key: p, text: p }));
-}
-
 export const LaunchPage: React.FunctionComponent = () => {
   const { pipelineId = "" } = useParams();
   const navigate = useNavigate();
   const [pipeline, setPipeline] = useState<Pipeline>();
-  const [paths, setPaths] = useState<string[]>([]);
+  const runLabels = useRunLabels();
   const [values, setValues] = useState<Values>({});
   const [label, setLabel] = useState("");
   const [showHidden, setShowHidden] = useState(false);
@@ -63,10 +49,6 @@ export const LaunchPage: React.FunctionComponent = () => {
         setValues(initialValues(p.fields));
       })
       .catch((e) => setError(e.message));
-    api
-      .get<string[]>("/api/path-options")
-      .then(setPaths)
-      .catch(() => setPaths([]));
   }, [pipelineId]);
 
   const groups = useMemo(() => {
@@ -134,21 +116,14 @@ export const LaunchPage: React.FunctionComponent = () => {
     }
     if (f.is_path) {
       return (
-        <Stack key={f.name}>
-          <ComboBox
-            label={f.title}
-            required={f.required}
-            errorMessage={errors[f.name]}
-            options={pathOptions(f, paths)}
-            allowFreeform
-            autoComplete="on"
-            placeholder="Choose a file from inputs or results"
-            selectedKey={typeof value === "string" ? value : null}
-            text={typeof value === "string" ? value : ""}
-            onChange={(_, option, __, text) => set(f.name, option ? String(option.key) : text || undefined)}
-          />
-          {f.description && <Text variant="small" className="nf-muted">{f.description}</Text>}
-        </Stack>
+        <PathPicker
+          key={f.name}
+          field={f}
+          value={typeof value === "string" ? value : undefined}
+          errorMessage={errors[f.name]}
+          runLabels={runLabels}
+          onChange={(v) => set(f.name, v)}
+        />
       );
     }
     if (f.type === "integer" || f.type === "number") {

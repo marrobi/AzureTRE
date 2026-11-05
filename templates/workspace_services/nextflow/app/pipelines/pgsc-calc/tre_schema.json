@@ -11,6 +11,7 @@
         "input": {
           "type": "string",
           "format": "file-path",
+          "pattern": "^\\S+\\.(csv|json)$",
           "title": "Samplesheet",
           "description": "CSV samplesheet describing the target genomes. Leave empty to use the bundled CINECA synthetic chr22 example."
         },
@@ -35,6 +36,7 @@
         "scorefile": {
           "type": "string",
           "format": "file-path",
+          "pattern": "^\\S+\\.txt(\\.gz)?$",
           "title": "Scoring file",
           "description": "A PGS Catalog scoring file in the workspace, for example imported through Airlock. Leave empty to use PGS001229 (standing height) for chr22."
         },

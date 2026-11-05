@@ -17,12 +17,14 @@
         "reads_1": {
           "type": "string",
           "format": "file-path",
+          "pattern": "^\\S+\\.f(ast)?q(\\.gz)?$",
           "title": "Read 1 FASTQ",
           "description": "Leave empty to use the bundled HG00096 reads."
         },
         "reads_2": {
           "type": "string",
           "format": "file-path",
+          "pattern": "^\\S+\\.f(ast)?q(\\.gz)?$",
           "title": "Read 2 FASTQ",
           "description": "Leave empty to use the bundled HG00096 reads."
         }

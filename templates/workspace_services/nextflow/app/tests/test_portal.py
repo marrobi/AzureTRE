@@ -136,6 +136,7 @@ def test_coerce_params_validates_paths_and_ranges():
         {
             "properties": {
                 "input": {"type": "string", "format": "file-path"},
+                "reads": {"type": "string", "format": "file-path", "pattern": "^\\S+\\.f(ast)?q(\\.gz)?$"},
                 "n": {"type": "integer", "minimum": 2, "maximum": 5},
                 "title": {"type": "string", "pattern": "^[a-z]+$"},
             }
@@ -145,6 +146,10 @@ def test_coerce_params_validates_paths_and_ranges():
     assert params == {"input": "az://nextflow-ab12/inputs/a/b.txt", "n": 3, "title": "ok"} and not errors
     params, _ = coerce_params(fields, {"input": "az://nextflow-ab12/results/r1/x.csv"}, "nextflow-ab12")
     assert params["input"] == "az://nextflow-ab12/results/r1/x.csv"
+    params, errors = coerce_params(fields, {"reads": "inputs/s/S1_R1.fastq.gz"}, "nextflow-ab12")
+    assert params["reads"] == "az://nextflow-ab12/inputs/s/S1_R1.fastq.gz" and not errors
+    _, errors = coerce_params(fields, {"reads": "results/r1/S1.bam"}, "nextflow-ab12")
+    assert set(errors) == {"reads"}
     _, errors = coerce_params(fields, {"input": "runs/x/run.json", "n": 9, "title": "Bad!"}, "nextflow-ab12")
     assert set(errors) == {"input", "n", "title"}
     _, errors = coerce_params(fields, {"input": "inputs/../runs/x"}, "nextflow-ab12")

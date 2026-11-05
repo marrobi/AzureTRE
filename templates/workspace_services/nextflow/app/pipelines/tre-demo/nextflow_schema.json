@@ -11,6 +11,7 @@
         "input": {
           "type": "string",
           "format": "file-path",
+          "pattern": "^\\S+\\.(txt|csv|tsv)$",
           "title": "Sample list",
           "description": "Optional text file in the inputs storage with one sample name per line. Leave empty to generate samples."
         },

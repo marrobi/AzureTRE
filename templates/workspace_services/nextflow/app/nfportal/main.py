@@ -39,7 +39,6 @@ from .store import (
     BROWSABLE,
     INPUTS,
     PIPELINES,
-    RESULTS,
     AzureBlobStore,
     InvalidPath,
     LocalStore,
@@ -52,7 +51,6 @@ log = logging.getLogger("nfportal")
 WRITABLE = (INPUTS, PIPELINES)
 REFRESH_SECONDS = 30
 WORK_EXPIRY_SECONDS = 6 * 3600
-PATH_OPTION_LIMIT = 5000
 CSRF_HEADER = "x-requested-with"
 # nf-azure writes these zero-byte blobs to mark folders it published.
 FOLDER_MARKER = ".azure_blob_dir"
@@ -246,17 +244,6 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
             "readme": p.readme,
             "fields": [asdict(f) | {"is_path": f.is_path} for f in p.fields],
         }
-
-    @api.get("/path-options")
-    def path_options() -> list[str]:
-        options: list[str] = []
-        for container in (INPUTS, RESULTS):
-            for item in services.store.list(container):
-                if len(options) >= PATH_OPTION_LIMIT:
-                    return options
-                if "/_nextflow/" not in item.name and not item.name.endswith(FOLDER_MARKER):
-                    options.append(f"{container}/{item.name}")
-        return options
 
     @api.get("/runs")
     def list_runs() -> list[dict]:

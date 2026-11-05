@@ -130,6 +130,8 @@ def coerce_params(
                 value = str(value)
                 if f.is_path:
                     value = to_az_path(value, storage_container)
+                    if f.pattern and not re.search(f.pattern, value):
+                        raise ValueError("This file type isn't accepted here.")
                 elif f.pattern and not re.fullmatch(f.pattern, value):
                     raise ValueError(f"Does not match pattern {f.pattern}")
             if f.enum and value not in f.enum:

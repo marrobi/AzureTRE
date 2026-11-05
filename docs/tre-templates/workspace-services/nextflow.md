@@ -84,7 +84,8 @@ A delegation SAS can't grant more than its creator's data access, so pipelines c
 ## Using the portal
 
 1. Open the service's connection URL from a workspace VM.
-1. On **Pipelines**, choose **Launch** for a pipeline, fill in the parameters and select **Start run**. File parameters list files from the service's inputs and results storage.
+1. On **Pipelines**, choose **Launch** for a pipeline, fill in the parameters and select **Start run**. For file parameters, select **Browse** to choose a file from **Inputs** or an earlier run's **Results**.
+   If the pipeline schema gives the parameter a `pattern`, such as `^\S+\.f(ast)?q(\.gz)?$`, the browser shows only matching files and the portal rejects other files.
 1. Follow the run on the **Overview** tab. When it finishes, the **Results** tab shows the run's key outputs, such as its HTML reports, and a folder browser of everything it published. The Nextflow report, timeline and trace are on **Reports**.
 
 To add a pipeline, upload its folder to **Data** > **Pipelines**. The folder needs:
