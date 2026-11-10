@@ -97,8 +97,9 @@
     "is_exposed_externally": {
       "type": "boolean",
       "title": "Expose externally",
-      "description": "Is the portal accessible from outside of the TRE network.",
-      "default": false
+      "description": "Allow access to the portal from outside the workspace network, for example from a researcher's own device. Users can then view and download results without an Airlock export request.",
+      "default": false,
+      "updateable": true
     }
   },
   "uiSchema": {

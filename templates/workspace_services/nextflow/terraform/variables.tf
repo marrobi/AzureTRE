@@ -31,6 +31,11 @@ variable "head_vm_size" {
   type    = string
   default = "Standard_D2s_v3"
 }
+variable "is_exposed_externally" {
+  type        = bool
+  default     = false
+  description = "Allow access to the portal from outside the workspace network, as well as through its private endpoint"
+}
 variable "head_max_nodes" {
   type    = number
   default = 2

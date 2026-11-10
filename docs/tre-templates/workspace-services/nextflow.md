@@ -18,7 +18,7 @@ flowchart LR
   W -->|Docker Hub images| N[TRE Nexus proxy]
 ```
 
-- **Portal:** a container on the workspace App Service plan. It has no public network access and serves a React and Fluent UI front end that matches the TRE portal. Users sign in with the workspace app registration and need the WorkspaceOwner or WorkspaceResearcher role.
+- **Portal:** a container on the workspace App Service plan. By default it has no public network access, and the TRE UI's **Connect** shows its URL to copy into a workspace VM. It serves a React and Fluent UI front end that matches the TRE portal. Users sign in with the workspace app registration and need the WorkspaceOwner or WorkspaceResearcher role.
 - **Nextflow head:** each run starts as an Azure Batch container task on the head pool. The head process uses Nextflow's `azurebatch` executor to submit the pipeline's tasks to the task pool. Pipeline code runs on Batch nodes, never in the portal.
 - **Batch pools:** both pools are in a dedicated workspace subnet. They have no public IP addresses, use simplified node communication through a private endpoint, and send any other traffic through the TRE firewall. They scale to zero when idle.
 - **Storage:** a container in the workspace storage account, reached through the workspace's existing private endpoint. Nextflow issues short-lived user delegation SAS tokens to its tasks. The portal deletes work directories after the configured retention period.
@@ -108,6 +108,11 @@ Upload inputs to **Data** > **Inputs** from inside the workspace, for example af
 | `worker_use_spot` | Use Spot VMs for tasks. |
 | `head_vm_size`, `head_max_nodes` | Head pool size. Each head node runs two runs at once. |
 | `work_retention_days` | Days to keep Nextflow work directories. |
+| `is_exposed_externally` | Allow access to the portal from outside the workspace network, as well as from workspace VMs. Off by default. |
+
+!!! warning
+    With `is_exposed_externally` on, workspace users can open the portal from their own devices and view or download inputs, results and reports there, without an Airlock export request.
+    Turn it on only if the workspace's data can leave it without review. The Batch pools and storage stay private either way.
 
 ## Prerequisites and limitations
 

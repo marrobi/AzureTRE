@@ -4,7 +4,7 @@ resource "azurerm_linux_web_app" "portal" {
   resource_group_name                            = data.azurerm_resource_group.ws.name
   service_plan_id                                = data.azurerm_service_plan.workspace.id
   https_only                                     = true
-  public_network_access_enabled                  = false
+  public_network_access_enabled                  = var.is_exposed_externally
   virtual_network_subnet_id                      = data.azurerm_subnet.web_apps.id
   key_vault_reference_identity_id                = azurerm_user_assigned_identity.portal.id
   ftp_publish_basic_authentication_enabled       = false

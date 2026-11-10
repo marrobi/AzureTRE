@@ -11,7 +11,7 @@ output "workspace_address_spaces" {
 }
 
 output "is_exposed_externally" {
-  value = false
+  value = var.is_exposed_externally
 }
 
 # Sign-in needs Microsoft Entra ID from the portal (token exchange) and from workspace VMs (the user's browser).
